@@ -13,8 +13,8 @@ PARENT = regexp.MustCompile('([A-Za-z0-9_.]+)[.]([A-Za-z0-9_]+)')
 
 FRONT_WHITE = regexp.MustCompile('^(\\s+)')
 FRONT_EQ = regexp.MustCompile('^[=]')
-FRONT_WORDS = regexp.MustCompile('^(([A-Za-z_])([A-Za-z0-9_]+))([.](([A-Za-z_])([A-Za-z0-9_]+)))*')
-FRONT_STANZA = regexp.MustCompile('^[[]((([A-Za-z])([A-Za-z0-9_]+))([.](([A-Za-z])([A-Za-z0-9_]+)))*)[]]')
+FRONT_WORDS = regexp.MustCompile('^(([A-Za-z_])([A-Za-z0-9_]*))([.](([A-Za-z_])([A-Za-z0-9_]*)))*')
+FRONT_STANZA = regexp.MustCompile('^[[]((([A-Za-z])([A-Za-z0-9_]*))([.](([A-Za-z])([A-Za-z0-9_]*)))*)[]]')
 FRONT_OPEN = regexp.MustCompile('^[(]')
 FRONT_CLOSE = regexp.MustCompile('^[)]')
 FRONT_QUOTE = regexp.MustCompile("^[']")
@@ -101,18 +101,40 @@ class LaphEngine:
         sp.up = self.MakeStanza(m[1])
     return sp
 
-  def ParseAll(self):
+  def Parse(self):
     while self.t:
-      if self.t != 'Stanza':
-        self.Bad('Expected stanza, got %s: %s' % (self.t, self.v))
-      print 'self.v', self.v
-      s = FRONT_STANZA.FindString(self.v)
-      s = s[1:-1]  # Trim the brackets.
-      sp = self.MakeStanza(s)
-      self.Advance()
-    return
+      self.ParseStanza()
+
+  def ParseStanza(self):
+    self.MustT('Stanza')
+    name = FRONT_STANZA.FindString(self.v)
+    name = name[1:-1]  # Trim the brackets.
+    stanza = self.MakeStanza(name)
+    self.Advance()
+
+    while self.t == 'Words':
+      self.ParseSlot(stanza)
+
+  def ParseSlot(self, stanza):
+    k = self.v
+    self.Advance()
+
+    self.MustT('Eq')
+    self.Advance()
+
+    self.MustT('String')
+    v = self.v
+    stanza.slots[k] = v
+    self.Advance()
+      
+  def MustT(self, t):
+    if self.t != t:
+      self.Bad('Expected %s, got %s: %s' % (t, self.t, self.v))
+
+
 pass
 
-e = LaphEngine(" [Abc] [Def] [Ghi.Xyz] ")
-e.ParseAll()
+e = LaphEngine(' [Abc] a = "foo" [Def] b = "bar" [Ghi.Xyz] ')
+e.Parse()
 say e.stanzas
+say e.stanzas['Abc'].slots['a']
