@@ -14,7 +14,7 @@ PARENT = regexp.MustCompile('([A-Za-z0-9_.]+)[.]([A-Za-z0-9_]+)')
 FRONT_WHITE = regexp.MustCompile('^(\\s+)')
 FRONT_EQ = regexp.MustCompile('^[=]')
 FRONT_WORDS = regexp.MustCompile('^(([A-Za-z_])([A-Za-z0-9_]*))([.](([A-Za-z_])([A-Za-z0-9_]*)))*')
-FRONT_STANZA = regexp.MustCompile('^[[]((([A-Za-z])([A-Za-z0-9_]*))([.](([A-Za-z])([A-Za-z0-9_]*)))*)[]]')
+FRONT_HEADER = regexp.MustCompile('^[[]((([A-Za-z])([A-Za-z0-9_]*))([.](([A-Za-z])([A-Za-z0-9_]*)))*)[]]')
 FRONT_OPEN = regexp.MustCompile('^[(]')
 FRONT_CLOSE = regexp.MustCompile('^[)]')
 FRONT_QUOTE = regexp.MustCompile("^[']")
@@ -22,8 +22,10 @@ FRONT_STRING = regexp.MustCompile('^"([^"]|"")*"')
 FRONT_INT = regexp.MustCompile('^[-]?[0-9]+')
 FRONT_FLOAT = regexp.MustCompile('^[-]?[0-9]+[.]?[0-9]+')  # No exponential notation.
 
-L2 = [ ('Open', FRONT_OPEN), ('Close', FRONT_CLOSE), ('Quote', FRONT_QUOTE), ('String', FRONT_STRING) ]
-LEXERS = [ ('Eq', FRONT_EQ), ('Words', FRONT_WORDS), ('Stanza', FRONT_STANZA) ] + L2
+L1 = [ ('Str', FRONT_STRING), ('Int', FRONT_INT), ('Float', FRONT_FLOAT) ]
+L2 = [ ('Open', FRONT_OPEN), ('Close', FRONT_CLOSE), ('Quote', FRONT_QUOTE) ]
+L3 = [ ('Eq', FRONT_EQ), ('Words', FRONT_WORDS), ('Header', FRONT_HEADER) ]
+LEXERS = L1 + L2 + L3
 
 print "word", WORD
 print WORD.Find("345 Foo777 bar ")
@@ -32,8 +34,8 @@ print WORD.FindAllString("345 Foo777 bar ", -1)
 print WORD.FindAllStringIndex("345 Foo777 bar ", -1)
 print 'last', WORD.FindAll("345 Foo777 bar ", -1)
 
-print 'FRONT_STANZA.FindString', FRONT_STANZA.FindString('[abc] xxx')
-assert FRONT_STANZA.FindString('[abc] xxx') == '[abc]'
+print 'FRONT_HEADER.FindString', FRONT_HEADER.FindString('[abc] xxx')
+assert FRONT_HEADER.FindString('[abc] xxx') == '[abc]'
 
 assert WORDS.FindString('FooBar.Baz')
 assert not FRONT_WORDS.FindString(' FooBar.Baz')
@@ -60,13 +62,14 @@ def Tokenize(text):
 print 'Tokenize:', list(Tokenize(' [Lyric] we_re up=all.night2 == get_lucky '))
 
 class Stanza:
-  def __init__(self):
+  def __init__(self, engine):
     self.name = None
     self.up = None
     self.slots = {}
+    self.engine = engine
 
         
-class LaphEngine:
+class Engine:
   def __init__(self, text):
     self.stanzas = {}
     self.text = text
@@ -92,7 +95,7 @@ class LaphEngine:
   def MakeStanza(self, s):
     sp = self.stanzas.get(s)
     if not sp:
-      sp = Stanza()
+      sp = Stanza(self)
       sp.name = s
       m = PARENT.FindStringSubmatch(s)
       self.stanzas[sp.name] = sp
@@ -104,10 +107,11 @@ class LaphEngine:
   def Parse(self):
     while self.t:
       self.ParseStanza()
+    return self
 
   def ParseStanza(self):
-    self.MustT('Stanza')
-    name = FRONT_STANZA.FindString(self.v)
+    self.MustT('Header')
+    name = FRONT_HEADER.FindString(self.v)
     name = name[1:-1]  # Trim the brackets.
     stanza = self.MakeStanza(name)
     self.Advance()
@@ -122,19 +126,123 @@ class LaphEngine:
     self.MustT('Eq')
     self.Advance()
 
-    self.MustT('String')
-    v = self.v
+    v = self.ParseExpr()
     stanza.slots[k] = v
     self.Advance()
+
+  def ParseExpr(self):
+    if not self.t:
+      raise "Expected expression but got End of String."
+    if self.t == 'Open':
+      return self.ParseList()
+    if self.t == 'Words':
+      z = Intern(str(self.v))
+      self.Advance()
+      return z
+    if self.t == 'Int':
+      z = Lit(int(self.v))
+      self.Advance()
+      return z
+    if self.t == 'Float':
+      z = Lit(float(self.v))
+      self.Advance()
+      return z
+    if self.t == 'Str':
+      z = Lit(str(self.v))
+      self.Advance()
+      return z
+    if self.t == 'Quote':
+      self.Advance()
+      x = self.ParseExpr()
+      return List([Intern('quote'), x])
+    raise 'ParseExpr unknown: %s: %d' % (self.t, self.v)
       
+  def ParseList(self):
+    self.MustT('Open')
+    self.Advance()
+    z = []
+    while self.t != 'Close':
+      z.append(self.ParseExpr())
+    return List(z)
+      
+
   def MustT(self, t):
     if self.t != t:
       self.Bad('Expected %s, got %s: %s' % (t, self.t, self.v))
 
+Interned = {}
 
-pass
+def Intern(s):
+  assert type(s) == str
+  sym = Interned.get(s)
+  if sym is None:
+    sym = Symbol(s)
+    Interned[s] = sym
+  return sym
 
-e = LaphEngine(' [Abc] a = "foo" [Def] b = "bar" [Ghi.Xyz] ')
+class Node:
+  def __init__(self):
+    pass
+  def NE(self, a):
+    return not self.EQ(a)
+  def LE(self, a):
+    return self.LT(a) or self.EQ(a)
+  def GE(self, a):
+    return self.GT(a) or self.EQ(a)
+
+class Lit(Node):
+  def __init__(self, x):
+    self.x = x
+  def Show(self):
+    if type(self.x) == str:
+      return '"%s"' % self.x  # TODO: fix for escaping.
+    else:
+      return repr(self.x)
+  def EQ(self, a):
+    return a.EQLit(self)
+  def EQSymbol(self, a):
+    return self.x == a.s
+  def EQLit(self, a):
+    return self.x == a.x
+
+class Symbol(Node):
+  def __init__(self, s):
+    self.s = s
+  def Show(self):
+    return self.s
+  def EQ(self, a):
+    return a.EQSymbol(self)
+  def EQSymbol(self, a):
+    return self.s == a.s
+  def EQLit(self, a):
+    return self.x == a.x
+  def Lookup(self, env, stan):
+    for pair in env:
+      k, v = pair
+      if self.EQ(k):
+        return v
+    if stan:
+      return stan.Lookup(self)
+    
+
+class List(Node):
+  def __init__(self, v):
+    self.v = v
+  def Len(self):
+    return len(self.v)
+  def Show(self):
+    z = '('
+    for x in self.v:
+      if len(z) > 1:
+        z += ' '
+      z += x.Show()
+    return z + ')'
+
+e = Engine(' [Abc] a = "foo" [Def] b = "bar" [Ghi.Xyz] ')
 e.Parse()
 say e.stanzas
 say e.stanzas['Abc'].slots['a']
+z = Engine('[x] y = ( add 34 "23" )').Parse().stanzas['x'].slots['y']
+say z
+say z.Show()
+assert z.Len() == 3, z
