@@ -1,66 +1,64 @@
-go import fmt
-go import html
-go import net/http
-go import net/url
-go import time
-go import io/ioutil
+from go import io/ioutil
+from go import net/http
+from go import net/url
+from go import regexp
 
-def Double(x):
-  return x + x
+MAGIC_PATH = 'AphiD_RpC1'
 
-def Echo(w, r):
-  try:
-    fmt.Fprintf(w, "Hello Foo, %q", html.EscapeString(r.URL.Path))
-  except as ex:
-    print "Echo Exception:", ex
+PARSE_HP = regexp.MustCompile('^([-A-Za-z0-9.]+)[:]([0-9]+)$')
 
 class RpcFunc:
   def __init__(self, fn):
     self.fn = fn
-  def Call(self, w, r):
+
+  def Call1(self, w, r):
     r.ParseForm()
-    data = ''
-    vec = r.PostForm.get('data')
-    if vec:
-      data = vec[0]
-    print "data:", repr(data)
-    self.fn(w, r)
+    pickles = r.PostForm.get('pickle')
+    if not pickles:
+      w.WriteHeader(http.StatusExpectationFailed)
+      w.Write('Missing RPC form field "pickle"')
 
-  def Invoke(self, w, r):
-    r.ParseForm()
-    arg = None
-    vec = r.PostForm.get('data')
-    if vec:
-      arg = unpickle(vec[0])
-    print "arg <<<", arg
-    z = self.fn(arg)
-    print "z >>>", z
-    w.Write(pickle(z))
+    try:
+      say len(pickles)
+      say len(pickles[0])
+      arg = unpickle(pickles[0])
+      say arg
+      z = self.fn(arg)
+      say z
+      p = pickle(z)
+      say repr(p)
+      say unpickle(p)
+      say w.Write(p)
+      say unpickle(p)
+      say 'OKAY -- Written'
+    except as ex:
+      w.WriteHeader(http.StatusInternalServerError)
+      w.Write('ERROR CAUGHT: ' + ex)
 
-def Register(name, fn):
-    http.HandleFunc('/APHID_RPC/' + name, RpcFunc(fn).Call)
-    
-def RegisterP(name, fn):
-    http.HandleFunc('/APHID_RPC/' + name, RpcFunc(fn).Invoke)
+class Dial:
+  def __init__(self, host_port):
+    hp = PARSE_HP.FindStringSubmatch(host_port)
+    if not hp:
+      raise 'Bad Host:Port spec: ' + host_port
+    _, self.host, self.port = hp
 
-def GoListenAndServe(hp):
-  z = http.ListenAndServe(hp, None)
-  yield ('Never', z)
+  def Register(self, name, fn):
+    http.HandleFunc('/' + MAGIC_PATH + '/' + name, RpcFunc(fn).Call1)
 
-def Run():
-  d = { 'data': [pickle(1234)] }
-  form = gocast(url.Values, d)
-  resp = http.PostForm("http://localhost:8080/APHID_RPC/Double", form)
-  print '>>>>resp>>>>>>', repr(resp)
-  body = ioutil.ReadAll(resp.Body)
-  print '>>>>body>>>>>>', repr(body)
-  print '>>>>body>>>>>>', unpickle(body)
-  resp.Body.Close()
+  def GoListenAndServe(self):
+    hp = "%s:%s" % (self.host, self.port)
+    http.ListenAndServe(hp, None)
+    yield 'NOT_REACHED'
 
-    
-def main(argv):
-  Register('Echo', Echo)
-  RegisterP('Double', Double)
-  z = GoListenAndServe(':8080')
-  time.Sleep(100 * time.Millisecond)
-  Run()
+  def Call1(self, rpc_name, arg):
+    say arg
+    d = { 'pickle': [pickle(arg)] }
+    say d
+    uri = "http://%s:%s/%s/%s" % (self.host, self.port, MAGIC_PATH, rpc_name)
+    response = http.PostForm(uri, gocast(url.Values, d))
+    body = ioutil.ReadAll(response.Body)
+    response.Body.Close()
+    if response.StatusCode != 200:
+      raise 'In RPC %q: ERROR %d: %q' % (rpc_name, response.StatusCode, body) 
+    z = unpickle(body)
+    return z
