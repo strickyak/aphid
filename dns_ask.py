@@ -38,3 +38,7 @@ def AskDns(server, query):
 def main(argv):
   say AskDns("wiki.yak.net", "8.8.8.8")
   say DnsHeader().FormQuestion()
+  say [x for x in byt('hello world') if x > 32], 'foo', byt('bar')
+  say list(byt('hello world'))
+  say byt(list(byt('hello world')))
+  assert byt('hello world') ==  byt(list(byt('hello world')))
