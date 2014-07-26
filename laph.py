@@ -183,51 +183,36 @@ def Intern(s):
 class Node:
   def __init__(self):
     pass
-  def NE(self, a):
-    return not self.EQ(a)
-  def LE(self, a):
-    return self.LT(a) or self.EQ(a)
-  def GE(self, a):
-    return self.GT(a) or self.EQ(a)
 
 class Lit(Node):
   def __init__(self, x):
     self.x = x
+  def Eq(self, a):
+    return self is a
   def Show(self):
     if type(self.x) == str:
       return '"%s"' % self.x  # TODO: fix for escaping.
     else:
       return repr(self.x)
-  def EQ(self, a):
-    return a.EQLit(self)
-  def EQSymbol(self, a):
-    return self.x == a.s
-  def EQLit(self, a):
-    return self.x == a.x
 
 class Symbol(Node):
   def __init__(self, s):
     self.s = s
   def Show(self):
     return self.s
-  def EQ(self, a):
-    return a.EQSymbol(self)
-  def EQSymbol(self, a):
-    return self.s == a.s
-  def EQLit(self, a):
-    return self.x == a.x
-  def Lookup(self, env, stan):
-    for pair in env:
-      k, v = pair
-      if self.EQ(k):
+  def Lookup(self, env, stanza):
+    for k, v in env:
+      if self.Eq(k):
         return v
-    if stan:
-      return stan.Lookup(self)
+    if stanza:
+      return stanza.Lookup(self)
     
 
 class List(Node):
   def __init__(self, v):
     self.v = v
+  def Eq(self, a):
+    return False
   def Len(self):
     return len(self.v)
   def Show(self):
