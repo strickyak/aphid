@@ -26,11 +26,9 @@ class DnsHeader:
     return hdr
 
 def AskDns(server, query):
-  svr = reflect.New(gotype(net.UDPAddr)).Interface()
+  svr = reflect.New(gotype(net.UDPAddr)).Interface()  # Or, gonew(net.UDPAddr).
   svr.Port = 53
   svr.IP = net.ParseIP(server)
-  # svr.IP = byt( net.ParseIP(server) )
-  #svr.IP = gocast(net.IP, net.ParseIP(server))
 
   u = net.DialUDP("udp", None, svr)
   return u
