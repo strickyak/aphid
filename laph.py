@@ -68,6 +68,14 @@ class Stanza:
     self.slots = {}
     self.engine = engine
 
+  def Lookup(self, key):
+    z = self.slots.get(key)
+	if z:
+	  return z
+	elif slots.up:
+	  return slots.up.Lookup(key)
+    else:
+	  return None
         
 class Engine:
   def __init__(self, text):
@@ -194,6 +202,8 @@ class Lit(Node):
       return '"%s"' % self.x  # TODO: fix for escaping.
     else:
       return repr(self.x)
+  def Eval(self, env, stanza):
+    return self
 
 class Symbol(Node):
   def __init__(self, s):
@@ -206,6 +216,8 @@ class Symbol(Node):
         return v
     if stanza:
       return stanza.Lookup(self)
+  def Eval(self, env, stanza):
+    return self.Lookup(env, stanza)
     
 
 class List(Node):
@@ -222,6 +234,8 @@ class List(Node):
         z += ' '
       z += x.Show()
     return z + ')'
+  def Eval(self, env, stanza):
+    return TODO
 
 e = Engine(' [Abc] a = "foo" [Def] b = "bar" [Ghi.Xyz] ')
 e.Parse()
