@@ -1,44 +1,44 @@
 from go import net/http
-from go import strings
 from go import os
-from go import io/ioutil
+from go import regexp
+from go import strings
 
 WEB_ROOT = '/home/strick/webroot'
 WEB_MAP = { 'localhost:8080': 'local', 'yak.net': 'yak', }
 
+SLASHDOT = regexp.MustCompile('[/][.]')
+
+def EmitDir(w, r, fd, prefix, path):
+  names = fd.Readdirnames(-1)
+  w.Write('<html><body><h3>Directory %s</h3> <ul>\n' % path)
+  for name in names:
+    # TODO: escape correctly.
+    w.Write('<li><a href="%s">%q</a></li>\n' % (name, name))
+  w.Write('</ul>\n')
+
 def WebFunc(w, r):
   say r.Header
-  # path = strings.Split(r.URL.Path, '/')
   path = r.URL.Path
 
   try:
-    w.Header().Set('Content-Type', 'text/html')
-    w.Write('<html><body>\n')
-    w.Write('path: %s<p>\n' % path)
-    w.Write('host: %s<p>\n' % r.Host)
-    w.Write('Header: %s<p>\n' % repr(r.Header))
-    w.Write('r: %s<p>\n' % repr(r))
-
     hostdir = WEB_MAP.get(r.Host)
     if not hostdir:
       hostdir = WEB_MAP.get(strings.Split(r.Host, ':')[0])
 
     filename = "/%s/%s/%s" % (WEB_ROOT, hostdir, path)
+    if SLASHDOT.FindString(filename):  # Subvert /.. and dotfiles.
+      raise 'slashdot not allowed in filename: %q' % filename
+
     fd = os.Open(filename)
     st = fd.Stat()
     if st.IsDir():
-      names = fd.Readdirnames(-1)
-      w.Write('\n<h3>Directory %s</h3> <ul>\n' % path)
-      for name in names:
-        w.Write('<li>%s</li>\n' % name)
-      w.Write('</ul>\n')
-
+      if path[-1] == '/':
+        EmitDir(w, r, fd, '/', path)
+      else:
+        http.Redirect(w, r, path + '/', http.StatusMovedPermanently)
     else:
-      contents = ioutil.ReadAll(fd)
-      fd.Close()
-      w.Write('\n<listing>\n')
-      w.Write(contents)
-      w.Write('\n</listing>\n')
+      http.ServeContent(w, r, path, st.ModTime(), fd)
+    fd.Close()
 
   except as ex:
     w.Header().Set('Content-Type', 'text/plain')
