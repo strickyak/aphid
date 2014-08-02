@@ -38,5 +38,6 @@ def main(argv):
   say DnsHeader().FormQuestion()
   say [x for x in byt('hello world') if x > 32], 'foo', byt('bar')
   say list(byt('hello world'))
+  assert list(byt('hello world')) == [104, 101, 108, 108, 111, 32, 119, 111, 114, 108, 100]
   say byt(list(byt('hello world')))
   assert byt('hello world') ==  byt(list(byt('hello world')))
