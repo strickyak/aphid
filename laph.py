@@ -70,12 +70,13 @@ class Stanza:
 
   def Lookup(self, key):
     z = self.slots.get(key)
-	if z:
-	  return z
-	elif slots.up:
-	  return slots.up.Lookup(key)
+    if z:
+      return z
     else:
-	  return None
+      if self.slots.up:
+        return self.slots.up.Lookup(key)
+      else:
+        return None
         
 class Engine:
   def __init__(self, text):
@@ -235,7 +236,7 @@ class List(Node):
       z += x.Show()
     return z + ')'
   def Eval(self, env, stanza):
-    return TODO
+    return 'TODO zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz'
 
 e = Engine(' [Abc] a = "foo" [Def] b = "bar" [Ghi.Xyz] ')
 e.Parse()
