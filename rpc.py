@@ -11,29 +11,44 @@ class RpcFunc:
   def __init__(self, fn):
     self.fn = fn
 
-  def Call1(self, w, r):
+  def Request(self, w, r):
     r.ParseForm()
     pickles = r.PostForm.get('pickle')
     if not pickles:
       w.WriteHeader(http.StatusExpectationFailed)
       w.Write('Missing RPC form field "pickle"')
+    return unpickle(pickles[0])
 
-    try:
-      say len(pickles)
-      say len(pickles[0])
-      arg = unpickle(pickles[0])
-      say arg
-      z = self.fn(arg)
-      say z
-      p = pickle(z)
-      say repr(p)
-      say unpickle(p)
-      say w.Write(p)
-      say unpickle(p)
-      say 'OKAY -- Written'
-    except as ex:
+  def Respond(self, w, r, z):
+      w.Write(pickle(z))
+
+  def RespondError(self, r, w, ex):
       w.WriteHeader(http.StatusInternalServerError)
       w.Write('ERROR CAUGHT: ' + ex)
+
+  def Call1(self, w, r):
+    try:
+      a1 = self.Request(w, r)
+      z = self.fn(a1)
+      self.Respond(w, r, z)
+    except as ex:
+      self.RespondError(r, w, ex)
+
+  def Call2(self, w, r):
+    try:
+      a1, a2 = self.Request(w, r)
+      z = self.fn(a1, a2)
+      self.Respond(w, r, z)
+    except as ex:
+      self.RespondError(r, w, ex)
+
+  def Call3(self, w, r):
+    try:
+      a1, a2, a3 = self.Request(w, r)
+      z = self.fn(a1, a2, a3)
+      self.Respond(w, r, z)
+    except as ex:
+      self.RespondError(r, w, ex)
 
 class Dial:
   def __init__(self, host_port):
@@ -42,18 +57,44 @@ class Dial:
       raise 'Bad Host:Port spec: ' + host_port
     _, self.host, self.port = hp
 
-  def Register(self, name, fn):
+  def Register1(self, name, fn):
     http.HandleFunc('/' + MAGIC_PATH + '/' + name, RpcFunc(fn).Call1)
+
+  def Register2(self, name, fn):
+    http.HandleFunc('/' + MAGIC_PATH + '/' + name, RpcFunc(fn).Call2)
+
+  def Register3(self, name, fn):
+    http.HandleFunc('/' + MAGIC_PATH + '/' + name, RpcFunc(fn).Call3)
 
   def GoListenAndServe(self):
     hp = "%s:%s" % (self.host, self.port)
     http.ListenAndServe(hp, None)
     yield 'NOT_REACHED'
 
-  def Call1(self, rpc_name, arg):
-    say arg
-    d = { 'pickle': [pickle(arg)] }
-    say d
+  def Call1(self, rpc_name, a1):
+    d = { 'pickle': [pickle(a1)] }
+    uri = "http://%s:%s/%s/%s" % (self.host, self.port, MAGIC_PATH, rpc_name)
+    response = http.PostForm(uri, gocast(url.Values, d))
+    body = ioutil.ReadAll(response.Body)
+    response.Body.Close()
+    if response.StatusCode != 200:
+      raise 'In RPC %q: ERROR %d: %q' % (rpc_name, response.StatusCode, body) 
+    z = unpickle(body)
+    return z
+
+  def Call2(self, rpc_name, a1, a2):
+    d = { 'pickle': [pickle((a1, a2))] }
+    uri = "http://%s:%s/%s/%s" % (self.host, self.port, MAGIC_PATH, rpc_name)
+    response = http.PostForm(uri, gocast(url.Values, d))
+    body = ioutil.ReadAll(response.Body)
+    response.Body.Close()
+    if response.StatusCode != 200:
+      raise 'In RPC %q: ERROR %d: %q' % (rpc_name, response.StatusCode, body) 
+    z = unpickle(body)
+    return z
+
+  def Call3(self, rpc_name, a1, a2, a3):
+    d = { 'pickle': [pickle((a1, a2, a3))] }
     uri = "http://%s:%s/%s/%s" % (self.host, self.port, MAGIC_PATH, rpc_name)
     response = http.PostForm(uri, gocast(url.Values, d))
     body = ioutil.ReadAll(response.Body)
