@@ -77,7 +77,7 @@ class Stanza:
         return self.slots.up.Lookup(key)
       else:
         return None
-        
+
 class Engine:
   def __init__(self, text):
     self.stanzas = {}
@@ -165,7 +165,7 @@ class Engine:
       x = self.ParseExpr()
       return List([Intern('quote'), x])
     raise 'ParseExpr unknown: %s: %d' % (self.t, self.v)
-      
+
   def ParseList(self):
     self.MustT('Open')
     self.Advance()
@@ -173,7 +173,7 @@ class Engine:
     while self.t != 'Close':
       z.append(self.ParseExpr())
     return List(z)
-      
+
 
   def MustT(self, t):
     if self.t != t:
@@ -189,15 +189,24 @@ def Intern(s):
     Interned[s] = sym
   return sym
 
+Prim = Intern("prim")
+Lambda = Intern("lamdba")
+Quote = Intern("quote")
+Nil = Intern("nil")
+T = Intern("true")
+F = Intern("false")
+
 class Node:
   def __init__(self):
     pass
+  def Eq(self, a):
+    return self is a
 
 class Lit(Node):
   def __init__(self, x):
     self.x = x
   def Eq(self, a):
-    return self is a
+    return self.x == a.x if type(a) is Lit else False
   def Show(self):
     if type(self.x) == str:
       return '"%s"' % self.x  # TODO: fix for escaping.
@@ -219,15 +228,15 @@ class Symbol(Node):
       return stanza.Lookup(self)
   def Eval(self, env, stanza):
     return self.Lookup(env, stanza)
-    
+
 
 class List(Node):
   def __init__(self, v):
     self.v = v
-  def Eq(self, a):
-    return False
+
   def Len(self):
     return len(self.v)
+
   def Show(self):
     z = '('
     for x in self.v:
@@ -235,8 +244,49 @@ class List(Node):
         z += ' '
       z += x.Show()
     return z + ')'
+
   def Eval(self, env, stanza):
-    return 'TODO zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz'
+    if len(self.v) < 1:
+      return self
+    hd = self.v[0]
+
+    # Special Forms:
+    if hd is Lambda:
+      return self
+    if hd is Prim:
+      return self
+    if hd is Quote:
+      return self.v[1]
+
+    cmd = hd.Eval(env, stanza)
+    #say hd
+    #say type(hd)
+    #say type(hd) is List
+    #say type(hd) is Symbol
+    #say type(hd) is Prim
+    if type(hd) is List:
+      if len(hd.v) == 3 and hd.v[0] is Lambda and type(hd.v[1]) is List:
+        formals = hd.v[1]
+        expr = hd.v[2]
+        if len(formals.v) == len(self.v) - 1:
+          env2 = env
+          for i in range(len(formals)):
+            env2 = [(formals[i], hd.v[i+1].Eval(env, stanza))] + env2
+            return expr.Eval(env2, stanza)
+        else:
+          raise 'Wrong number of formals (%s) vs args (%s)' % (len(formals.v), len(self.v) - 1)
+
+      if len(hd.v) == 2 and hd.v[0] is Prim:
+        return PRIMS[hd.v[1].x](self, env, stanza)
+
+      raise 'Strange list in head position is not valid lambda expr: %s' % hd.v.Show()
+    raise 'Other: %s' % self.Show()
+
+PRIMS = {}
+
+def PrimPlus(a, env, stanza):
+  return Lit( a.v[1].Eval(env, stanza).x + a.v[2].Eval(env, stanza).x )
+PRIMS['plus'] = PrimPlus
 
 e = Engine(' [Abc] a = "foo" [Def] b = "bar" [Ghi.Xyz] ')
 e.Parse()
@@ -246,3 +296,11 @@ z = Engine('[x] y = ( add 34 "23" )').Parse().stanzas['x'].slots['y']
 say z
 say z.Show()
 assert z.Len() == 3, z
+
+prim_plus__21__2 = List([ List([ Intern('prim'), Lit('plus') ]), Lit(21), Lit(2) ])
+x = prim_plus__21__2.Eval( [], None )
+assert 23 == x.x
+assert type(Prim) is Symbol
+assert type(prim_plus__21__2) is List
+assert type(x) is Lit
+assert type(x.x) is int
