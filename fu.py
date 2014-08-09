@@ -1,6 +1,7 @@
 from . import rfs
 
-fs = rfs.Dial('localhost:9876')
+fs = rfs.Client('localhost:9876')
 
-say fs.List()
-say fs.Get('motd')
+say fs.List('vga')
+say fs.Get('motd', 0, 8)
+say fs.Get('motd', 8, 99999)
