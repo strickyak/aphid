@@ -1,33 +1,37 @@
+from go import flag
 from go import os
-from go import time
+#from go import time
+from go import path/filepath
 
 import github.com/strickyak/aphid/rpc
 
-DIAL = 'localhost:8080'
+port = flag.Int('port', 0, 'Port to listen on')
+root = flag.String('root', '', 'File system root')
+
+def localPath(path):
+  return filepath.Join(root, path)
 
 def Get(path, pos, n):
-  fd = os.Open(a[path])
+  fd = os.Open(localPath(path))
   p0 = fd.Seek(pos, 0)
   assert p0 == pos
   buf = byt(n)
   assert len(buf) == n
   count = fd.Read(buf)
   return buf[:count]
-  
 
 def List(path):
-  fd = os.Open(path)
+  fd = os.Open(localPath(path))
   vec = fd.Readdir(-1)
   z = [(i.Name(), i.IsDir(), i.Size(), i.ModTime().Unix()) for i in vec]
-  say z
+  z.Close()
   return z
-   
+
 def main(argv):
-  r = rpc.Dial(DIAL)
+  flag.Parse()
+  r = rpc.Dial('localhost:%d' % int(port))
   r.Register1('List', List)
   r.Register3('Get', Get)
   wait = r.GoListenAndServe()
-
-  time.Sleep(10 * time.Millisecond)
-
-  say r.Call1('List', '.')
+  list(wait)
+  # time.Sleep(24 * time.Hour)

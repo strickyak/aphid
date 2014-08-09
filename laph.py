@@ -4,6 +4,7 @@
 #from go import io/ioutil
 #from go import net/http
 #from go import net/url
+from go import strings
 from go import regexp
 #from go import time
 
@@ -227,6 +228,10 @@ class Symbol(Node):
     if stanza:
       return stanza.Lookup(self)
   def Eval(self, env, stanza):
+    st = stanza
+    ww = strings.Split(self.s, '.')
+    for w in ww[:-1]:
+      st = st.X
     return self.Lookup(env, stanza)
 
 
@@ -304,3 +309,6 @@ assert type(Prim) is Symbol
 assert type(prim_plus__21__2) is List
 assert type(x) is Lit
 assert type(x.x) is int
+say Symbol
+say str(Symbol)
+say repr(Symbol)
