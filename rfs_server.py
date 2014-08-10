@@ -1,38 +1,41 @@
 from go import flag
 from go import os
-#from go import time
 from go import path/filepath
 
-import github.com/strickyak/aphid/rpc
+from . import rpc
+from . import wrap_io
 
-port = flag.Int('port', 0, 'Port to listen on')
-root = flag.String('root', '', 'File system root')
+PORT = flag.Int('port', 0, 'Port to listen on')
+ROOT = flag.String('root', '', 'File system root')
 
 def localPath(path):
-  return filepath.Join(str(goreify(goderef(root))), path)
+  return filepath.Join(ROOT, path)
 
-def Get(path, pos, n):
+def ReadAt(path, n, pos):
   fd = os.Open(localPath(path))
-  p0 = fd.Seek(pos, 0)
-  assert p0 == pos
-  buf = byt(n)
-  assert len(buf) == n
-  count = fd.Read(buf)
-  fd.Close()
-  return buf[:count]
+  defer fd.Close()
+  buf, eof = wrap_io.ReadAtCommaEof(fd, n, pos)
+  return buf, eof
 
-def List(path):
+def WriteAt(path, data, pos):
+  fd = os.OpenFile(localPath(path), os.O_WRONLY | os.O_CREATE, 0666)
+  defer fd.Close()
+  return fd.WriteAt(data, pos)
+
+def ListDir(path):
   fd = os.Open(localPath(path))
+  defer fd.Close()
   vec = fd.Readdir(-1)
-  fd.Close()
   z = [(i.Name(), i.IsDir(), i.Size(), i.ModTime().Unix()) for i in vec]
   return z
 
 def main(argv):
+  global PORT, ROOT
   flag.Parse()
-  r = rpc.Dial('localhost:%d' % int(goreify(goderef(port))))
-  r.Register1('List', List)
-  r.Register3('Get', Get)
-  wait = r.GoListenAndServe()
-  list(wait)
-  # time.Sleep(24 * time.Hour)
+  PORT = int(goreify(goderef(PORT)))
+  ROOT = str(goreify(goderef(ROOT)))
+
+  r = rpc.Dial('localhost:%d' % PORT)
+  r.Register1('ListDir', ListDir)
+  r.Register3('ReadAt', ReadAt)
+  list(r.GoListenAndServe())  # never yields.

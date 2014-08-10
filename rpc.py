@@ -24,7 +24,7 @@ class RpcFunc:
 
   def RespondError(self, r, w, ex):
       w.WriteHeader(http.StatusInternalServerError)
-      w.Write('ERROR CAUGHT: ' + ex)
+      w.Write('%s' % ex)
 
   def Call1(self, w, r):
     try:

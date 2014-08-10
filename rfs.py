@@ -5,8 +5,11 @@ class Client:
     .where = where
     .r = rpc.Dial(where)
 
-  def Get(path, pos, n):
-    return .r.Call3("Get", path, pos, n)
+  def ReadAt(path, n, pos):
+    return .r.Call3("ReadAt", path, n, pos)
 
-  def List(path):
-    return .r.Call1("List", path)
+  def WriteAt(path, data, pos):
+    return .r.Call3("WriteAt", path, data, pos)
+
+  def ListDir(path):
+    return .r.Call1("ListDir", path)
