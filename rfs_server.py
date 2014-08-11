@@ -38,4 +38,5 @@ def main(argv):
   r = rpc.Dial('localhost:%d' % PORT)
   r.Register1('ListDir', ListDir)
   r.Register3('ReadAt', ReadAt)
+  r.Register3('WriteAt', WriteAt)
   list(r.GoListenAndServe())  # never yields.
