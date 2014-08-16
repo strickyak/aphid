@@ -1,14 +1,25 @@
 from go import regexp
 
 PATH_RE = regexp.MustCompile('^[/]([A-Za-z0-9_]+)[/](.*)$')
-SLASHDOT_RE = regexp.MustCompile('[/][.]')
+SLASHDOT_RE = regexp.MustCompile('[/][.]|[.][/]')
+NAME_RE = regexp.MustCompile('^[A-Za-z0-9_]+$')
 
 def CheckPath(s):
   assert not SLASHDOT_RE.FindString(s), s
 
 Mounts = {}
+Factories = {}
 
-def Mount(name, obj):
+def Mount(spec):
+  w = strings.Split(spec, '|')
+  must len(w) >= 2, 'Bad mount spec syntax', spec
+  name = w[0]
+  factory = w[1]
+  args = w[2:]
+
+  must NAME_RE.FindString(name), 'Bad syntax in mount name', name
+  must NAME_RE.FindString(style), 'Bad syntax in mount factory', name
+
     Mounts[name] = obj
 
 def Open(path):
@@ -36,7 +47,8 @@ def splitHead(path):
     return m[1], m[2], mnt
 
 class PosixFs:
-  def __init__(root):
+  def __init__(args):
+    root, = args
     .root = root
 
   def Open(path):
@@ -51,8 +63,10 @@ class PosixFs:
     CheckPath(path)
     return PosixFd(os.OpenFile('%s/%s' % (.root, path), os.ModeAppend | 0666, ))
 
+
 class RemoteFs:
-  def __init__(url):
+  def __init__(args):
+    url, = args
     .url = url
 
   def Open(path):
