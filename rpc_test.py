@@ -28,7 +28,7 @@ def main(argv):
   r.Register1('Twice', Double)
   r.Register2('Product', product)
   r.Register3('PowMod', PowMod)
-  wait = r.GoListenAndServe()
+  go r.ListenAndServe()
 
   time.Sleep(10 * time.Millisecond)
 

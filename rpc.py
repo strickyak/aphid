@@ -66,10 +66,9 @@ class Dial:
   def Register3(self, name, fn):
     http.HandleFunc('/' + MAGIC_PATH + '/' + name, RpcFunc(fn).Call3)
 
-  def GoListenAndServe(self):
+  def ListenAndServe(self):
     hp = "%s:%s" % (self.host, self.port)
-    http.ListenAndServe(hp, None)
-    yield 'NOT_REACHED'
+    go http.ListenAndServe(hp, None)
 
   def Call1(self, rpc_name, a1):
     d = { 'pickle': [pickle(a1)] }
