@@ -1,7 +1,7 @@
 from go import math/big
 from go import time
 
-import github.com/strickyak/aphid/rpc
+from . import rpc
 
 def Double(x):
   return x + x

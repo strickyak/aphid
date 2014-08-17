@@ -1,121 +1,116 @@
+from go import os
 from go import regexp
+from go import github.com/strickyak/aphid
 
-PATH_RE = regexp.MustCompile('^[/]([A-Za-z0-9_]+)[/](.*)$')
+from . import rfs
+
+PATH_HEAD_TAIL_RE = regexp.MustCompile('^[/]*([A-Za-z0-9_:.]+)[/]+(.*)$')
 SLASHDOT_RE = regexp.MustCompile('[/][.]|[.][/]')
-NAME_RE = regexp.MustCompile('^[A-Za-z0-9_]+$')
 
 def CheckPath(s):
-  assert not SLASHDOT_RE.FindString(s), s
+  must not SLASHDOT_RE.FindString(s), s
 
-Mounts = {}
-Factories = {}
+Factories = { 'Here': HereFs(), 'There': ThereFs(), }
 
-def Mount(spec):
-  w = strings.Split(spec, '|')
-  must len(w) >= 2, 'Bad mount spec syntax', spec
-  name = w[0]
-  factory = w[1]
-  args = w[2:]
+def separateFactory(path):
+    m = PATH_HEAD_TAIL_RE.FindStringSubmatch(path)
+    must m, 'Bad path pattern: %q' % path
+    _, hd, tl = m
 
-  must NAME_RE.FindString(name), 'Bad syntax in mount name', name
-  must NAME_RE.FindString(style), 'Bad syntax in mount factory', name
-
-    Mounts[name] = obj
+    fact = Factories.get(hd)
+    must fact, 'No Factory: %s in %s' % (hd, path)
+    return m[1], m[2], fact
 
 def Open(path):
     CheckPath(path)
-    hd, tl, mnt = splitHead(path)
-    return mnt.Open(tl)
+    hd, tl, fact = separateFactory(path)
+    return fact.Open(tl)
 
 def Create(path):
     CheckPath(path)
-    hd, tl, mnt = splitHead(path)
-    return mnt.Create(tl)
+    hd, tl, fact = separateFactory(path)
+    return fact.Create(tl)
 
 def Append(path):
     CheckPath(path)
-    hd, tl, mnt = splitHead(path)
-    return mnt.Append(tl)
+    hd, tl, fact = separateFactory(path)
+    return fact.Append(tl)
 
-def splitHead(path):
-    m = PATH_RE.FindStringSubmatch(path)
-    assert m, 'Bad path pattern: %q' % path
-    _, hd, tl = m
-
-    mnt = Mounts.get(hd)
-    assert mnt, 'Not mounted: %s in %s' % (hd, path)
-    return m[1], m[2], mnt
-
-class PosixFs:
-  def __init__(args):
-    root, = args
-    .root = root
+class HereFs:
+  def __init__():
+    pass
 
   def Open(path):
     CheckPath(path)
-    return PosixFd(os.Open('%s/%s' % (.root, path)))
+    return HereFd(os.Open('./%s' % path))
 
   def Create(path):
     CheckPath(path)
-    return PosixFd(os.Create('%s/%s' % (.root, path)))
+    return HereFd(os.Create('./%s' % path))
 
   def Append(path):
     CheckPath(path)
-    return PosixFd(os.OpenFile('%s/%s' % (.root, path), os.ModeAppend | 0666, ))
+    return HereFd(os.OpenFile('./%s' % path, os.ModeAppend | 0666, ))
 
 
-class RemoteFs:
-  def __init__(args):
-    url, = args
-    .url = url
+class HereFd:
+  def __init__(fd):
+    .fd = fd
+
+  def Read(n):
+    return aphid.WrapRead(.fd, n)
+
+  def Write(data):
+    return aphid.WrapWrite(.fd, data) 
+
+  def Close():
+    .fd.Close()
+
+class ThereFs:
+  def __init__():
+    pass
 
   def Open(path):
-    CheckPath(path)
-    return RemoteFd(('%s/%s' % (.url, path)))
+    return ThereFd(path, 'r')
 
   def Create(path):
-    CheckPath(path)
-    return RemoteFd(('%s/%s' % (.url, path)))
+    return ThereFd(path, 'w')
 
   def Append(path):
+    return ThereFd(path, 'a')
+
+class ThereFd:
+  def __init__(path, mode):
     CheckPath(path)
-    return RemoteFd(('%s/%s' % (.url, path), os.ModeAppend | 0666, ))
+    m = PATH_HEAD_TAIL_RE.FindStringSubmatch(path)
+    must m, 'Bad path pattern: %q' % path
+    _, where, tl = m
+    .cli = rfs.Client(where)
+    .path = tl
+    .pos = 0
 
-class PosixFd:
-  def __init__(fd):
-    .fd = fd
+  def Read(n):
+    say 'YYY enter cli AReadAt'
+    buf, eof = .cli.AReadAt(.path, n, .pos) 
+    say 'YYY leave cli AReadAt', len(buf), buf, eof
+    .pos += len(buf)
+    return buf, eof
 
-  def Read(buf)
-    .fd.Seek(pos, 0)
-    buf = byt(n)
-    count = .fd.Read(buf) 
-    return buf[:count]
+  def Write(data):
+    count = .cli.AWriteAt(.path, data, .pos) 
+    .pos += count
+    return count
 
-  def Write(buf)
-    .fd.Seek(pos, 0)
-    return .fd.Write(data) 
+  def ReadAt(n, pos):
+    .pos = pos
+    buf, eof = .Read(n)
+    return buf, eof
 
-class RemoteFd:
-  def __init__(fd):
-    .fd = fd
+  def WriteAt(data, pos):
+    .pos = pos
+    return .Write(data)
 
-  def ReadAt(pos, n):
-    .fd.Seek(pos, 0)
-    buf = byt(n)
-    count = .fd.Read(buf) 
-    return buf[:count]
+  def Close():
+    pass
 
-  def WriteAt(pos, data):
-    .fd.Seek(pos, 0)
-    return .fd.Write(data) 
-
-  native:
-    # BUG: cannot return non-zero count with error.
-    'func (o *M_PosixFd) Read(p []byte) (n int, err error) {'
-    '  defer func() {'
-    '    if r := recover(); r != nil && r != io.EOF {'
-    '      return 0, errors.New(fmt.Sprintf("%s", r)'
-    '    }'
-    '  }'
-    '  return int(o.M_1_Read(MkByt(p)).Int()), nil'
-    '}'
+pass

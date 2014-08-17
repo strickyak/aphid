@@ -1,14 +1,13 @@
 from go import os
 from go import time
-import rfs
-
-import github.com/strickyak/aphid/rpc
+from . import rfs
+from . import rpc
    
 def main(argv):
   r = rpc.Dial(WHERE)
   r.Register1('List', rfs.List)
   r.Register3('Get', rfs.Get)
-  wait = r.GoListenAndServe()
+  go r.ListenAndServe()
 
   time.Sleep(10 * time.Millisecond)
 

@@ -68,7 +68,7 @@ class Dial:
 
   def ListenAndServe(self):
     hp = "%s:%s" % (self.host, self.port)
-    go http.ListenAndServe(hp, None)
+    http.ListenAndServe(hp, None)
 
   def Call1(self, rpc_name, a1):
     d = { 'pickle': [pickle(a1)] }
@@ -77,6 +77,7 @@ class Dial:
     body = ioutil.ReadAll(response.Body)
     response.Body.Close()
     if response.StatusCode != 200:
+      raise '%s\n  -- in RPC %q\n  -- http code %d\n  -- uri %q' % (body, rpc_name, response.StatusCode, uri)
       raise 'In RPC %q: ERROR %d: %q' % (rpc_name, response.StatusCode, body) 
     z = unpickle(body)
     return z
@@ -88,6 +89,7 @@ class Dial:
     body = ioutil.ReadAll(response.Body)
     response.Body.Close()
     if response.StatusCode != 200:
+      raise '%s\n  -- in RPC %q\n  -- http code %d\n  -- uri %q' % (body, rpc_name, response.StatusCode, uri)
       raise 'In RPC %q: ERROR %d: %q' % (rpc_name, response.StatusCode, body) 
     z = unpickle(body)
     return z
@@ -99,6 +101,7 @@ class Dial:
     body = ioutil.ReadAll(response.Body)
     response.Body.Close()
     if response.StatusCode != 200:
+      raise '%s\n  -- in RPC %q\n  -- http code %d\n  -- uri %q' % (body, rpc_name, response.StatusCode, uri)
       raise 'In RPC %q: ERROR %d: %q' % (rpc_name, response.StatusCode, body) 
     z = unpickle(body)
     return z
