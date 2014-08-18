@@ -31,7 +31,8 @@ func WrapReadAt(r io.ReaderAt, n int, pos int64) ([]byte, bool) {
 }
 
 func WrapWrite(w io.Writer, data []byte) (int) {
-  n := len(data)
+  z := len(data)
+  n := z
   for n > 0 {
     c, err := w.Write(data)
     if err != nil {
@@ -43,7 +44,7 @@ func WrapWrite(w io.Writer, data []byte) (int) {
     }
     data = data[c:]
   }
-  return 0
+  return z
 }
 
 

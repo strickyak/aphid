@@ -10,7 +10,7 @@ SLASHDOT_RE = regexp.MustCompile('[/][.]|[.][/]')
 def CheckPath(s):
   must not SLASHDOT_RE.FindString(s), s
 
-Factories = { 'Here': HereFs(), 'There': ThereFs(), }
+Factories = { 'Here': HereFs(), 'There': ThereFs(), 'Std': StdFs(), }
 
 def separateFactory(path):
     m = PATH_HEAD_TAIL_RE.FindStringSubmatch(path)
@@ -36,6 +36,22 @@ def Append(path):
     hd, tl, fact = separateFactory(path)
     return fact.Append(tl)
 
+class StdFs:
+  def __init__():
+    pass
+
+  def Open(path):
+    must path == 'in'
+    return HereFd(os.Stdin)
+
+  def Create(path):
+    must path == 'out'
+    return HereFd(os.Stdout)
+
+  def Append(path):
+    must path == 'out'
+    return HereFd(os.Stdout)
+
 class HereFs:
   def __init__():
     pass
@@ -58,10 +74,16 @@ class HereFd:
     .fd = fd
 
   def Read(n):
-    return aphid.WrapRead(.fd, n)
+    say 'aphid.WrapRead <<<', .fd, n
+    z = aphid.WrapRead(.fd, n)
+    say 'aphid.WrapRead >>>', z
+    return z
 
   def Write(data):
-    return aphid.WrapWrite(.fd, data) 
+    say 'aphid.WrapWrite <<<', .fd, data
+    z = aphid.WrapWrite(.fd, data) 
+    say 'aphid.WrapWrite >>>', z
+    return z
 
   def Close():
     .fd.Close()
