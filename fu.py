@@ -1,10 +1,13 @@
+#from go import fmt
 from go import os
+from go import path/filepath
 
-#from go import github.com/strickyak/aphid
-
+from . import A
 from . import flag
 from . import afs
 from . import rfs
+
+J = filepath.Join
 
 def Test1(args):
   fs = rfs.Client('localhost:9876')
@@ -28,8 +31,8 @@ def Test1(args):
 
 BS = 512 # Block Size
 
-def cat1(filepath, out):
-  fd = afs.Open(filepath)
+def cat1(path, out):
+  fd = afs.Open(path)
   say 'YYY cat1', fd
   defer fd.Close()
   while True:
@@ -65,7 +68,43 @@ def Cat(args):
     cat1(arg, out)
   pass
 
-Ensemble = { 'test1': Test1, 'cat': Cat, }
+
+def FindFiles(args):
+  for a in args:
+    for name, isDir, mtime, sz in FindFiles1(a):
+      print '%s %v %d %d' % (name, isDir, mtime, sz)
+
+def FindFiles1(top):
+  say '<<<', top
+  try:
+    d = afs.Open(top)
+  except as ex:
+    # os.Stderr.Write('fu find: Cannot Open (%s): %q' % (ex, top))
+    # fmt.Fprintf(os.Stderr, 'fu find: Cannot Open (%s): %q\n', ex, top)
+    A.Err('fu find: Cannot Open (%s): %q\n', ex, top)
+    A.SetStatus(2)
+    return
+  defer d.Close()
+  try:
+    for name, isDir, mtime, sz in d.List():
+      say 'FFFFFF', name, isDir, mtime, sz
+      jname = J(top, name)
+      say 'FFFFFFJ', jname, isDir, mtime, sz
+      if isDir:
+        for x in FindFiles1(jname):
+          yield x
+      else:
+        yield jname, isDir, mtime, sz
+  except as ex:
+    # os.Stderr.Write('fu find: Cannot List (%s): %q' % (ex, top))
+    A.Err('fu find: Cannot List (%s): %q' % (ex, top))
+    A.SetStatus(2)
+    return
+
+def Sync(args):
+  pass
+
+Ensemble = { 'test1': Test1, 'cat': Cat, 'find': FindFiles }
 
 CREATE = flag.String('create', '', 'Create output file with "cat" command.')
 APPEND = flag.String('append', '', 'Append output file with "cat" command.')
@@ -73,14 +112,8 @@ APPEND = flag.String('append', '', 'Append output file with "cat" command.')
 def main(args):
   global CREATE, APPEND
   args = flag.Take(args)
-  #CREATE = str(goreify(goderef(CREATE)))
-  #APPEND = str(goreify(goderef(APPEND)))
   CREATE = CREATE()
   APPEND = APPEND()
-  say CREATE, APPEND
-  say type(CREATE), type(APPEND)
-  say len(CREATE), len(APPEND)
-  say False or CREATE, False or APPEND
 
   if not len(args):
     say 'Expected an Emsemble argument:', [k for k in Ensemble]
@@ -93,3 +126,4 @@ def main(args):
     os.Exit(11)
 
   f(args)
+  A.Exit(0)

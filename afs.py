@@ -1,40 +1,55 @@
 from go import os
+from go import path/filepath
 from go import regexp
 from go import github.com/strickyak/aphid
 
 from . import rfs
 
-PATH_HEAD_TAIL_RE = regexp.MustCompile('^[/]*([A-Za-z0-9_:.]+)[/]+(.*)$')
-SLASHDOT_RE = regexp.MustCompile('[/][.]|[.][/]')
+HEAD_TAIL = regexp.MustCompile('^[/]*([A-Za-z0-9_:.]+)([/]+(.*))?$')
+DOUBLE_DOT = regexp.MustCompile('[.][.]')
 
-def CheckPath(s):
-  must not SLASHDOT_RE.FindString(s), s
+def Clean(path):
+  #"Clean and check DOUBLE_DOT."
+  path = filepath.Clean(path)
+  must not DOUBLE_DOT.FindString(path), repr(path)
+  return path
 
 Factories = { 'Here': HereFs(), 'There': ThereFs(), 'Std': StdFs(), }
 
-def separateFactory(path):
-    m = PATH_HEAD_TAIL_RE.FindStringSubmatch(path)
+def splitHeadTail(path):
+    path = Clean(path)
+    m = HEAD_TAIL.FindStringSubmatch(path)
     must m, 'Bad path pattern: %q' % path
-    _, hd, tl = m
+    _, hd, _, tl = m
+    return hd, filepath.Clean(tl)
 
+def splitFactory(path):
+    hd, tl = splitHeadTail(path)
     fact = Factories.get(hd)
-    must fact, 'No Factory: %s in %s' % (hd, path)
-    return m[1], m[2], fact
+    must fact, 'No Such Factory: %q in path %q' % (hd, path)
+    return fact, tl
 
 def Open(path):
-    CheckPath(path)
-    hd, tl, fact = separateFactory(path)
+    path = Clean(path)
+    fact, tl = splitFactory(path)
     return fact.Open(tl)
 
 def Create(path):
-    CheckPath(path)
-    hd, tl, fact = separateFactory(path)
+    path = Clean(path)
+    fact, tl = splitFactory(path)
     return fact.Create(tl)
 
 def Append(path):
-    CheckPath(path)
-    hd, tl, fact = separateFactory(path)
+    path = Clean(path)
+    fact, tl = splitFactory(path)
     return fact.Append(tl)
+
+def List(path):
+    path = Clean(path)
+    hd, tl = splitFactory(path)
+    fact, tl = splitFactory(path)
+    for a,b,c,d in fact.List(tl):
+      yield Clean('/%s/%s' % (hd, a)),b,c,d
 
 class StdFs:
   def __init__():
@@ -57,33 +72,29 @@ class HereFs:
     pass
 
   def Open(path):
-    CheckPath(path)
     return HereFd(os.Open('./%s' % path))
 
   def Create(path):
-    CheckPath(path)
     return HereFd(os.Create('./%s' % path))
 
   def Append(path):
-    CheckPath(path)
     return HereFd(os.OpenFile('./%s' % path, os.ModeAppend | 0666, ))
-
 
 class HereFd:
   def __init__(fd):
     .fd = fd
 
   def Read(n):
-    say 'aphid.WrapRead <<<', .fd, n
     z = aphid.WrapRead(.fd, n)
-    say 'aphid.WrapRead >>>', z
     return z
 
   def Write(data):
-    say 'aphid.WrapWrite <<<', .fd, data
     z = aphid.WrapWrite(.fd, data) 
-    say 'aphid.WrapWrite >>>', z
     return z
+
+  def List():
+    for info in .fd.Readdir(-1):
+      yield info.Name(), info.IsDir(), info.ModTime().Unix(), info.Size()
 
   def Close():
     .fd.Close()
@@ -103,18 +114,16 @@ class ThereFs:
 
 class ThereFd:
   def __init__(path, mode):
-    CheckPath(path)
-    m = PATH_HEAD_TAIL_RE.FindStringSubmatch(path)
+    path = filepath.Clean(path)
+    m = HEAD_TAIL.FindStringSubmatch(path)
     must m, 'Bad path pattern: %q' % path
-    _, where, tl = m
+    _, where, _, tl = m
     .cli = rfs.Client(where)
     .path = tl
     .pos = 0
 
   def Read(n):
-    say 'YYY enter cli AReadAt'
     buf, eof = .cli.AReadAt(.path, n, .pos) 
-    say 'YYY leave cli AReadAt', len(buf), buf, eof
     .pos += len(buf)
     return buf, eof
 
@@ -131,6 +140,9 @@ class ThereFd:
   def WriteAt(data, pos):
     .pos = pos
     return .Write(data)
+
+  def List():
+    return .cli.AListDir()
 
   def Close():
     pass
