@@ -1,4 +1,7 @@
-all: _rpc _laph _dns_ask
+all: _queue_test _rpc _laph _dns_ask
+
+_queue_test:
+	python ../rye/rye.py run queue_test.py
 
 _rpc:
 	python ../rye/rye.py run rpc.py

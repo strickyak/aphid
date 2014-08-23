@@ -30,6 +30,7 @@ def WebFunc(w, r):
       raise 'slashdot not allowed in filename: %q' % filename
 
     fd = os.Open(filename)
+    defer fd.Close()
     st = fd.Stat()
     if st.IsDir():
       if path[-1] == '/':
@@ -38,7 +39,6 @@ def WebFunc(w, r):
         http.Redirect(w, r, path + '/', http.StatusMovedPermanently)
     else:
       http.ServeContent(w, r, path, st.ModTime(), fd)
-    fd.Close()
 
   except as ex:
     w.Header().Set('Content-Type', 'text/plain')
