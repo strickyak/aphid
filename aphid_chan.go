@@ -1,25 +1,23 @@
 package aphid
 
-//import "io"
+type any interface{}
 
-type Any interface{}
-
-type Queue struct {
-	Chan chan Any
+type channel struct {
+	ch chan any
 }
 
-func NewQueue(n int) *Queue {
-	return &Queue{Chan: make(chan Any, n)}
+func NewChan(n int) *channel {
+	return &channel{ch: make(chan any, n)}
 }
 
-func (q *Queue) Put(a Any) {
-	q.Chan <- a
+func (q *channel) Put(a any) {
+	q.ch <- a
 }
 
-func (q *Queue) Get() Any {
-	return <-q.Chan
+func (q *channel) Get() any {
+	return <-q.ch
 }
 
-func (q *Queue) Close() {
-	close(q.Chan)
+func (q *channel) Close() {
+	close(q.ch)
 }

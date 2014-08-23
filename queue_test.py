@@ -7,17 +7,17 @@ class A:
   def __init__(a):
     .a = a
 
-q = aphid.NewQueue(L)
+ch = aphid.NewChan(L)
 def Count(n):
   for i in range(n):
-    q.Put(A(n-i))
-  q.Close()
+    ch.Put(A(n-i))
+  ch.Close()  # After close, reads will be None.
 
 go Count(N)
 z = []
 while True:
-  x = q.Get()
-  if not x:
+  x = ch.Get()
+  if x is None:   # On None.
     break
   z.append(x.a)
 
