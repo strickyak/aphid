@@ -1,11 +1,12 @@
 from go import bufio
 from go import net
 from go import time
-from go import crypto/aes
-from go import crypto/cipher
+#from go import crypto/aes
+#from go import crypto/cipher
 
 from go import github.com/strickyak/aphid
 from . import eval
+from . import gcm
 
 SerialCounter = 101
 def Serial():
@@ -33,10 +34,8 @@ class Server2:
   def __init__(hostport, keyname, key):
     .hostport = hostport
     .keyname = keyname
-    .key = key
     .procs = {}
-    .block = aes.NewCipher(key)
-    .gcm = cipher.NewGCM(.block)
+    .sealer = gcm.Cipher(key)
     .outQ = aphid.NewChan(5)
     go .WriteActor()
 
@@ -57,21 +56,22 @@ class Server2:
       say 'WriteActor GGGGot', conn, serial, result, err
 
       say serial, result, err
-      p = pickle( (serial, result, err) )
+      p = .sealer.Seal(pickle( (serial, result, err) ), serial)
       say 'pickle', p
       say '... pickle', unpickle(p)
       WriteChunk(conn, p)
-    # .sock.Close()
+    .conn.Close()
 
   def DoRead(conn):
     r = bufio.NewReader(conn)
     while True:
-      p = ReadChunk(r)
-      say 'DoRead', p
-      say 'DoRead', len(p)
-      unp = unpickle(p)
-      say 'DoRead', unp
+      dark = ReadChunk(r)
+      say 'DoRead', dark
+      say 'DoRead', len(dark)
+      pay, ser = .sealer.Open(dark)
+      unp = unpickle(pay)
       serial, proc, args = unp
+      must ser == serial
       say 'DoRead', serial, proc, args
       go .Execute(conn, serial, proc, args)
 
@@ -96,9 +96,7 @@ class Client2:
   def __init__(hostport, keyname, key):
     .hostport = hostport
     .keyname = keyname
-    .key = key
-    .block = aes.NewCipher(key)
-    .gcm = cipher.NewGCM(.block)
+    .sealer = gcm.Cipher(key)
     .requests = {}
     .inQ = aphid.NewChan(5)
     .conn = net.Dial('tcp', hostport)
@@ -116,13 +114,14 @@ class Client2:
       .requests[req.serial] = req
 
       say 'pickle WA WC', req.serial, req.proc, req.args
-      p = pickle( (req.serial, req.proc, req.args) )
-      say 'pickle WA WC', p
-      say 'pickle WA WC', len(p)
-      say '... pickle WA WC', unpickle(p)
-      WriteChunk(.conn, p)
+      pay = pickle( (req.serial, req.proc, req.args) )
+      say 'pickle WA WC', pay
+      say 'pickle WA WC', len(pay)
+      say '... pickle WA WC', unpickle(pay)
+      dark = .sealer.Seal(pay, req.serial)
+      WriteChunk(.conn, dark)
 
-    # .conn.Close()
+    .conn.Close()
 
   def ReadActor():
     r = bufio.NewReader(.conn)
@@ -130,7 +129,9 @@ class Client2:
       # TODO -- when to stop.
       p = ReadChunk(r)
       say 'unpickle RRRRReadActor', p
-      serial, result, err = unpickle(p)
+      pay, ser = .sealer.Open(p)
+      serial, result, err = unpickle(pay)
+      must serial == ser # TODO
       say 'unpickle RRRRReadActor', serial, result, err 
       .requests[serial].replyQ.Put( (result, err) )
       say 'RRRRReadActor Put on Q', serial, result, err 
