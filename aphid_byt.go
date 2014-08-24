@@ -2,6 +2,8 @@ package aphid
 
 import "bytes"
 
+const ChunkMagic = 199
+
 type bbuf struct {
 	*bytes.Buffer
 }
@@ -54,23 +56,21 @@ func (b *bbuf) Read8() int64 {
 	return (y << 32) | z
 }
 
-const MagicForSizeAndBytes = 199
-
-func (b *bbuf) WriteSizeAndBytes(a []byte) {
+func (b *bbuf) WriteChunk(a []byte) {
 	if len(a) > 0xFFFFFFFF {
 		panic("Way Too Big")
 	}
-	b.WriteByte(MagicForSizeAndBytes) // magic.
+	b.WriteByte(ChunkMagic) // magic.
 	b.Write4(int64(len(a)))
 	b.Write(a)
 }
 
-func (b *bbuf) ReadSizeAndBytes() []byte {
+func (b *bbuf) ReadChunk() []byte {
 	magic, err := b.ReadByte()
 	if err != nil {
 		panic(err)
 	}
-	if magic != MagicForSizeAndBytes {
+	if magic != ChunkMagic {
 		panic(err)
 	}
 	n := int(b.Read4())

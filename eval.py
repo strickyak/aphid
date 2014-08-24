@@ -75,7 +75,20 @@ class EvalParser:
           continue
         a = .Parse(k2, x2)
         v.append(a)
-      return v 
+      return v
+    if x == '(':
+      v = []
+      while True:
+        k2, x2 = .Token()
+        if not k2:
+          raise 'eval.EvalParser: Unexpected end of string', .s
+        if x2 == ')':
+          break
+        if x2 == ',':
+          continue
+        a = .Parse(k2, x2)
+        v.append(a)
+      return tuple(v)
     if x == '{':
       d = {}
       while True:
