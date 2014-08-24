@@ -140,22 +140,15 @@ class Client2:
     req = Request(proc, args)
     .inQ.Put(req)
     return Promise(req.replyQ)
-    #reply = req.replyQ.Get()
-    #say reply
-    #result, err = reply
-    #say result, err
-    #if err:
-    #raise err
-    #return result
 
 class Promise:
-  def __init__(q):
-    .q = q
+  def __init__(chan):
+    .chan = chan
 
   def Wait():
-    say 'WWWWaiting', .q
-    result, err = .q.Get()
-    say 'WWWWaited', result, err
+    #say 'WWWWaiting', .chan
+    result, err = .chan.Get()
+    #say 'WWWWaited', result, err
     if err:
       raise err
     return result

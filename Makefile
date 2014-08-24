@@ -1,4 +1,4 @@
-all: _queue_test _rpc _rpc2 _laph _dns_ask
+all: _queue_test _rpc _rpc2 _laph _dns_ask _gcm
 
 _queue_test:
 	python ../rye/rye.py run queue_test.py
@@ -14,3 +14,7 @@ _laph:
 
 _dns_ask:
 	python ../rye/rye.py run dns_ask.py
+
+_gcm:
+	python ../rye/rye.py run gcm.py
+
