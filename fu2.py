@@ -33,12 +33,12 @@ BS = 512 # Block Size
 
 def cat1(path, out):
   fd = afs2.Open(path)
-  say 'YYY cat1', fd
+  #say 'YYY cat1', fd
   defer fd.Close()
   while True:
-    say 'YYY cat1 fd.Read', fd
+    #say 'YYY cat1 fd.Read', fd
     buf, eof = fd.Read(BS)
-    say 'YYY cat1 fd.Read', buf, eof
+    #say 'YYY cat1 fd.Read', buf, eof
     if buf:
       ### aphid.WrapWrite(out, buf)  # Writes fully.
       n = len(buf)
@@ -46,8 +46,8 @@ def cat1(path, out):
         c = out.Write(buf)
         buf = buf[c:]
         n -= c
-        say 'YYYYYYYY', n, c
-    say 'YYY called aphid.WrapWrite', len(buf), buf
+        #say 'YYYYYYYY', n, c
+    #say 'YYY called aphid.WrapWrite', len(buf), buf
     if eof:
       break
   pass
@@ -75,7 +75,7 @@ def FindFiles(args):
       print '%s %v %d %d' % (name, isDir, mtime, sz)
 
 def FindFiles1(top):
-  say '<<<', top
+  #say '<<<', top
   try:
     d = afs2.Open(top)
   except as ex:
@@ -87,9 +87,9 @@ def FindFiles1(top):
   defer d.Close()
   try:
     for name, isDir, mtime, sz in d.List():
-      say 'FFFFFF', name, isDir, mtime, sz
+      #say 'FFFFFF', name, isDir, mtime, sz
       jname = J(top, name)
-      say 'FFFFFFJ', jname, isDir, mtime, sz
+      #say 'FFFFFFJ', jname, isDir, mtime, sz
       if isDir:
         for x in FindFiles1(jname):
           yield x

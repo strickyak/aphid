@@ -5,7 +5,7 @@ import "io"
 func WrapRead(r io.Reader, n int) ([]byte, bool) {
 	buf := make([]byte, n)
 	count, err := r.Read(buf)
-	println("YYY WrapRead", r, n, count, err)
+	// println("YYY WrapRead", r, n, count, err)
 	if err == nil {
 		return buf[:count], false
 	}
@@ -19,7 +19,7 @@ func WrapRead(r io.Reader, n int) ([]byte, bool) {
 func WrapReadAt(r io.ReaderAt, n int, pos int64) ([]byte, bool) {
 	buf := make([]byte, n)
 	count, err := r.ReadAt(buf, pos)
-	println("YYY WrapReadAt", r, n, pos, count, err)
+	// println("YYY WrapReadAt", r, n, pos, count, err)
 	if err == nil {
 		return buf[:count], false
 	}

@@ -26,11 +26,11 @@ def localPath(path):
   return filepath.Join(ROOT, path)
 
 def AReadAt(path, n, pos):
-  say 'YYY <<< AReadAt', path, n, pos
+  #say 'YYY <<< AReadAt', path, n, pos
   fd = os.Open(localPath(path))
   defer fd.Close()
   buf, eof = aphid.WrapReadAt(fd, n, pos)
-  say 'YYY >>> AReadAt', buf, eof
+  #say 'YYY >>> AReadAt', buf, eof
   return buf, eof
 
 def AWriteAt(path, data, pos):
