@@ -34,13 +34,13 @@ class EvalParser:
   def Token():
     .Skip()
     if .p == .n:
-      say 'Token', None, None
+      # say 'Token', None, None
       return None, None
     for r, k in DETECTERS:
       m = r.FindString(.s[.p:])
       if m:
         .p += len(m)
-        say 'Token', k, m
+        # say 'Token', k, m
         return k, m
     raise 'eval.EvalParser: Cannot Parse', .s[.p:], .s
 
@@ -56,10 +56,10 @@ class EvalParser:
         return False
       raise 'eval.EvalParser: Weird token', x, .s
     if k == 'N':
-      say strconv.ParseInt(x, 10, 64)
+      #say strconv.ParseInt(x, 10, 64)
       return strconv.ParseInt(x, 10, 64)
     if k == 'F':
-      say strconv.ParseFloat(x, 64)
+      #say strconv.ParseFloat(x, 64)
       return strconv.ParseFloat(x, 64)
     if k == 'S':
       return Unquote(x)

@@ -44,7 +44,7 @@ class Server2:
     .outQ = aphid.NewChan(5)
     go .WriteActor()
 
-  def Listen():
+  def ListenAndServe():
     .sock = net.Listen('tcp', .hostport)
     while True:
       conn = .sock.Accept()
@@ -63,8 +63,13 @@ class Server2:
 
   def DoRead(conn):
     r = bufio.NewReader(conn)
+    defer conn.Close()
     while True:
-      dark = ReadChunk(r)
+      try:
+        dark = ReadChunk(r)
+      except as ex:
+        must str(ex) == 'EOF'
+        return
       pay, ser = .sealer.Open(dark)
       unp = unpickle(pay)
       serial, proc, args = unp
@@ -170,7 +175,7 @@ def main(args):
   svr = Server2(':9999', 'key', key)
   svr.Register('DemoSum', DemoSum)
   svr.Register('DemoSleepAndDouble', DemoSleepAndDouble)
-  go svr.Listen()
+  go svr.ListenAndServe()
 
   time.Sleep(1.5)
   cli = Client2('localhost:9999', 'key', key)
