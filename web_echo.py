@@ -8,11 +8,15 @@ def WebEcho(w, r):
     fmt.Fprintf(w, "Path: %q\n", r.URL.Path)
     fmt.Fprintf(w, "Proto: %q\n", r.Proto)
 
-    # TODO NEXT -- iterate over map!
     for k in r.Header:
       fmt.Fprintf(w, "header: %q\n", k)
+
+    r.ParseForm()
+    for k, v in r.Form.items():
+      fmt.Fprintf(w, "form: %q = %q\n", k, v)
+
     fmt.Fprintf(w, "END.")
-      
+
   except as ex:
     w.Write( 'Exception:\n%s\n' % ex)
 
