@@ -13,7 +13,7 @@ SerialPrefix = byt(12)  # Per Process nonce.
 rand.Read(SerialPrefix)
 
 SerialMutex = gonew(sync.Mutex)
-SerialCounter = 101
+SerialCounter = 100
 def Serial():
   global SerialCounter
   SerialMutex.Lock()
@@ -165,9 +165,9 @@ def DemoSum(*args):
     z += float(a)
   return z
 
-def DemoSleepAndDouble(secs):
-  time.Sleep(secs)
-  return 2 * secs
+def DemoSleepAndDouble(millis):
+  time.Sleep(millis * time.Millisecond)
+  return 2 * millis
 
 def main(args):
   key = byt('abcdefghijklmnop')
@@ -177,7 +177,7 @@ def main(args):
   svr.Register('DemoSleepAndDouble', DemoSleepAndDouble)
   go svr.ListenAndServe()
 
-  time.Sleep(1.5)
+  time.Sleep(100 * time.Millisecond)
   cli = Client2('localhost:9999', 'key', key)
   z = cli.Call('DemoSum', [100,200,300]).Wait()
   say z
@@ -187,11 +187,11 @@ def main(args):
 
   d = {}
   for i in range(5):
-    d[i] = cli.Call('DemoSleepAndDouble', [i * 0.1])
+    d[i] = cli.Call('DemoSleepAndDouble', [i * 100])
     say i, d[i]
 
   for i in range(5):
     say 'GGGGETTING', i, d[i]
     z = d[i].Wait()
     say 'GGGGOT', i, d[i], z
-    assert z == i * 0.2
+    assert z == i * 200
