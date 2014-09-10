@@ -1,4 +1,7 @@
-#from go import fmt
+# DEMO:
+#   rye run rfs.py *.py -- -port=9988 -root=/etc  &
+#   rye run fu.py *.py  -- --rfs=127.0.0.1:9988 find /There/localhost:9988/java
+
 from go import os
 from go import path/filepath
 
@@ -10,7 +13,7 @@ from . import rfs
 J = filepath.Join
 
 def Test1(args):
-  fs = rfs.Client('localhost:9876')
+  fs = rfs.RfsClient(RFS.X, rfs.KEYNAME, rfs.KEY)
 
   vec = fs.ListDir('vga')
   say 'ListDir', vec
@@ -33,12 +36,12 @@ BS = 512 # Block Size
 
 def cat1(path, out):
   fd = afs.Open(path)
-  say 'YYY cat1', fd
+  #say 'YYY cat1', fd
   defer fd.Close()
   while True:
-    say 'YYY cat1 fd.Read', fd
+    #say 'YYY cat1 fd.Read', fd
     buf, eof = fd.Read(BS)
-    say 'YYY cat1 fd.Read', buf, eof
+    #say 'YYY cat1 fd.Read', buf, eof
     if buf:
       ### aphid.WrapWrite(out, buf)  # Writes fully.
       n = len(buf)
@@ -46,21 +49,21 @@ def cat1(path, out):
         c = out.Write(buf)
         buf = buf[c:]
         n -= c
-        say 'YYYYYYYY', n, c
-    say 'YYY called aphid.WrapWrite', len(buf), buf
+        #say 'YYYYYYYY', n, c
+    #say 'YYY called aphid.WrapWrite', len(buf), buf
     if eof:
       break
   pass
 
 def Cat(args):
   out = None
-  if CREATE:
-    must not APPEND
-    out = afs.Create(CREATE)
+  if CREATE.X:
+    must not APPEND.X
+    out = afs.Create(CREATE.X)
     defer out.Close()
-  if APPEND:
-    must not CREATE
-    out = afs.Append(APPEND)
+  if APPEND.X:
+    must not CREATE.X
+    out = afs.Append(APPEND.X)
     defer out.Close()
   if not out:
     out = afs.Append('/Std/out')
@@ -75,28 +78,25 @@ def FindFiles(args):
       print '%s %v %d %d' % (name, isDir, mtime, sz)
 
 def FindFiles1(top):
-  say '<<<', top
+  #say '<<<', top
   try:
     d = afs.Open(top)
   except as ex:
-    # os.Stderr.Write('fu find: Cannot Open (%s): %q' % (ex, top))
-    # fmt.Fprintf(os.Stderr, 'fu find: Cannot Open (%s): %q\n', ex, top)
-    A.Err('fu find: Cannot Open (%s): %q\n', ex, top)
+    A.Err('fu find: Cannot Open (%s): %q\n' % (ex, top))
     A.SetExitStatus(2)
     return
   defer d.Close()
   try:
     for name, isDir, mtime, sz in d.List():
-      say 'FFFFFF', name, isDir, mtime, sz
+      #say 'FFFFFF', name, isDir, mtime, sz
       jname = J(top, name)
-      say 'FFFFFFJ', jname, isDir, mtime, sz
+      #say 'FFFFFFJ', jname, isDir, mtime, sz
       if isDir:
         for x in FindFiles1(jname):
           yield x
       else:
         yield jname, isDir, mtime, sz
   except as ex:
-    # os.Stderr.Write('fu find: Cannot List (%s): %q' % (ex, top))
     A.Err('fu find: Cannot List (%s): %q' % (ex, top))
     A.SetExitStatus(2)
     return
@@ -108,12 +108,10 @@ Ensemble = { 'test1': Test1, 'cat': Cat, 'find': FindFiles }
 
 CREATE = flag.String('create', '', 'Create output file with "cat" command.')
 APPEND = flag.String('append', '', 'Append output file with "cat" command.')
+RFS = flag.String('rfs', 'localhost:9876', 'Location of rfs server')
 
 def main(args):
-  global CREATE, APPEND
-  args = flag.Take(args)
-  CREATE = CREATE()
-  APPEND = APPEND()
+  args = flag.Munch(args)
 
   if not len(args):
     say 'Expected an Emsemble argument:', [k for k in Ensemble]
@@ -122,7 +120,8 @@ def main(args):
   cmd, args = args[0], args[1:]
   f = Ensemble.get(cmd)
   if not f:
-    say "No such command:", cmd
+    A.Err("Available commands: %v" % sorted(Ensemble.keys()))
+    A.Fatal("No such command: %q" % cmd)
     os.Exit(11)
 
   f(args)

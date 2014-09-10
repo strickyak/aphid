@@ -118,7 +118,7 @@ class ThereFd:
     m = HEAD_TAIL.FindStringSubmatch(path)
     must m, 'Bad path pattern: %q' % path
     _, where, _, tl = m
-    .cli = rfs.Client(where)
+    .cli = rfs.RfsClient(where, rfs.KEYNAME, rfs.KEY)
     .path = tl
     .pos = 0
 
@@ -142,7 +142,7 @@ class ThereFd:
     return .Write(data)
 
   def List():
-    return .cli.AListDir()
+    return .cli.AListDir(.path)
 
   def Close():
     pass

@@ -1,107 +1,197 @@
-from go import io/ioutil
-from go import net/http
-from go import net/url
-from go import regexp
+from go import bufio
+from go import net
+from go import sync
+from go import time
+from go import crypto/rand
 
-MAGIC_PATH = 'AphiD_RpC1'
+from go import github.com/strickyak/aphid
 
-PARSE_HP = regexp.MustCompile('^([-A-Za-z0-9.]+)[:]([0-9]+)$')
+from . import eval
+from . import gcm
 
-class RpcFunc:
-  def __init__(self, fn):
-    self.fn = fn
+SerialPrefix = byt(12)  # Per Process nonce.
+rand.Read(SerialPrefix)
 
-  def Request(self, w, r):
-    r.ParseForm()
-    pickles = r.PostForm.get('pickle')
-    if not pickles:
-      w.WriteHeader(http.StatusExpectationFailed)
-      w.Write('Missing RPC form field "pickle"')
-    return unpickle(pickles[0])
+SerialMutex = gonew(sync.Mutex)
+SerialCounter = 100
+def Serial():
+  global SerialCounter
+  SerialMutex.Lock()
+  defer SerialMutex.Unlock()
+  SerialCounter += 1
+  return (SerialPrefix, SerialCounter)
 
-  def Respond(self, w, r, z):
-      w.Write(pickle(z))
+class Request:
+  def __init__(proc, args):
+    .proc = proc
+    .args = args
+    .serial = None
+    .replyQ = aphid.NewChan(1)
 
-  def RespondError(self, r, w, ex):
-      w.WriteHeader(http.StatusInternalServerError)
-      w.Write('%s' % ex)
+def WriteChunk(w, data):
+  data = byt(data)
+  bb = aphid.NewBuffer()
+  bb.WriteChunk(data)
+  z = bb.Bytes()
+  w.Write(z)
 
-  def Call1(self, w, r):
+class Server:
+  def __init__(hostport, keyname, key):
+    .hostport = hostport
+    .keyname = keyname
+    .procs = {}
+    .sealer = gcm.Cipher(key)
+    .outQ = aphid.NewChan(5)
+    go .WriteActor()
+
+  def ListenAndServe():
+    .sock = net.Listen('tcp', .hostport)
+    while True:
+      conn = .sock.Accept()
+      go .DoRead(conn)
+
+  def WriteActor():
+    while True:
+      tup = .outQ.Get()
+      if tup is None:
+        break
+      conn, serial, result, err = tup
+
+      p = .sealer.Seal(pickle( (serial, result, err) ), serial)
+      WriteChunk(conn, p)
+    .conn.Close()
+
+  def DoRead(conn):
+    r = bufio.NewReader(conn)
+    defer conn.Close()
+    while True:
+      try:
+        dark = ReadChunk(r)
+      except as ex:
+        must str(ex) == 'EOF'
+        return
+      pay, ser = .sealer.Open(dark)
+      unp = unpickle(pay)
+      serial, proc, args = unp
+      must ser == serial
+      go .Execute(conn, serial, proc, args)
+
+  def Execute(conn, serial, proc, args):
+    result, err = None, None
     try:
-      a1 = self.Request(w, r)
-      z = self.fn(a1)
-      self.Respond(w, r, z)
+      fn = .procs.get(proc)
+      if not fn:
+        raise 'rpc function not registered in Server', proc
+      result = fn(*args)
     except as ex:
-      self.RespondError(r, w, ex)
+      err = ex
+    .outQ.Put( (conn, serial, result, err) )
 
-  def Call2(self, w, r):
-    try:
-      a1, a2 = self.Request(w, r)
-      z = self.fn(a1, a2)
-      self.Respond(w, r, z)
-    except as ex:
-      self.RespondError(r, w, ex)
+  def Register(proc, fn):
+    .procs[proc] = fn
 
-  def Call3(self, w, r):
-    try:
-      a1, a2, a3 = self.Request(w, r)
-      z = self.fn(a1, a2, a3)
-      self.Respond(w, r, z)
-    except as ex:
-      self.RespondError(r, w, ex)
 
-class Dial:
-  def __init__(self, host_port):
-    hp = PARSE_HP.FindStringSubmatch(host_port)
-    if not hp:
-      raise 'Bad Host:Port spec: ' + host_port
-    _, self.host, self.port = hp
+class Client:
+  def __init__(hostport, keyname, key):
+    .hostport = hostport
+    .keyname = keyname
+    .sealer = gcm.Cipher(key)
+    .requests = {}
+    .inQ = aphid.NewChan(5)
+    .conn = net.Dial('tcp', hostport)
+    go .ReadActor()
+    go .WriteActor()
 
-  def Register1(self, name, fn):
-    http.HandleFunc('/' + MAGIC_PATH + '/' + name, RpcFunc(fn).Call1)
+  def WriteActor():
+    while True:
+      req = .inQ.Get()
+      if req is None:
+        break
 
-  def Register2(self, name, fn):
-    http.HandleFunc('/' + MAGIC_PATH + '/' + name, RpcFunc(fn).Call2)
+      # Allocate a serial, and remember the request.
+      req.serial = Serial()
+      .requests[req.serial] = req
 
-  def Register3(self, name, fn):
-    http.HandleFunc('/' + MAGIC_PATH + '/' + name, RpcFunc(fn).Call3)
+      pay = pickle( (req.serial, req.proc, req.args) )
+      dark = .sealer.Seal(pay, req.serial)
+      WriteChunk(.conn, dark)
 
-  def ListenAndServe(self):
-    hp = "%s:%s" % (self.host, self.port)
-    http.ListenAndServe(hp, None)
+    .conn.Close()
 
-  def Call1(self, rpc_name, a1):
-    d = { 'pickle': [pickle(a1)] }
-    uri = "http://%s:%s/%s/%s" % (self.host, self.port, MAGIC_PATH, rpc_name)
-    response = http.PostForm(uri, gocast(url.Values, d))
-    body = ioutil.ReadAll(response.Body)
-    response.Body.Close()
-    if response.StatusCode != 200:
-      raise '%s\n  -- in RPC %q\n  -- http code %d\n  -- uri %q' % (body, rpc_name, response.StatusCode, uri)
-      raise 'In RPC %q: ERROR %d: %q' % (rpc_name, response.StatusCode, body) 
-    z = unpickle(body)
-    return z
+  def ReadActor():
+    r = bufio.NewReader(.conn)
+    while True:
+      # TODO -- when to stop.
+      p = ReadChunk(r)
+      pay, ser = .sealer.Open(p)
+      serial, result, err = unpickle(pay)
+      must serial == ser # TODO
+      .requests[serial].replyQ.Put( (result, err) )
 
-  def Call2(self, rpc_name, a1, a2):
-    d = { 'pickle': [pickle((a1, a2))] }
-    uri = "http://%s:%s/%s/%s" % (self.host, self.port, MAGIC_PATH, rpc_name)
-    response = http.PostForm(uri, gocast(url.Values, d))
-    body = ioutil.ReadAll(response.Body)
-    response.Body.Close()
-    if response.StatusCode != 200:
-      raise '%s\n  -- in RPC %q\n  -- http code %d\n  -- uri %q' % (body, rpc_name, response.StatusCode, uri)
-      raise 'In RPC %q: ERROR %d: %q' % (rpc_name, response.StatusCode, body) 
-    z = unpickle(body)
-    return z
 
-  def Call3(self, rpc_name, a1, a2, a3):
-    d = { 'pickle': [pickle((a1, a2, a3))] }
-    uri = "http://%s:%s/%s/%s" % (self.host, self.port, MAGIC_PATH, rpc_name)
-    response = http.PostForm(uri, gocast(url.Values, d))
-    body = ioutil.ReadAll(response.Body)
-    response.Body.Close()
-    if response.StatusCode != 200:
-      raise '%s\n  -- in RPC %q\n  -- http code %d\n  -- uri %q' % (body, rpc_name, response.StatusCode, uri)
-      raise 'In RPC %q: ERROR %d: %q' % (rpc_name, response.StatusCode, body) 
-    z = unpickle(body)
-    return z
+  def Call(proc, args):
+    req = Request(proc, args)
+    .inQ.Put(req)
+    return Promise(req.replyQ)
+
+class Promise:
+  def __init__(chan):
+    .chan = chan
+
+  def Wait():
+    result, err = .chan.Get()
+    if err:
+      raise err
+    return result
+
+
+def ReadChunk(r):
+  b = r.ReadByte()
+  if b != 199:
+    raise 'ReadChunk: bad magic'
+  a = r.ReadByte()
+  b = r.ReadByte()
+  c = r.ReadByte()
+  d = r.ReadByte()
+  n = (a<<24) | (b<<16) | (c<<8) | d
+  z, eof = aphid.WrapRead(r, n)
+  if eof:
+    raise "got EOF"
+  return z
+
+def DemoSum(*args):
+  z = 0.0
+  for a in args:
+    z += float(a)
+  return z
+
+def DemoSleepAndDouble(millis):
+  time.Sleep(millis * time.Millisecond)
+  return 2 * millis
+
+def main(args):
+  key = byt('abcdefghijklmnop')
+
+  svr = Server(':9999', 'key', key)
+  svr.Register('DemoSum', DemoSum)
+  svr.Register('DemoSleepAndDouble', DemoSleepAndDouble)
+  go svr.ListenAndServe()
+
+  time.Sleep(100 * time.Millisecond)
+  cli = Client('localhost:9999', 'key', key)
+  z = cli.Call('DemoSum', [100,200,300]).Wait()
+  say z
+  assert z == 600.0
+  assert z == 600
+  assert 600 == z
+
+  d = {}
+  for i in range(5):
+    d[i] = cli.Call('DemoSleepAndDouble', [i * 100])
+    say i, d[i]
+
+  for i in range(5):
+    say 'GGGGETTING', i, d[i]
+    z = d[i].Wait()
+    say 'GGGGOT', i, d[i], z
+    assert z == i * 200
