@@ -1,10 +1,10 @@
-from go import flag
 from go import os
 from go import path/filepath
 
 from go import github.com/strickyak/aphid
 
 from . import rpc2
+from . import flag
 
 KEYNAME = byt('default')
 KEY = byt('ABCDEFGHabcdefgh')
@@ -23,7 +23,7 @@ class RfsClient2(rpc2.Client2):
     return .Call("AListDir", [path]).Wait()
 
 def localPath(path):
-  return filepath.Join(ROOT, path)
+  return filepath.Join(ROOT.X, path)
 
 def AReadAt(path, n, pos):
   #say 'YYY <<< AReadAt', path, n, pos
@@ -56,10 +56,7 @@ PORT = flag.Int('port', 0, 'Port to listen on')
 ROOT = flag.String('root', '', 'File system root')
 
 def main(argv):
-  global PORT, ROOT
-  flag.Parse()
-  PORT = int(goreify(goderef(PORT)))
-  ROOT = str(goreify(goderef(ROOT)))
+  argv = flag.Munch(argv)
 
-  serv = RfsServer2('localhost:%d' % PORT, KEYNAME, KEY)
+  serv = RfsServer2('localhost:%d' % PORT.X, KEYNAME, KEY)
   serv.ListenAndServe()

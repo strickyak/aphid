@@ -82,7 +82,7 @@ def FindFiles1(top):
     # os.Stderr.Write('fu find: Cannot Open (%s): %q' % (ex, top))
     # fmt.Fprintf(os.Stderr, 'fu find: Cannot Open (%s): %q\n', ex, top)
     A.Err('fu find: Cannot Open (%s): %q\n', ex, top)
-    A.SetStatus(2)
+    A.SetExitStatus(2)
     return
   defer d.Close()
   try:
@@ -98,7 +98,7 @@ def FindFiles1(top):
   except as ex:
     # os.Stderr.Write('fu find: Cannot List (%s): %q' % (ex, top))
     A.Err('fu find: Cannot List (%s): %q' % (ex, top))
-    A.SetStatus(2)
+    A.SetExitStatus(2)
     return
 
 def Sync(args):

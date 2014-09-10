@@ -1,16 +1,16 @@
-from go import flag
 from go import os
 from go import path/filepath
 
 from go import github.com/strickyak/aphid
 
 from . import rpc
+from . import flag
 
 PORT = flag.Int('port', 0, 'Port to listen on')
 ROOT = flag.String('root', '', 'File system root')
 
 def localPath(path):
-  return filepath.Join(ROOT, path)
+  return filepath.Join(ROOT.X, path)
 
 def AReadAt(path, n, pos):
   say 'YYY <<< AReadAt', path, n, pos
@@ -33,12 +33,11 @@ def AListDir(path):
   return z
 
 def main(argv):
-  global PORT, ROOT
-  flag.Parse()
-  PORT = int(goreify(goderef(PORT)))
-  ROOT = str(goreify(goderef(ROOT)))
+  argv = flag.Munch(argv)
 
-  r = rpc.Dial('localhost:%d' % PORT)
+  say ROOT
+  say PORT
+  r = rpc.Dial('localhost:%d' % PORT.X)
   r.Register1('AListDir', AListDir)
   r.Register3('AReadAt', AReadAt)
   r.Register3('AWriteAt', AWriteAt)

@@ -10,7 +10,7 @@ from . import rfs2
 J = filepath.Join
 
 def Test1(args):
-  fs = rfs2.RfsClient2('localhost:9876', rfs2.KEYNAME, rfs2.KEY)
+  fs = rfs2.RfsClient2(RFS.X, rfs2.KEYNAME, rfs2.KEY)
 
   vec = fs.ListDir('vga')
   say 'ListDir', vec
@@ -54,13 +54,13 @@ def cat1(path, out):
 
 def Cat(args):
   out = None
-  if CREATE:
-    must not APPEND
-    out = afs2.Create(CREATE)
+  if CREATE.X:
+    must not APPEND.X
+    out = afs2.Create(CREATE.X)
     defer out.Close()
-  if APPEND:
-    must not CREATE
-    out = afs2.Append(APPEND)
+  if APPEND.X:
+    must not CREATE.X
+    out = afs2.Append(APPEND.X)
     defer out.Close()
   if not out:
     out = afs2.Append('/Std/out')
@@ -79,10 +79,8 @@ def FindFiles1(top):
   try:
     d = afs2.Open(top)
   except as ex:
-    # os.Stderr.Write('fu find: Cannot Open (%s): %q' % (ex, top))
-    # fmt.Fprintf(os.Stderr, 'fu find: Cannot Open (%s): %q\n', ex, top)
-    A.Err('fu find: Cannot Open (%s): %q\n', ex, top)
-    A.SetStatus(2)
+    A.Err('fu find: Cannot Open (%s): %q\n' % (ex, top))
+    A.SetExitStatus(2)
     return
   defer d.Close()
   try:
@@ -96,9 +94,8 @@ def FindFiles1(top):
       else:
         yield jname, isDir, mtime, sz
   except as ex:
-    # os.Stderr.Write('fu find: Cannot List (%s): %q' % (ex, top))
     A.Err('fu find: Cannot List (%s): %q' % (ex, top))
-    A.SetStatus(2)
+    A.SetExitStatus(2)
     return
 
 def Sync(args):
@@ -108,12 +105,10 @@ Ensemble = { 'test1': Test1, 'cat': Cat, 'find': FindFiles }
 
 CREATE = flag.String('create', '', 'Create output file with "cat" command.')
 APPEND = flag.String('append', '', 'Append output file with "cat" command.')
+RFS = flag.String('rfs', 'localhost:9876', 'Location of rfs server')
 
 def main(args):
-  global CREATE, APPEND
-  args = flag.Take(args)
-  CREATE = CREATE()
-  APPEND = APPEND()
+  args = flag.Munch(args)
 
   if not len(args):
     say 'Expected an Emsemble argument:', [k for k in Ensemble]
@@ -122,7 +117,8 @@ def main(args):
   cmd, args = args[0], args[1:]
   f = Ensemble.get(cmd)
   if not f:
-    say "No such command:", cmd
+    A.Err("Available commands: %v" % sorted(Ensemble.keys()))
+    A.Fatal("No such command: %q" % cmd)
     os.Exit(11)
 
   f(args)
