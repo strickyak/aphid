@@ -133,4 +133,4 @@ assert Eval('[ 123, 4.5, False] ') == [ 123, 4.5, False]
 d = Eval('{ "color": "red", "area": 51 } ')
 e = { "color": "red", "area": 51 }
 
-assert [(k, d[k]) for k in d] == [(k, e[k]) for k in e]
+assert sorted([(k, d[k]) for k in d]) == sorted([(k, e[k]) for k in e])
