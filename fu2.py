@@ -1,4 +1,7 @@
-#from go import fmt
+# DEMO:
+# rye run rfs2.py rpc.py A.py flag.py -- -port=9988 -root=/etc
+# rye run fu2.py A.py flag.py -- --rfs=127.0.0.1:9988 find /There/localhost:9988/java
+
 from go import os
 from go import path/filepath
 
