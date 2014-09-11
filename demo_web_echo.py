@@ -1,3 +1,5 @@
+# rye run demo_web_echo.py
+
 from go import net/http
 from go import net/http/httputil
 from go import fmt
