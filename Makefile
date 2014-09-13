@@ -4,7 +4,7 @@ _queue_test:
 	python ../rye/rye.py run queue_test.py
 
 _rpc:
-	python ../rye/rye.py run rpc.py [A-Za-z]*.py
+	python ../rye/rye.py run rpc.py
 
 _laph:
 	python ../rye/rye.py run laph_test.py laph.py
@@ -19,4 +19,4 @@ _eval:
 	python ../rye/rye.py run eval.py
 
 clean:
-	-rm */ryemodule.go */main/ryemain.go
+	for x in */ryemodule.go ; do rm -r `dirname $$x`/ ; done
