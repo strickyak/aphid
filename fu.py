@@ -102,9 +102,30 @@ def FindFiles1(top):
     return
 
 def Sync(args):
-  pass
+  if len(args) != 2:
+    A.Err('fu sync: To perform a sync, we need a destination and a path.')
+    A.SetExitStatus(2)
+    return
 
-Ensemble = { 'test1': Test1, 'cat': Cat, 'find': FindFiles }
+  Sync1(args[0], args[1])
+
+# rye run fu.py *.py -- sync /Here/static_test_src /Here/static_test_dst
+def Sync1(source, dest):
+  src_files = FindFiles1(source)
+  dst_files = FindFiles1(dest)
+
+  dest_dict = {}
+
+  # I want to convert my list to a dict of tuples
+  for path, isDir, mtime, size in dst_files:
+    dest_dict[path] = (isDir, mtime, size)
+
+  for path, isDir, mtime, size in src_files:
+    if dest_dict.get(path) == None:
+      say path, 'need to create this'
+  
+
+Ensemble = { 'test1': Test1, 'cat': Cat, 'find': FindFiles, 'sync': Sync }
 
 CREATE = flag.String('create', '', 'Create output file with "cat" command.')
 APPEND = flag.String('append', '', 'Append output file with "cat" command.')
