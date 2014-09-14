@@ -117,12 +117,15 @@ def Sync1(source, dest):
   dest_dict = {}
 
   # I want to convert my list to a dict of tuples
+  # Use the relative path as the key
   for path, isDir, mtime, size in dst_files:
-    dest_dict[path] = (isDir, mtime, size)
+    rel_dest_path = path[len(dest):]
+    dest_dict[rel_dest_path] = (isDir, mtime, size)
 
   for path, isDir, mtime, size in src_files:
-    if dest_dict.get(path) == None:
-      say path, 'need to create this'
+    rel_src_path = path[len(source):]
+    if dest_dict.get(rel_src_path) == None:
+      say rel_src_path, 'need to create this'
   
 
 Ensemble = { 'test1': Test1, 'cat': Cat, 'find': FindFiles, 'sync': Sync }
