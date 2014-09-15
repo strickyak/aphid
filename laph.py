@@ -1,4 +1,4 @@
-from go import strings
+# from go import strings
 from go import regexp
 
 PARENT = regexp.MustCompile('([A-Za-z0-9_.]+)[.]([A-Za-z0-9_]+)')
@@ -57,11 +57,10 @@ class Stanza:
     z = .slots.get(key)
     if z:
       return z
+    elif .slots.up:
+      return .slots.up.Lookup(key)
     else:
-      if .slots.up:
-        return .slots.up.Lookup(key)
-      else:
-        return None
+      return None
 
 class Engine:
   def __init__(text):
@@ -165,7 +164,6 @@ class Engine:
       z.append(.ParseExpr())
     return List(z)
 
-
   def MustT(t):
     if .t != t:
       .Bad('Expected %s, got %s: %s' % (t, .t, .v))
@@ -180,12 +178,16 @@ def Intern(s):
     Interned[s] = sym
   return sym
 
-Prim = Intern("prim")
-Lambda = Intern("lamdba")
-Quote = Intern("quote")
-Nil = Intern("nil")
+_lambda = Intern("lamdba")
+Nil = Intern("nil")       # nil is False.
 T = Intern("true")
-F = Intern("false")
+F = Intern("false")       # false is False.
+
+# Special fixed values:
+_lambda.val = _lambda
+Nil.val = List([])
+T.val = T
+F.val = F
 
 class Node:
   def __init__():
@@ -200,37 +202,50 @@ class Lit(Node):
     return .x == a.x if type(a) is Lit else False
   def Show():
     if type(.x) == str:
-      return '"%s"' % .x  # TODO: fix for escaping.
+      return '"%s"' % .x  # TODO: fix for escaping.  TODO: why not just repr(.x)?
     else:
       return repr(.x)
   def Eval(env, stanza):
     return self
+  def Bool():
+    return True  # All Lits are True (unlike Python).
 
 class Symbol(Node):
   def __init__(s):
     .s = s
+    .prim = None  # If not None, it is a primative function.
+    .val = None   # if not None, it has a predefined, fixed value.
   def Show():
     return .s
   def Lookup(env, stanza):
+    if .val is not None:
+      return .val
     for k, v in env:
       if .Eq(k):
         return v
     if stanza:
       return stanza.Lookup(self)
   def Eval(env, stanza):
-    st = stanza
-    ww = strings.Split(.s, '.')
-    for w in ww[:-1]:
-      st = st.X
     return .Lookup(env, stanza)
-
+  def Bool():
+    return self != F
 
 class List(Node):
   def __init__(v):
     .v = v
 
+  def Eq(a):
+    if len(.v) != len(a.v):
+      return False
+    for i in range(len(.v)):
+      if not .v[i].Eq(a.v[i]):
+        return False
+    return True
+
   def Len():
     return len(.v)
+  def Bool():
+    return len(.v) != 0
 
   def Show():
     z = '('
@@ -242,20 +257,15 @@ class List(Node):
 
   def Eval(env, stanza):
     if len(.v) < 1:
-      return self
-    hd = .v[0]
+      return self  # nil is self-evaluating.
 
-    # Special Forms:
-    if hd is Lambda:
-      return self
-    if hd is Prim:
-      return self
-    if hd is Quote:
-      return .v[1]
+    hd = .v[0]
+    if type(hd) is Symbol and hd.prim is not None:  # IF A PRIM:
+      return hd.prim(self, env, stanza)
 
     cmd = hd.Eval(env, stanza)
     if type(cmd) is List:
-      if len(cmd.v) == 3 and cmd.v[0] is Lambda and type(cmd.v[1]) is List:
+      if len(cmd.v) == 3 and cmd.v[0] is _lambda and type(cmd.v[1]) is List:
         formals = cmd.v[1]
         expr = cmd.v[2]
         if len(formals.v) == len(.v) - 1:
@@ -266,65 +276,45 @@ class List(Node):
         else:
           raise 'Wrong number of formals (%s) vs args (%s)' % (len(formals.v), len(.v) - 1)
 
-      if len(cmd.v) == 2 and cmd.v[0] is Prim:
-        primName = cmd.v[1].x
-        fn = PRIMS.get(primName)
-        if not fn:
-          raise 'Prim does not exist: %q' % primName
-        return fn(self, env, stanza)
-
       raise 'Strange list in head position is not valid lambda expr: %s' % cmd.v.Show()
     raise 'Other: %s' % .Show()
 
-PRIMS = {}
-
-def PrimList(a, env, stanza):
-  b, c = arg2(a, env, stanza)
-  return Lit( b.x + c.x )
-PRIMS['plus'] = PrimPlus
-
 def args(a, env, stanza):
-  say a
-  say a.Show()
-  say a.v
-  tl = a.v[1:]
-  return [x.Eval(env, stanza) for x in tl]
+  return [x.Eval(env, stanza) for x in a.v[1:]]
 
 def arg2(a, env, stanza):
   assert len(a.v) == 3
   return args(a, env, stanza)
 
-def PrimPlus(a, env, stanza):
+def dolambda(a, env, stanza):
+  return a  # Lambda exprs are self-evaluating.
+_lambda.prim = dolambda
+
+def doquote(a, env, stanza):
+  assert len(a.v) == 2
+  return a.v[1]  # Quote returns first arg, unevaluated.
+_quote = Intern('quote')
+_quote.prim = doquote
+
+def dolist(a, env, stanza):
+  return args(a, env, stanza)
+_list = Intern('list')
+_list.prim = dolist
+
+def doplus(a, env, stanza):
   b, c = arg2(a, env, stanza)
   return Lit( b.x + c.x )
-PRIMS['plus'] = PrimPlus
+_plus = Intern('plus')
+_plus.prim = doplus
 
-def PrimMinus(a, env, stanza):
+def dominus(a, env, stanza):
   b, c = arg2(a, env, stanza)
   return Lit( b.x - c.x )
-PRIMS['minus'] = PrimMinus
+_minus = Intern('minus')
+_minus.prim = dominus
 
-def PrimTimes(a, env, stanza):
+def dotimes(a, env, stanza):
   b, c = arg2(a, env, stanza)
   return Lit( b.x * c.x )
-PRIMS['times'] = PrimTimes
-
-#e = Engine(' [Abc] a = "foo" [Def] b = "bar" [Ghi.Xyz] ')
-#e.Parse()
-#say e.stanzas
-#say e.stanzas['Abc'].slots['a']
-#z = Engine('[x] y = ( add 34 "23" )').Parse().stanzas['x'].slots['y']
-#say z
-#say z.Show()
-#assert z.Len() == 3, z
-#
-#prim_plus__21__2 = List([ List([ Intern('prim'), Lit('plus') ]), Lit(21), Lit(2) ])
-#x = prim_plus__21__2.Eval( [], None )
-#assert 23 == x.x
-#assert type(Prim) is Symbol
-#assert type(prim_plus__21__2) is List
-#assert type(x) is Lit
-#assert type(x.x) is int
-#say Symbol
-#say str(Symbol)
-#say repr(Symbol)
+_times = Intern('times')
+_times.prim = dotimes
