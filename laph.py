@@ -1,12 +1,14 @@
 # from go import strings
 from go import regexp
+from go import os
+from go import io/ioutil
 
 PARENT = regexp.MustCompile('([A-Za-z0-9_.]+)[.]([A-Za-z0-9_]+)')
 
 FRONT_WHITE = regexp.MustCompile('^(\\s+)')
 FRONT_EQ = regexp.MustCompile('^[=]')
 FRONT_WORDS = regexp.MustCompile('^(([A-Za-z_])([A-Za-z0-9_]*))([.](([A-Za-z_])([A-Za-z0-9_]*)))*')
-FRONT_HEADER = regexp.MustCompile('^[[]((([A-Za-z])([A-Za-z0-9_]*))([.](([A-Za-z])([A-Za-z0-9_]*)))*)[]]')
+FRONT_HEADER = regexp.MustCompile('^[[]\\s*((([A-Za-z])([A-Za-z0-9_]*))([.](([A-Za-z])([A-Za-z0-9_]*)))*)\\s*[]]')
 FRONT_OPEN = regexp.MustCompile('^[(]')
 FRONT_CLOSE = regexp.MustCompile('^[)]')
 FRONT_QUOTE = regexp.MustCompile("^[']")
@@ -26,25 +28,30 @@ QUOTE0 = regexp.MustCompile('^["]')
 QUOTE1 = regexp.MustCompile('["]$')
 QUOTE2 = regexp.MustCompile('["]["]')
 
+Interned = {}
+
 def Tokenize(text):
+  z = []  # YAK
   while text:
     s = FRONT_WHITE.FindString(text)
     text = text[ len(s) : ]
-    print 'TEXT', repr(text), 'WHITE WAS', repr(s)
+    #print 'TEXT', repr(text), 'WHITE WAS', repr(s)
     if text:
       for pair in LEXERS:
         pname, pattern = pair
         s = pattern.FindString(text)
-        print 'TEXT', repr(text), 'PATTERN', pname, 'GOT', repr(s)
+        #print 'TEXT', repr(text), 'PATTERN', pname, 'GOT', repr(s)
         if s:
-          yield pname, s
+          # yield pname, s # YAK
+          z.append(( pname, s )) # YAK
           text = text[ len(s) : ]
           break
       if not s:
         raise 'Cannot tokenize: ' + text
-  print 'Tokenize TERMINATING'
+  #print 'Tokenize TERMINATING'
+  return z # YAK
 
-print 'Tokenize:', list(Tokenize(' [Lyric] we_re up=all.night2 == get_lucky '))
+# print 'Tokenize:', list(Tokenize(' [Lyric] we_re up=all.night2 == get_lucky '))
 
 class Stanza:
   def __init__(engine):
@@ -90,11 +97,11 @@ class Engine:
     if not sp:
       sp = Stanza(self)
       sp.name = s
-      m = PARENT.FindStringSubmatch(s)
       .stanzas[sp.name] = sp
+      m = PARENT.FindStringSubmatch(s)
       if m:
-        print 'm: ', m
-        sp.up = .MakeStanza(m[1])
+        _, upname = m
+        sp.up = .MakeStanza(upname)
     return sp
 
   def Parse():
@@ -104,8 +111,7 @@ class Engine:
 
   def ParseStanza():
     .MustT('Header')
-    name = FRONT_HEADER.FindString(.v)
-    name = name[1:-1]  # Trim the brackets.
+    name = FRONT_HEADER.FindStringSubmatch(.v)[1]
     stanza = .MakeStanza(name)
     .Advance()
 
@@ -121,7 +127,6 @@ class Engine:
 
     v = .ParseExpr()
     stanza.slots[k] = v
-    .Advance()
 
   def ParseExpr():
     if not .t:
@@ -141,12 +146,10 @@ class Engine:
       .Advance()
       return z
     if .t == 'Str':
-      say 'dog', .v
-      say 'dog', str(.v)
       s = .v
       s = QUOTE0.ReplaceAllString(s, '')
       s = QUOTE1.ReplaceAllString(s, '')
-      s = QUOTE2.ReplaceAllString(s, '')
+      s = QUOTE2.ReplaceAllString(s, '\"')
       z = Lit(str(s))
       .Advance()
       return z
@@ -161,14 +164,14 @@ class Engine:
     .Advance()
     z = []
     while .t != 'Close':
-      z.append(.ParseExpr())
+      x = .ParseExpr()
+      z.append(x)
+    .Advance()
     return List(z)
 
   def MustT(t):
     if .t != t:
-      .Bad('Expected %s, got %s: %s' % (t, .t, .v))
-
-Interned = {}
+      raise 'Expected %s, got %s: %s' % (t, .t, .v)
 
 def Intern(s):
   assert type(s) == str
@@ -318,3 +321,15 @@ def dotimes(a, env, stanza):
   return Lit( b.x * c.x )
 _times = Intern('times')
 _times.prim = dotimes
+
+def main(argv):
+  code = ioutil.ReadAll(os.Stdin)
+  eng = Engine(code)
+  eng.Parse()
+
+  for name, st in eng.stanzas.items():
+    assert name == st.name
+    print '[ %s ]' % name
+    for k, v in st.slots.items():
+      print '  %s = %s' % (k, v)
+
