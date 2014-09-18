@@ -64,8 +64,8 @@ class Stanza:
     z = .slots.get(key)
     if z:
       return z
-    elif .slots.up:
-      return .slots.up.Lookup(key)
+    elif .up:
+      return .up.Lookup(key)
     else:
       return None
 
@@ -100,7 +100,7 @@ class Engine:
       .stanzas[sp.name] = sp
       m = PARENT.FindStringSubmatch(s)
       if m:
-        _, upname = m
+        _, upname, _ = m
         sp.up = .MakeStanza(upname)
     return sp
 
@@ -224,10 +224,10 @@ class Symbol(Node):
     if .val is not None:
       return .val
     for k, v in env:
-      if .Eq(k):
+      if .s == k:
         return v
     if stanza:
-      return stanza.Lookup(self)
+      return stanza.Lookup(.s)
   def Eval(env, stanza):
     return .Lookup(env, stanza)
   def Bool():
@@ -259,6 +259,7 @@ class List(Node):
     return z + ')'
 
   def Eval(env, stanza):
+    say 'List::Eval', self, env, stanza
     if len(.v) < 1:
       return self  # nil is self-evaluating.
 
@@ -267,6 +268,7 @@ class List(Node):
       return hd.prim(self, env, stanza)
 
     cmd = hd.Eval(env, stanza)
+    say cmd
     if type(cmd) is List:
       if len(cmd.v) == 3 and cmd.v[0] is _lambda and type(cmd.v[1]) is List:
         formals = cmd.v[1]
@@ -274,7 +276,7 @@ class List(Node):
         if len(formals.v) == len(.v) - 1:
           env2 = env
           for i in range(len(formals)):
-            env2 = [(formals[i], cmd.v[i+1].Eval(env, stanza))] + env2
+            env2 = [(formals[i].s, cmd.v[i+1].Eval(env, stanza))] + env2
             return expr.Eval(env2, stanza)
         else:
           raise 'Wrong number of formals (%s) vs args (%s)' % (len(formals.v), len(.v) - 1)
@@ -326,10 +328,16 @@ def main(argv):
   code = ioutil.ReadAll(os.Stdin)
   eng = Engine(code)
   eng.Parse()
+  #say eng.Parse
+  #say doplus
+  #say dominus
+  #print eng.Parse
+  #print doplus
+  #print dominus
 
   for name, st in eng.stanzas.items():
     assert name == st.name
     print '[ %s ]' % name
     for k, v in st.slots.items():
-      print '  %s = %s' % (k, v)
+      print '  %s = %s' % (k, v.Eval([], st).Show())
 
