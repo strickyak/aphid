@@ -1,0 +1,12 @@
+[Hello]
+  a = 100
+  b = "world"
+  y = (lambda () (plus xyz zyx))
+  z = (plus a 10)
+[Hello.World]
+  xyz = 1234
+  zyx =  543
+  y2 = (y)
+[Hello.World.Two]
+  z = a
+  xyz = xyz

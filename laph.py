@@ -35,12 +35,10 @@ def Tokenize(text):
   while text:
     s = FRONT_WHITE.FindString(text)
     text = text[ len(s) : ]
-    #print 'TEXT', repr(text), 'WHITE WAS', repr(s)
     if text:
       for pair in LEXERS:
         pname, pattern = pair
         s = pattern.FindString(text)
-        #print 'TEXT', repr(text), 'PATTERN', pname, 'GOT', repr(s)
         if s:
           # yield pname, s # YAK
           z.append(( pname, s )) # YAK
@@ -48,10 +46,7 @@ def Tokenize(text):
           break
       if not s:
         raise 'Cannot tokenize: ' + text
-  #print 'Tokenize TERMINATING'
   return z # YAK
-
-# print 'Tokenize:', list(Tokenize(' [Lyric] we_re up=all.night2 == get_lucky '))
 
 class Stanza:
   def __init__(engine):
@@ -181,7 +176,7 @@ def Intern(s):
     Interned[s] = sym
   return sym
 
-_lambda = Intern("lamdba")
+_lambda = Intern("lambda")
 Nil = Intern("nil")       # nil is False.
 T = Intern("true")
 F = Intern("false")       # false is False.
@@ -259,12 +254,14 @@ class List(Node):
     return z + ')'
 
   def Eval(env, stanza):
-    say 'List::Eval', self, env, stanza
+    say 'List::Eval', self.Show(), env, (stanza.name if stanza else 'NO_STANZA')
     if len(.v) < 1:
       return self  # nil is self-evaluating.
 
     hd = .v[0]
+    say hd, type(hd)
     if type(hd) is Symbol and hd.prim is not None:  # IF A PRIM:
+      say hd.prim, self
       return hd.prim(self, env, stanza)
 
     cmd = hd.Eval(env, stanza)
@@ -273,15 +270,16 @@ class List(Node):
       if len(cmd.v) == 3 and cmd.v[0] is _lambda and type(cmd.v[1]) is List:
         formals = cmd.v[1]
         expr = cmd.v[2]
+        say formals, expr, .v
         if len(formals.v) == len(.v) - 1:
           env2 = env
-          for i in range(len(formals)):
-            env2 = [(formals[i].s, cmd.v[i+1].Eval(env, stanza))] + env2
-            return expr.Eval(env2, stanza)
+          for i in range(len(formals.v)):
+            env2 = [(formals.v[i].s, cmd.v[i+1].Eval(env, stanza))] + env2
+          return expr.Eval(env2, stanza)
         else:
           raise 'Wrong number of formals (%s) vs args (%s)' % (len(formals.v), len(.v) - 1)
 
-      raise 'Strange list in head position is not valid lambda expr: %s' % cmd.v.Show()
+      raise 'Strange list in head position is not valid lambda expr: %s' % cmd.Show()
     raise 'Other: %s' % .Show()
 
 def args(a, env, stanza):
@@ -292,6 +290,7 @@ def arg2(a, env, stanza):
   return args(a, env, stanza)
 
 def dolambda(a, env, stanza):
+  say 'dolambda', a
   return a  # Lambda exprs are self-evaluating.
 _lambda.prim = dolambda
 
@@ -328,16 +327,9 @@ def main(argv):
   code = ioutil.ReadAll(os.Stdin)
   eng = Engine(code)
   eng.Parse()
-  #say eng.Parse
-  #say doplus
-  #say dominus
-  #print eng.Parse
-  #print doplus
-  #print dominus
 
-  for name, st in eng.stanzas.items():
+  for name, st in sorted(eng.stanzas.items()):
     assert name == st.name
     print '[ %s ]' % name
-    for k, v in st.slots.items():
+    for k, v in sorted(st.slots.items()):
       print '  %s = %s' % (k, v.Eval([], st).Show())
-
