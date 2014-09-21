@@ -8,7 +8,7 @@ PARENT = regexp.MustCompile('([A-Za-z0-9_.]+)[.]([A-Za-z0-9_]+)')
 FRONT_WHITE = regexp.MustCompile('^(\\s+)')
 FRONT_EQ = regexp.MustCompile('^[=]')
 FRONT_WORDS = regexp.MustCompile('^(([A-Za-z_])([A-Za-z0-9_]*))([.](([A-Za-z_])([A-Za-z0-9_]*)))*')
-FRONT_HEADER = regexp.MustCompile('^[[]\\s*((([A-Za-z])([A-Za-z0-9_]*))([.](([A-Za-z])([A-Za-z0-9_]*)))*)\\s*[]]')
+FRONT_HEADER = regexp.MustCompile('^[[]\\s*((([A-Za-z])([A-Za-z0-9_]*))([.](([A-Za-z])([A-Za-z0-9_]*)))*)?\\s*[]]')
 FRONT_OPEN = regexp.MustCompile('^[(]')
 FRONT_CLOSE = regexp.MustCompile('^[)]')
 FRONT_QUOTE = regexp.MustCompile("^[']")
@@ -22,6 +22,7 @@ L3 = [ ('Eq', FRONT_EQ), ('Words', FRONT_WORDS), ('Header', FRONT_HEADER) ]
 LEXERS = L1 + L2 + L3
 
 assert FRONT_HEADER.FindString('[abc] xxx') == '[abc]'
+assert FRONT_HEADER.FindString('[] xxx') == '[]'
 assert not FRONT_WORDS.FindString(' FooBar.Baz')
 
 QUOTE0 = regexp.MustCompile('^["]')
@@ -48,7 +49,7 @@ def Tokenize(text):
         raise 'Cannot tokenize: ' + text
   return z # YAK
 
-class Stanza:
+class Block:
   def __init__(engine):
     .name = None
     .up = None
@@ -66,7 +67,7 @@ class Stanza:
 
 class Engine:
   def __init__(text):
-    .stanzas = {}
+    .blocks = {}
     .text = text
     .toks = list(Tokenize(text))
     .n = len(.toks)
@@ -87,33 +88,35 @@ class Engine:
     .t = .toks[.p][0]
     .v = .toks[.p][1]
 
-  def MakeStanza(s):
-    sp = .stanzas.get(s)
-    if not sp:
-      sp = Stanza(self)
-      sp.name = s
-      .stanzas[sp.name] = sp
+  def MakeBlock(s):
+    p = .blocks.get(s)
+    if not p:
+      p = Block(self)
+      p.name = s
+      .blocks[p.name] = p
       m = PARENT.FindStringSubmatch(s)
       if m:
         _, upname, _ = m
-        sp.up = .MakeStanza(upname)
-    return sp
+        p.up = .MakeBlock(upname)
+      elif s != "":
+        p.up = .MakeBlock("")
+    return p
 
   def Parse():
     while .t:
-      .ParseStanza()
+      .ParseBlock()
     return self
 
-  def ParseStanza():
+  def ParseBlock():
     .MustT('Header')
     name = FRONT_HEADER.FindStringSubmatch(.v)[1]
-    stanza = .MakeStanza(name)
+    block = .MakeBlock(name)
     .Advance()
 
     while .t == 'Words':
-      .ParseSlot(stanza)
+      .ParseSlot(block)
 
-  def ParseSlot(stanza):
+  def ParseSlot(block):
     k = .v
     .Advance()
 
@@ -121,7 +124,7 @@ class Engine:
     .Advance()
 
     v = .ParseExpr()
-    stanza.slots[k] = v
+    block.slots[k] = v
 
   def ParseExpr():
     if not .t:
@@ -177,15 +180,15 @@ def Intern(s):
   return sym
 
 _lambda = Intern("lambda")
-Nil = Intern("nil")       # nil is False.
-T = Intern("true")
-F = Intern("false")       # false is False.
+_nil = Intern("nil")       # nil is False.
+_true = Intern("true")
+_false = Intern("false")       # false is False.
 
 # Special fixed values:
 _lambda.val = _lambda
-Nil.val = List([])
-T.val = T
-F.val = F
+_nil.val = List([])
+_true.val = _true
+_false.val = _false
 
 class Node:
   def __init__():
@@ -203,7 +206,7 @@ class Lit(Node):
       return '"%s"' % .x  # TODO: fix for escaping.  TODO: why not just repr(.x)?
     else:
       return repr(.x)
-  def Eval(env, stanza):
+  def Eval(env, block):
     return self
   def Bool():
     return True  # All Lits are True (unlike Python).
@@ -215,18 +218,18 @@ class Symbol(Node):
     .val = None   # if not None, it has a predefined, fixed value.
   def Show():
     return .s
-  def Lookup(env, stanza):
+  def Lookup(env, block):
     if .val is not None:
       return .val
     for k, v in env:
       if .s == k:
         return v
-    if stanza:
-      return stanza.Lookup(.s)
-  def Eval(env, stanza):
-    return .Lookup(env, stanza)
+    if block:
+      return block.Lookup(.s)
+  def Eval(env, block):
+    return .Lookup(env, block)
   def Bool():
-    return self != F
+    return self is not _false
 
 class List(Node):
   def __init__(v):
@@ -253,8 +256,8 @@ class List(Node):
       z += x.Show()
     return z + ')'
 
-  def Eval(env, stanza):
-    say 'List::Eval', self.Show(), env, (stanza.name if stanza else 'NO_STANZA')
+  def Eval(env, block):
+    say 'List::Eval', self.Show(), env, (block.name if block else 'NO_STANZA')
     if len(.v) < 1:
       return self  # nil is self-evaluating.
 
@@ -262,9 +265,9 @@ class List(Node):
     say hd, type(hd)
     if type(hd) is Symbol and hd.prim is not None:  # IF A PRIM:
       say hd.prim, self
-      return hd.prim(self, env, stanza)
+      return hd.prim(self, env, block)
 
-    cmd = hd.Eval(env, stanza)
+    cmd = hd.Eval(env, block)
     say cmd
     if type(cmd) is List:
       if len(cmd.v) == 3:
@@ -275,51 +278,72 @@ class List(Node):
             env2 = env
             for i in range(len(formals.v)):
               assert type(formals.v[i]) is Symbol
-              env2 = [(formals.v[i].s, .v[i+1].Eval(env, stanza))] + env2
-            return expr.Eval(env2, stanza)
+              env2 = [(formals.v[i].s, .v[i+1].Eval(env, block))] + env2
+            return expr.Eval(env2, block)
           else:
             raise 'Wrong number of formals (%s) vs args (%s)' % (len(formals.v), len(.v) - 1)
 
       raise 'Strange list in head position is not valid lambda expr: %s' % cmd.Show()
     raise 'Other: %s' % .Show()
 
-def args(a, env, stanza):
-  return [x.Eval(env, stanza) for x in a.v[1:]]
+def args(a, env, block):
+  return [x.Eval(env, block) for x in a.v[1:]]
 
-def arg2(a, env, stanza):
+def arg2(a, env, block):
   assert len(a.v) == 3
-  return args(a, env, stanza)
+  return args(a, env, block)
 
-def dolambda(a, env, stanza):
+def dolambda(a, env, block):
   say 'dolambda', a
   return a  # Lambda exprs are self-evaluating.
 _lambda.prim = dolambda
 
-def doquote(a, env, stanza):
-  assert len(a.v) == 2
+def doquote(a, env, block):
+  must len(a.v) == 2
   return a.v[1]  # Quote returns first arg, unevaluated.
 _quote = Intern('quote')
 _quote.prim = doquote
 
-def dolist(a, env, stanza):
-  return args(a, env, stanza)
+def doif(a, env, block):
+  must len(a.v) == 6
+  s_if, cond, s_then, x, s_else, y = a.v
+  must s_then is _then  # Required noise word 'then'
+  must s_else is _else  # Required noise word 'else'
+  cond = cond.Eval(env, block)
+  if cond.Bool():
+    return x.Eval(env, block)
+  else:
+    return y.Eval(env, block)
+_if = Intern('if')
+_if.prim = doif
+_then = Intern('then')
+_else = Intern('else')
+
+def dolist(a, env, block):
+  return args(a, env, block)
 _list = Intern('list')
 _list.prim = dolist
 
-def doplus(a, env, stanza):
-  b, c = arg2(a, env, stanza)
+def dolt(a, env, block):
+  b, c = arg2(a, env, block)
+  return _true if ( b.x < c.x ) else _false
+_lt = Intern('lt')
+_lt.prim = dolt
+
+def doplus(a, env, block):
+  b, c = arg2(a, env, block)
   return Lit( b.x + c.x )
 _plus = Intern('plus')
 _plus.prim = doplus
 
-def dominus(a, env, stanza):
-  b, c = arg2(a, env, stanza)
+def dominus(a, env, block):
+  b, c = arg2(a, env, block)
   return Lit( b.x - c.x )
 _minus = Intern('minus')
 _minus.prim = dominus
 
-def dotimes(a, env, stanza):
-  b, c = arg2(a, env, stanza)
+def dotimes(a, env, block):
+  b, c = arg2(a, env, block)
   return Lit( b.x * c.x )
 _times = Intern('times')
 _times.prim = dotimes
@@ -329,8 +353,8 @@ def main(argv):
   eng = Engine(code)
   eng.Parse()
 
-  for name, st in sorted(eng.stanzas.items()):
-    assert name == st.name
+  for name, st in sorted(eng.blocks.items()):
+    must name == st.name
     print '[ %s ]' % name
     for k, v in sorted(st.slots.items()):
       print '  %s = %s' % (k, v.Eval([], st).Show())
