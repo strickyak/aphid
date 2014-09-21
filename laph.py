@@ -330,6 +330,12 @@ def dolt(a, env, block):
 _lt = Intern('lt')
 _lt.prim = dolt
 
+def dole(a, env, block):
+  b, c = arg2(a, env, block)
+  return _true if ( b.x <= c.x ) else _false
+_le = Intern('le')
+_le.prim = dole
+
 def doplus(a, env, block):
   b, c = arg2(a, env, block)
   return Lit( b.x + c.x )
@@ -347,6 +353,13 @@ def dotimes(a, env, block):
   return Lit( b.x * c.x )
 _times = Intern('times')
 _times.prim = dotimes
+
+def doexpect(a, env, block):
+  b, c = arg2(a, env, block)
+  must b.Eq(c), ';  LHS: %s  ;  RHS: %s' % (b.Show(), c.Show())
+  return c
+_expect = Intern('expect')
+_expect.prim = doexpect
 
 def main(argv):
   code = ioutil.ReadAll(os.Stdin)

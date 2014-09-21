@@ -1,5 +1,11 @@
 []
   tri = (lambda (n) (if (lt n 1) then 0 else (plus n (tri (minus n 1)))))
+
+  t1 = (expect true (lt 4 5))
+  t2 = (expect false (lt 5 5))
+  t3 = (expect true (le 5 5))
+  t4 = (expect false (le 5 4))
+
 [Hello]
   a = 100
   b = "world"
@@ -15,8 +21,9 @@
   y2 = (y)
 
 [Hello.World.Two]
-  z = a
+  z = (expect 100 a)
   xyz = xyz
-  two_hun = (twice a)
-  fourteen = (sum 11 3)
-  fifteen = (tri 5)
+  two_hun = (expect 200 (twice a))
+  fourteen = (expect 14 (sum 11 3))
+  fifteen = (expect 15 (tri 5))
+
