@@ -3,6 +3,8 @@
   b = "world"
   y = (lambda () (plus xyz zyx))
   z = (plus a 10)
+  sum = (lambda (a1 a2) (plus a1 a2))
+  twice = (lambda (arg) (plus arg arg))
 [Hello.World]
   xyz = 1234
   zyx =  543
@@ -10,3 +12,5 @@
 [Hello.World.Two]
   z = a
   xyz = xyz
+  two_hun = (twice a)
+  fifteen = (sum 11 4)

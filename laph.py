@@ -267,17 +267,18 @@ class List(Node):
     cmd = hd.Eval(env, stanza)
     say cmd
     if type(cmd) is List:
-      if len(cmd.v) == 3 and cmd.v[0] is _lambda and type(cmd.v[1]) is List:
-        formals = cmd.v[1]
-        expr = cmd.v[2]
-        say formals, expr, .v
-        if len(formals.v) == len(.v) - 1:
-          env2 = env
-          for i in range(len(formals.v)):
-            env2 = [(formals.v[i].s, cmd.v[i+1].Eval(env, stanza))] + env2
-          return expr.Eval(env2, stanza)
-        else:
-          raise 'Wrong number of formals (%s) vs args (%s)' % (len(formals.v), len(.v) - 1)
+      if len(cmd.v) == 3:
+        lam, formals, expr = cmd.v
+        if lam is _lambda and type(formals) is List:
+          say formals, expr, .v
+          if len(formals.v) == len(.v) - 1:
+            env2 = env
+            for i in range(len(formals.v)):
+              assert type(formals.v[i]) is Symbol
+              env2 = [(formals.v[i].s, .v[i+1].Eval(env, stanza))] + env2
+            return expr.Eval(env2, stanza)
+          else:
+            raise 'Wrong number of formals (%s) vs args (%s)' % (len(formals.v), len(.v) - 1)
 
       raise 'Strange list in head position is not valid lambda expr: %s' % cmd.Show()
     raise 'Other: %s' % .Show()
