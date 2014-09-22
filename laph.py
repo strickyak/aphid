@@ -346,10 +346,10 @@ _hd = Intern('hd')
 _hd.prim = dohd
 
 def dotl(a, env, block):
-  b = arg1(a, env, block)
+  b, = arg1(a, env, block)
   must type(b) is List
   must len(b.v) > 0
-  return b.v[0]
+  return List(b.v[1:])
 _tl = Intern('tl')
 _tl.prim = dotl
 
