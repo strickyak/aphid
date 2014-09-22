@@ -289,9 +289,17 @@ class List(Node):
 def args(a, env, block):
   return [x.Eval(env, block) for x in a.v[1:]]
 
+def arg1(a, env, block):
+  assert len(a.v) == 2
+  z = args(a, env, block)
+  say 'arg2', z
+  return z
+
 def arg2(a, env, block):
   assert len(a.v) == 3
-  return args(a, env, block)
+  z = args(a, env, block)
+  say 'arg2', z
+  return z
 
 def dolambda(a, env, block):
   say 'dolambda', a
@@ -320,9 +328,34 @@ _then = Intern('then')
 _else = Intern('else')
 
 def dolist(a, env, block):
-  return args(a, env, block)
+  return List(args(a, env, block))
 _list = Intern('list')
 _list.prim = dolist
+
+def dohd(a, env, block):
+  b, = arg1(a, env, block)
+  must type(b) is List
+  must len(b.v) > 0
+  return b.v[0]
+_hd = Intern('hd')
+_hd.prim = dohd
+
+def dotl(a, env, block):
+  b = arg1(a, env, block)
+  must type(b) is List
+  must len(b.v) > 0
+  return b.v[0]
+_tl = Intern('tl')
+_tl.prim = dotl
+
+def docons(a, env, block):
+  b, c = arg2(a, env, block)
+  say b
+  say c
+  must type(c) is List
+  return List([b] + c.v)
+_cons = Intern('cons')
+_cons.prim = docons
 
 def dolt(a, env, block):
   b, c = arg2(a, env, block)
