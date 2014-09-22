@@ -337,21 +337,21 @@ def dolist(a, env, block):
 _list = Intern('list')
 _list.prim = dolist
 
-def dohd(a, env, block):
+def docar(a, env, block):
   b, = arg1(a, env, block)
   must type(b) is List
   must len(b.v) > 0
   return b.v[0]
-_hd = Intern('hd')
-_hd.prim = dohd
+_car = Intern('car')
+_car.prim = docar
 
-def dotl(a, env, block):
+def docdr(a, env, block):
   b, = arg1(a, env, block)
   must type(b) is List
   must len(b.v) > 0
   return List(b.v[1:])
-_tl = Intern('tl')
-_tl.prim = dotl
+_cdr = Intern('cdr')
+_cdr.prim = docdr
 
 def docons(a, env, block):
   b, c = arg2(a, env, block)
