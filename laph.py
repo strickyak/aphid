@@ -225,9 +225,14 @@ class Symbol(Node):
       if .s == k:
         return v
     if block:
-      return block.Lookup(.s)
+      src = block.Lookup(.s)  # TODO -- this is unevaluated.  Need to separate src from evaluated.
+      return src.Eval(env, block)
+      return block.Lookup(.s)  # TODO -- this is unevaluated.  Need to separate src from evaluated.
   def Eval(env, block):
-    return .Lookup(env, block)
+    z = .Lookup(env, block)
+    if z is None:
+      raise 'Eval: cannot find a value for symbol %q' % .s
+    return z
   def Bool():
     return self is not _false
 

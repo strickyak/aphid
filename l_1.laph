@@ -22,8 +22,8 @@
 
 [Hello.World.Two]
   z = (expect 100 a)
-  xyz = xyz
+  xyz = 12345
   two_hun = (expect 200 (twice a))
   fourteen = (expect 14 (sum 11 3))
   fifteen = (expect 15 (tri 5))
-
+  y3 = (times y2 1000)

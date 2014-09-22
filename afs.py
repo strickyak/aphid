@@ -84,6 +84,10 @@ class HereFd:
   def __init__(fd):
     .fd = fd
 
+  def Stat():
+    say .fd
+    raise .fd
+
   def Read(n):
     z = aphid.WrapRead(.fd, n)
     return z
