@@ -4,9 +4,9 @@ from . import laph
 
 e = laph.Engine(' [Abc] a = "foo" [Def] b = "bar" [Ghi.Xyz] ')
 e.Parse()
-say e.stanzas
-say e.stanzas['Abc'].slots['a']
-z = laph.Engine('[x] y = ( add 34 "23" )').Parse().stanzas['x'].slots['y']
+say e.blocks
+say e.blocks['Abc'].slots['a']
+z = laph.Engine('[x] y = ( add 34 "23" )').Parse().blocks['x'].slots['y']
 say z
 say z.Show()
 assert z.Len() == 3, z
