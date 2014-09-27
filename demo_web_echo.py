@@ -33,9 +33,9 @@ def WebEcho(w, r):
   except as ex:
     w.Write( 'Exception:\n%s\n' % ex)
 
-PORT = flag.String('port', ':8080', 'Listen on this ":port"')
+BIND = flag.String('bind', ':8080', 'Listen on this ":port"')
 
 def main(args):
   args = flag.Munch(args)
   http.HandleFunc('/', WebEcho)
-  http.ListenAndServe( PORT.X , None )
+  http.ListenAndServe( BIND.X , None )

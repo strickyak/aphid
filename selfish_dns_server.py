@@ -1,8 +1,9 @@
 from go import net
-#from go import reflect
+from go import strings
 
-def ServeOnPort(p):
-  # bind = reflect.New(gotype(net.UDPAddr)).Interface()
+def ServeAnswerOnPort(answer, p):
+  quad = [int(s) for s in strings.Split(answer, '.')]
+  must 4 == len(quad)
   bind = gonew(net.UDPAddr)
   bind.Port = p
   say "Listening..."
@@ -41,10 +42,7 @@ def ServeOnPort(p):
     i = Put2(i, buf, 60)
 
     i = Put2(i, buf, 4)  # Len4 = 4
-    buf[i] = 127
-    buf[i+1] = 0
-    buf[i+2] = 0
-    buf[i+3] = 128
+    buf[i], buf[i+1], buf[i+2], buf[i+3] = quad
     buf = buf[:i+4]
 
     say conn.WriteToUDP(buf, addr)
@@ -54,5 +52,5 @@ def Put2(i, buf, x):
   buf[i+1] = 255 & x
   return i+2
 
-def main(argv):
-  ServeOnPort(int(argv[0]))
+def main(arg):
+  ServeAnswerOnPort(arg[0], int(arg[1]))
