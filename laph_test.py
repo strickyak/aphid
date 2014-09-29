@@ -20,3 +20,9 @@ assert type(x.x) is int
 say laph.Symbol
 say str(laph.Symbol)
 say repr(laph.Symbol)
+
+e = laph.Engine('(mapcar (lambda (n) (times n 10)) (list 1 2 3))')
+x = e.ParseExpr()
+must '(10 20 30)' == x.Eval([], None).Show()
+
+say laph.EvalLisp('(mapcar (lambda (n) (times n 10)) (list 1 2 3))').Show()

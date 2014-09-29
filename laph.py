@@ -31,6 +31,13 @@ QUOTE2 = regexp.MustCompile('["]["]')
 
 Interned = {}
 
+def min(v):  # TODO: support min as builtin.
+  z = None
+  for e in v:
+    if z is None or e < z:
+      z = e
+  return z
+
 def Tokenize(text):
   z = []  # YAK
   while text:
@@ -317,6 +324,15 @@ def doquote(a, env, block):
 _quote = Intern('quote')
 _quote.prim = doquote
 
+def domapcar(a, env, block):
+  b = args(a, env, block)
+  must len(b) >= 2
+  n = min([x.Len() for x in b[1:]])
+  z = [List([b[0]] + [y.v[i] for y in b[1:]]).Eval(env, block) for i in range(n)]
+  return List(z)
+_mapcar = Intern('mapcar')
+_mapcar.prim = domapcar
+
 def doif(a, env, block):
   must len(a.v) == 6
   s_if, cond, s_then, x, s_else, y = a.v
@@ -398,6 +414,10 @@ def doexpect(a, env, block):
   return c
 _expect = Intern('expect')
 _expect.prim = doexpect
+
+def EvalLisp(s):
+  e = Engine('(mapcar (lambda (n) (times n 10)) (list 1 2 3))')
+  return e.ParseExpr().Eval([], None)
 
 def main(argv):
   code = ioutil.ReadAll(os.Stdin)
