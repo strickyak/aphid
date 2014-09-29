@@ -6,6 +6,9 @@
 
 # Demo:
 # cat ~/yak/bind/yak/[a-z]*.*[a-z] | p rye run zoner.py  | ../rye/errfilt/errfilt | m
+#
+# p rye run zoner.py -- -port=9991 yak/zhuk.com  | p ../rye/errfilt/errfilt   | m
+
 
 from go import strings
 from go import regexp
