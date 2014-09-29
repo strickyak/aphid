@@ -9,8 +9,15 @@
 
 from go import strings
 from go import regexp
-from go import os
+#from go import os
 from go import io/ioutil
+from go import net
+from . import dns
+from . import flag
+
+PORT = flag.Int('port', 0, 'UDP port to listen on for DNS.')
+
+UDPMAX = 400  # Should be enough bytes for DNS packets.
 
 # [1] is Before the quote, [2] is In the quote, [3] is after.
 FindQuote = regexp.MustCompile('^([^;"]*)["]([^"]*)["](.*)$').FindStringSubmatch
@@ -29,9 +36,13 @@ FindUnclosedParen = regexp.MustCompile('^([^()]*)[(]([^()]*)$').FindStringSubmat
 # [1] ( [2] ) [3]
 FindClosedParen = regexp.MustCompile('^([^()]*)[(]([^()]*)[)]([^()]*)$').FindStringSubmatch
 
-def main(argv):
-  code = ioutil.ReadAll(os.Stdin)
-  lines = strings.Split(code, '\n')
+def DropTrailingDot(s):
+  if s and len(s) > 1 and s[-1] == '.':
+    return s[:-1]
+  return s
+
+def ParseBody(d, body):
+  lines = strings.Split(body, '\n')
   i = 0
   n = len(lines)
   while i < n:
@@ -99,5 +110,83 @@ def main(argv):
     if line:
         raise 'Bad line had remaining stuff', orig, remnant
 
+    # TODO -- correct defaults & relative stuff
+    words = [DropTrailingDot(w) for w in words]
+
     say quoted, words, orig
+    rr = dns.MakeRR(words, quoted)
+    if rr:
+      vec = d.get(rr.name)
+      if vec is None:
+        vec = []
+        d[rr.name] = vec
+      vec.append(rr)
+
     i += 1
+
+  return rr
+
+def Serve(d):
+  addy = gonew(net.UDPAddr)
+  addy.Port = PORT.X
+
+  say "Listening..."
+  conn = net.ListenUDP("udp4", addy)
+  conn.SetReadBuffer(4096)
+
+  while True:
+    buf = byt(UDPMAX)
+    say "ReadingFromUDP..."
+    n, addr = conn.ReadFromUDP(buf)
+    say n, addr, buf
+
+    go Answer(d, buf, n, addr, conn)
+
+def Answer(d, buf, n, addr, conn):
+ try:
+  q = dns.ReadQuestion(buf, n)
+  say q.name, q.typ
+  vec = d.get(q.name)
+  say vec
+  if vec:
+    say 11
+    buf2 = byt(UDPMAX)
+    say buf2
+    w = dns.Writer(buf2)
+    say 22
+    w.WriteHead1(q.serial, 0)
+    na = 0
+    say 33
+    for rr in vec:
+      say 'maybe', rr
+      if q.typ == 255 or rr.typ == q.typ:
+        na += 1
+    say 44, na
+    w.WriteHead2(0, na, 0, 0)
+    say 55
+    for rr in vec:
+      say 'consider', rr
+      if q.typ == 255 or rr.typ == q.typ:
+        say 'yes', rr
+        rr.WriteRR(w)
+    say 66, na
+
+    say conn.WriteToUDP(buf2[:w.i], addr)
+    say 77, na
+
+  pass
+ except as ex:
+  say 'CAUGHT', ex
+
+def Slurp(d, filename):
+  body = ioutil.ReadFile(filename)
+  ParseBody(d, body)
+
+def main(argv):
+  filenames = flag.Munch(argv)
+  d = {}
+  if not filenames:
+    raise 'Arguments required for zonefile filenames'
+  for filename in filenames:
+    Slurp(d, filename)
+  Serve(d)
