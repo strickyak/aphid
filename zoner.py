@@ -17,6 +17,7 @@ from go import io/ioutil
 from go import net
 from . import dns
 from . import flag
+from . import hexdump
 
 PORT = flag.Int('port', 0, 'UDP port to listen on for DNS.')
 
@@ -147,35 +148,26 @@ def Serve(d):
 
 def Answer(d, buf, n, addr, conn):
  try:
+  hexdump.HexDump(buf[:n], 'Packet IN')
   q = dns.ReadQuestion(buf, n)
-  say q.name, q.typ
   vec = d.get(q.name)
-  say vec
   if vec:
-    say 11
     buf2 = byt(UDPMAX)
-    say buf2
     w = dns.Writer(buf2)
-    say 22
     w.WriteHead1(q.serial, 0)
     na = 0
-    say 33
     for rr in vec:
-      say 'maybe', rr
       if q.typ == 255 or rr.typ == q.typ:
         na += 1
-    say 44, na
     w.WriteHead2(0, na, 0, 0)
-    say 55
     for rr in vec:
-      say 'consider', rr
       if q.typ == 255 or rr.typ == q.typ:
-        say 'yes', rr
         rr.WriteRR(w)
-    say 66, na
 
-    say conn.WriteToUDP(buf2[:w.i], addr)
-    say 77, na
+    packet = buf2[:w.i]
+    hexdump.HexDump(buf[:n], 'Packet IN')
+    hexdump.HexDump(packet, 'Packet OUT')
+    conn.WriteToUDP(packet, addr)
 
   pass
  except as ex:

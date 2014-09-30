@@ -36,19 +36,19 @@ TTL = 111
 #   |                                               |
 #   /                                               /
 #   /                      NAME                     /
-#   |                                               |
+#   |                                               | *
 #   +--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+
-#   |                      TYPE                     |
+#   |                      TYPE                     | 2B
 #   +--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+
-#   |                     CLASS                     |
-#   +--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+
+#   |                     CLASS                     | 2B
+#   +--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+ Question stops here.
 #   |                      TTL                      |
-#   |                                               |
+#   |                                               | 4B
 #   +--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+
-#   |                   RDLENGTH                    |
+#   |                   RDLENGTH                    | 2B
 #   +--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--|
 #   /                     RDATA                     /
-#   /                                               /
+#   /                                               / *
 #   +--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+
 
 # name(*) type(2) class(2) ttl(4) rdlen(4) rdata(*)
@@ -148,13 +148,10 @@ QR_AA = QR | AA
 
 class Writer:
   def __init__(buf):
-    say 8888
     .buf = buf
     .i = 0
-    say 9999, .buf, .i
 
   def WriteHead1(id, rcode):
-    say 7777, .buf, .i
     must .i == 0
     .Write2(id)
     .Write2(QR_AA | rcode) # QR=1, AA=1
@@ -173,7 +170,7 @@ class Writer:
 
   def FinishRData():
     n = .i - .mark
-    .Write4At(n, .mark-2)
+    .Write2At(n, .mark-2)
 
   def Write4At(x, p):
     .buf[p+0] = 255 & (x >> 24)
@@ -182,15 +179,20 @@ class Writer:
     .buf[p+3] = 255 & x
 
   def Write4(x):
-    .Write4At(x, .i)
+    .buf[.i+0] = 255 & (x >> 24)
+    .buf[.i+1] = 255 & (x >> 16)
+    .buf[.i+2] = 255 & (x >> 8)
+    .buf[.i+3] = 255 & x
     .i += 4
 
+  def Write2At(x, p):
+    .buf[p] = 255 & (x >> 8)
+    .buf[p+1] = 255 & x
+
   def Write2(x):
-    say 1111, x, .i, .buf
     .buf[.i] = 255 & (x >> 8)
     .buf[.i+1] = 255 & x
     .i += 2
-    say 2222
 
   def WriteQuad(quad):
     .buf[.i], .buf[.i+1], .buf[.i+2], .buf[.i+3] = quad
@@ -202,7 +204,7 @@ class Writer:
       .i += 1
 
   def WriteDomain(domain):
-    for word in domain:
+    for word in strings.Split(domain,'.'):
       .buf[.i] = len(word)
       .i += 1
       .WriteString(word)
@@ -228,7 +230,6 @@ class ReadQuestion:
     while buf[.i]:
       n = buf[.i]
       .i += 1
-      say 'Domain Len', n
       b = byt(n)
       for j in range(n):
         b[j] = buf[.i+j]
@@ -238,7 +239,6 @@ class ReadQuestion:
       .i += n
     .i += 1  # Skip END.
     .typ = .Read2At(.i)
-    say .name, .typ
 
   def Read2At(p):
     return (.buf[p] << 8) | .buf[p+1]
