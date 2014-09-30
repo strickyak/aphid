@@ -45,7 +45,9 @@ def DropTrailingDot(s):
     return s[:-1]
   return s
 
-def ParseBody(d, body):
+def ParseBody(d, body, origin):
+  ttl = dns.TTL
+  current = origin  # Default if no domain in column 1.
   lines = strings.Split(body, '\n')
   i = 0
   n = len(lines)
@@ -86,14 +88,16 @@ def ParseBody(d, body):
     orig = line
 
     # Find first word, which may be missing.
-    word1 = None
+    word1 = current
     fw1 = FindWord(line)
     if fw1:
       _, word1, line = fw1
+      if word1[0] != '$':
+        current = word1  # Set new default.
     else:
       # If did not remove a first word,
       # we didn't remove any white space either,
-      # so do it now.
+      # so do it now.  word1 defaults to current.
       fws = FindWhiteSpace(line)
       if fws:
         _, line = FindWhiteSpace(line)
@@ -114,11 +118,24 @@ def ParseBody(d, body):
     if line:
         raise 'Bad line had remaining stuff', orig, remnant
 
-    # TODO -- correct defaults & relative stuff
-    words = [DropTrailingDot(w) for w in words]
+    # Replace @ with origin.
+    words = [(origin if w == '@' else w) for w in words]
 
-    say quoted, words, orig
-    rr = dns.MakeRR(words, quoted)
+    # Special commands, $ORIGIN and $TTL.
+    if words[0] == '$ORIGIN':
+      say words
+      origin = dns.Absolute(words[1], current)
+      i += 1
+      continue
+
+    if words[0] == '$TTL':
+      say words
+      ttl = int(words[1])
+      i += 1
+      continue
+
+    ##### say quoted, words, orig
+    rr = dns.MakeRR(words, quoted, current, ttl)
     if rr:
       vec = d.get(rr.name)
       if vec is None:
@@ -174,8 +191,11 @@ def Answer(d, buf, n, addr, conn):
   say 'CAUGHT', ex
 
 def Slurp(d, filename):
+  say filename
+  origin = strings.Split(filename, '/')[-1]
+  say origin
   body = ioutil.ReadFile(filename)
-  ParseBody(d, body)
+  ParseBody(d, body, origin)
 
 def main(argv):
   filenames = flag.Munch(argv)

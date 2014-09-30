@@ -53,11 +53,11 @@ TTL = 111
 
 # name(*) type(2) class(2) ttl(4) rdlen(4) rdata(*)
 class ResourceRec:
-  def __init__(name, typ):
+  def __init__(name, ttl, typ):
     .name = name
+    .ttl = ttl
     .typ = typ
     .clas = IN  # Only support IN.
-    .ttl = TTL
 
   def WriteRR(w):
     w.WriteDomain(.name)
@@ -69,15 +69,15 @@ class ResourceRec:
     w.FinishRData()
 
 class CnameRec(ResourceRec):
-  def __init__(name, targ):
-    super(name, CNAME)
+  def __init__(name, ttl, targ):
+    super(name, ttl, CNAME)
     .targ = targ
   def WriteRData(w):
     w.WriteDomain(.targ)
 
 class A4Rec(ResourceRec):
-  def __init__(name, quad):
-    super(name, A4)
+  def __init__(name, ttl, quad):
+    super(name, ttl, A4)
     .quad = [int(x) for x in strings.Split(quad, '.')]
     must len(.quad) == 4
   def WriteRData(w):
@@ -85,8 +85,8 @@ class A4Rec(ResourceRec):
   
 # primary(*) email(*) serial(4) refresh(4) retry(4) expire(4) minimum(4)
 class SoaRec(ResourceRec):
-  def __init__(name, primary, email, serial, refresh, retry, expire, minimum):
-    super(name, SOA)
+  def __init__(name, ttl, primary, email, serial, refresh, retry, expire, minimum):
+    super(name, ttl, SOA)
     .primary = primary
     .email = email
     .serial = serial
@@ -104,15 +104,15 @@ class SoaRec(ResourceRec):
     w.Write4(.minimum)
   
 class NsRec(ResourceRec):
-  def __init__(name, targ):
-    super(name, NS)
+  def __init__(name, ttl, targ):
+    super(name, ttl, NS)
     .targ = targ
   def WriteRData(w):
     w.WriteDomain(.targ)
 
 class MxRec(ResourceRec):
-  def __init__(name, pref, targ):
-    super(name, MX)
+  def __init__(name, ttl, pref, targ):
+    super(name, ttl, MX)
     .pref = pref
     .targ = targ
   def WriteRData(w):
@@ -120,8 +120,8 @@ class MxRec(ResourceRec):
     w.WriteDomain(.targ)
 
 class TxtRec(ResourceRec):
-  def __init__(name, s):
-    super(name, TXT)
+  def __init__(name, ttl, s):
+    super(name, ttl, TXT)
     .s = s
   def WriteRData(w):
     w.WriteString(.s)
@@ -244,20 +244,41 @@ class ReadQuestion:
     return (.buf[p] << 8) | .buf[p+1]
 
 NUMERIC = regexp.MustCompile('^[0-9]+$').FindString
+
+def Absolute(domain, current):
+  if domain[-1] == '.':
+    return domain[:-1]
+  else:
+    return '%s.%s' % (domain, current)
     
-def MakeRR(words quoted):
-  if len(words) < 3:
+def MakeRR(words, quoted, current, ttl):
+  say 'MakeRR', ttl
+  if len(words) + len(quoted) < 3:
     return None
-  domain = 'unknown.domain'  # TODO
-  if words[0]:
-    domain = words[0]
+
+  domain = Absolute(words[0], current)
+
   i = 1
-  if NUMERIC(words[i]):  # Skip TTL
+  if NUMERIC(words[i]):  # override TTL if number.
+    ttl = int(words[i])
     i += 1
-  if words[i] == 'IN':  # Skip IN  # TODO: .upper()
+
+  if strings.ToUpper(words[i]) == 'IN':  # Skip IN.
+    say '=', ttl
     i += 1
-  if words[i] == 'A':  # TODO: .upper()
-    return A4Rec(domain, words[i+1])
+
+  if strings.ToUpper(words[i]) == 'A':
+    quad = words[i+1]
+    z = A4Rec(domain, ttl, quad)
+    say 'A', domain, quad, z
+    return z
+
+  if strings.ToUpper(words[i]) == 'CNAME':
+    target = Absolute(words[i+1], current)
+    z = CnameRec(domain, ttl, target)
+    say 'CNAME', domain, target, z
+    return z
+
   return None
 
 pass
