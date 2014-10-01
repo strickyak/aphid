@@ -176,7 +176,8 @@ def Answer(d, buf, n, addr, conn):
     for rr in vec:
       if q.typ == 255 or rr.typ == q.typ:
         na += 1
-    w.WriteHead2(0, na, 0, 0)
+    w.WriteHead2(1, na, 0, 0)
+    w.WriteQuestion(q)
     for rr in vec:
       if q.typ == 255 or rr.typ == q.typ:
         rr.WriteRR(w)

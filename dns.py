@@ -158,11 +158,16 @@ class Writer:
 
   def WriteHead2(qu, an, au, ad):
     must .i == 4
-    must qu == 0  # Don't ask questions.
+    must qu == 1
     .Write2(qu)
     .Write2(an)
     .Write2(au)
     .Write2(ad)
+
+  def WriteQuestion(q):
+    .WriteDomain(q.name)
+    .Write2(q.typ)
+    .Write2(IN)
 
   def StartRData():
     .i += 2
@@ -242,6 +247,7 @@ class ReadQuestion:
 
   def Read2At(p):
     return (.buf[p] << 8) | .buf[p+1]
+    
 
 NUMERIC = regexp.MustCompile('^[0-9]+$').FindString
 
@@ -277,6 +283,19 @@ def MakeRR(words, quoted, current, ttl):
     target = Absolute(words[i+1], current)
     z = CnameRec(domain, ttl, target)
     say 'CNAME', domain, target, z
+    return z
+
+  if strings.ToUpper(words[i]) == 'TXT':
+    txt = Absolute(quoted[0], current)
+    z = TxtRec(domain, ttl, txt)
+    say 'TXT', domain, target, z
+    return z
+
+  if strings.ToUpper(words[i]) == 'MX':
+    pref = int(words[i+1])
+    target = Absolute(words[i+2], current)
+    z = MxRec(domain, ttl, pref, target)
+    say 'MX', domain, target, z
     return z
 
   return None
