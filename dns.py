@@ -204,18 +204,16 @@ class Writer:
     .i += 4
 
   def WriteString(s):
+    .buf[.i] = len(s)
+    .i += 1
     for c in byt(s):
       .buf[.i] = c
       .i += 1
 
   def WriteDomain(domain):
-    for word in strings.Split(domain,'.'):
-      .buf[.i] = len(word)
-      .i += 1
+    for word in strings.Split(domain, '.'):
       .WriteString(word)
-    .buf[.i] = 0
-    .i += 1
-
+    .WriteString("")
 
 class ReadQuestion:
   def __init__(buf, n):
