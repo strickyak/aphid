@@ -89,11 +89,11 @@ class SoaRec(ResourceRec):
     super(name, ttl, SOA)
     .primary = primary
     .email = email
-    .serial = serial
-    .refresh = refresh
-    .retry = retry
-    .expire = expire
-    .minimum = minimum
+    .serial = int(serial)
+    .refresh = int(refresh)
+    .retry = int(retry)
+    .expire = int(expire)
+    .minimum = int(minimum)
   def WriteRData(w):
     w.WriteDomain(.primary)
     w.WriteDomain(.email)
@@ -150,6 +150,9 @@ class Writer:
   def __init__(buf):
     .buf = buf
     .i = 0
+    #.firstDomain = None
+    #.firstOffset = 0
+    .domainMap = {}
 
   def WriteHead1(id, rcode):
     must .i == 0
@@ -211,9 +214,36 @@ class Writer:
       .i += 1
 
   def WriteDomain(domain):
+    #return .WriteCompressed(domain)
+    p = .domainMap.get(domain)  # Have we seen it?
+    if p is not None:
+      .Write2(3*64*256 | p)  # Use message compression.
+      return
+
+    .domainMap[domain] = .i  # Save current loc for future compression.
+
     for word in strings.Split(domain, '.'):
       .WriteString(word)
     .WriteString("")
+
+  def WriteCompressed(domain):
+    say 'WriteCompressed?', domain, .i
+    p = .domainMap.get(domain)  # Have we seen it?
+    if p is not None:
+      .Write2(3*64*256 | p)  # Use message compression.
+      say 'Compressed:', domain, .i, p
+      return
+
+    .domainMap[domain] = .i  # Save current loc for future compression.
+
+    m = DotSplit(domain)
+    if m:
+      .WriteString(m[1])
+      .WriteCompressed(m[2])
+    else:
+      .WriteString(domain)
+
+DotSplit = regexp.MustCompile('^([^.]+)[.](.+)$').FindStringSubmatch
 
 class ReadQuestion:
   def __init__(buf, n):
@@ -283,8 +313,16 @@ def MakeRR(words, quoted, current, ttl):
     say 'CNAME', domain, target, z
     return z
 
+  if strings.ToUpper(words[i]) == 'SOA':
+    mname, rname = Absolute(words[i+1], current), Absolute(words[i+2], current)
+    serial, refresh, retry, expire, minimum = words[i+3:]
+    z = SoaRec(domain, ttl, mname, rname, serial, refresh, retry, expire, minimum)
+    say 'SOA', domain, target, z
+    return z
+
   if strings.ToUpper(words[i]) == 'TXT':
-    txt = Absolute(quoted[0], current)
+    must len(quoted) == 1
+    txt = quoted[0]
     z = TxtRec(domain, ttl, txt)
     say 'TXT', domain, target, z
     return z

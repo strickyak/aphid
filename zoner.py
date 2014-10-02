@@ -21,7 +21,7 @@ from . import hexdump
 
 PORT = flag.Int('port', 0, 'UDP port to listen on for DNS.')
 
-UDPMAX = 400  # Should be enough bytes for DNS packets.
+UDPMAX = 512  # Should be enough bytes for DNS packets.
 
 # [1] is Before the quote, [2] is In the quote, [3] is after.
 FindQuote = regexp.MustCompile('^([^;"]*)["]([^"]*)["](.*)$').FindStringSubmatch
@@ -176,11 +176,17 @@ def Answer(d, buf, n, addr, conn):
     for rr in vec:
       if q.typ == 255 or rr.typ == q.typ:
         na += 1
+        #if na >= 2:
+        #  break
     w.WriteHead2(1, na, 0, 0)
     w.WriteQuestion(q)
+    j = 0
     for rr in vec:
       if q.typ == 255 or rr.typ == q.typ:
         rr.WriteRR(w)
+        j += 1
+        #if j >= 2:
+        #  break
 
     packet = buf2[:w.i]
     hexdump.HexDump(buf[:n], 'Packet IN')
