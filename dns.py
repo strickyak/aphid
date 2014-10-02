@@ -173,18 +173,14 @@ class Writer:
     .Write2(IN)
 
   def StartRData():
-    .i += 2
-    .mark = .i
+    .mark = .i   # Remember this place; FinishRData will write length here.
+    .i += 2      # Skip 2 bytes for that length.
 
   def FinishRData():
-    n = .i - .mark
-    .Write2At(n, .mark-2)
-
-  def Write4At(x, p):
-    .buf[p+0] = 255 & (x >> 24)
-    .buf[p+1] = 255 & (x >> 16)
-    .buf[p+2] = 255 & (x >> 8)
-    .buf[p+3] = 255 & x
+    n = .i - .mark  # Size written since mark in StartRData().
+    tmp, .i = .i, .mark  # Temp replace .i with the mark
+    .Write2(n)
+    .i = tmp  # Restore .i
 
   def Write4(x):
     .buf[.i+0] = 255 & (x >> 24)
@@ -193,14 +189,14 @@ class Writer:
     .buf[.i+3] = 255 & x
     .i += 4
 
-  def Write2At(x, p):
-    .buf[p] = 255 & (x >> 8)
-    .buf[p+1] = 255 & x
-
   def Write2(x):
     .buf[.i] = 255 & (x >> 8)
     .buf[.i+1] = 255 & x
     .i += 2
+
+  def Write1(x):
+    .buf[.i] = 255 & x
+    .i += 1
 
   def WriteQuad(quad):
     .buf[.i], .buf[.i+1], .buf[.i+2], .buf[.i+3] = quad
@@ -214,24 +210,9 @@ class Writer:
       .i += 1
 
   def WriteDomain(domain):
-    #return .WriteCompressed(domain)
     p = .domainMap.get(domain)  # Have we seen it?
     if p is not None:
       .Write2(3*64*256 | p)  # Use message compression.
-      return
-
-    .domainMap[domain] = .i  # Save current loc for future compression.
-
-    for word in strings.Split(domain, '.'):
-      .WriteString(word)
-    .WriteString("")
-
-  def WriteCompressed(domain):
-    say 'WriteCompressed?', domain, .i
-    p = .domainMap.get(domain)  # Have we seen it?
-    if p is not None:
-      .Write2(3*64*256 | p)  # Use message compression.
-      say 'Compressed:', domain, .i, p
       return
 
     .domainMap[domain] = .i  # Save current loc for future compression.
@@ -239,9 +220,10 @@ class Writer:
     m = DotSplit(domain)
     if m:
       .WriteString(m[1])
-      .WriteCompressed(m[2])
+      .WriteDomain(m[2])
     else:
       .WriteString(domain)
+      .Write1(0)
 
 DotSplit = regexp.MustCompile('^([^.]+)[.](.+)$').FindStringSubmatch
 
@@ -311,6 +293,12 @@ def MakeRR(words, quoted, current, ttl):
     target = Absolute(words[i+1], current)
     z = CnameRec(domain, ttl, target)
     say 'CNAME', domain, target, z
+    return z
+
+  if strings.ToUpper(words[i]) == 'NS':
+    target = Absolute(words[i+1], current)
+    z = NsRec(domain, ttl, target)
+    say 'NS', domain, target, z
     return z
 
   if strings.ToUpper(words[i]) == 'SOA':
