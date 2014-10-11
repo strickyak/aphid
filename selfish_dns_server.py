@@ -4,7 +4,7 @@ from go import strings
 def ServeAnswerOnPort(answer, p):
   quad = [int(s) for s in strings.Split(answer, '.')]
   must 4 == len(quad)
-  bind = gonew(net.UDPAddr)
+  bind = go_new(net.UDPAddr)
   bind.Port = p
   say "Listening..."
   conn = net.ListenUDP("udp4", bind)

@@ -19,15 +19,15 @@ class Cipher:
     return buf
 
   def Seal(plain, serial):
-    extra = pickle(serial)
+    extra = rye_pickle(serial)
     nonce = .Nonce()
     dark = .gcm.Seal(None, nonce, plain, extra)
-    return pickle( (nonce, dark, extra) )
+    return rye_pickle( (nonce, dark, extra) )
 
   def Open(sealed):
-    nonce, dark, extra = unpickle(sealed)
+    nonce, dark, extra = rye_unpickle(sealed)
     plain = .gcm.Open(None, nonce, dark, extra)
-    serial = unpickle(extra)
+    serial = rye_unpickle(extra)
     return plain, serial
 
 def main(argv):

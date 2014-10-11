@@ -1,5 +1,5 @@
 from go import net
-from go import reflect
+#from go import reflect
 
 class DnsHeader:
   def __init__(self):
@@ -26,7 +26,8 @@ class DnsHeader:
     return hdr
 
 def AskDns(server, query):
-  svr = reflect.New(gotype(net.UDPAddr)).Interface()  # Or, gonew(net.UDPAddr).
+  #svr = reflect.New(gotype(net.UDPAddr)).Interface()  # Or, go_new(net.UDPAddr).
+  svr = go_new(net.UDPAddr)
   svr.Port = 53
   svr.IP = net.ParseIP(server)
 

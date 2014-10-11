@@ -12,7 +12,7 @@ from . import gcm
 SerialPrefix = byt(12)  # Per Process nonce.
 rand.Read(SerialPrefix)
 
-SerialMutex = gonew(sync.Mutex)
+SerialMutex = go_new(sync.Mutex)
 SerialCounter = 100
 def Serial():
   global SerialCounter
@@ -57,7 +57,7 @@ class Server:
         break
       conn, serial, result, err = tup
 
-      p = .sealer.Seal(pickle( (serial, result, err) ), serial)
+      p = .sealer.Seal(rye_pickle( (serial, result, err) ), serial)
       WriteChunk(conn, p)
     .conn.Close()
 
@@ -71,7 +71,7 @@ class Server:
         must str(ex) == 'EOF'
         return
       pay, ser = .sealer.Open(dark)
-      unp = unpickle(pay)
+      unp = rye_unpickle(pay)
       serial, proc, args = unp
       must ser == serial
       go .Execute(conn, serial, proc, args)
@@ -112,7 +112,7 @@ class Client:
       req.serial = Serial()
       .requests[req.serial] = req
 
-      pay = pickle( (req.serial, req.proc, req.args) )
+      pay = rye_pickle( (req.serial, req.proc, req.args) )
       dark = .sealer.Seal(pay, req.serial)
       WriteChunk(.conn, dark)
 
@@ -124,7 +124,7 @@ class Client:
       # TODO -- when to stop.
       p = ReadChunk(r)
       pay, ser = .sealer.Open(p)
-      serial, result, err = unpickle(pay)
+      serial, result, err = rye_unpickle(pay)
       must serial == ser # TODO
       .requests[serial].replyQ.Put( (result, err) )
 

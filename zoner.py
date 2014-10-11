@@ -1,3 +1,5 @@
+# TODO: NXDOMAIN vs No Answer
+
 # NOT SUPPORTED: BOTH "quotes" and (parens) on same line.
 # We handle quotes first, then get continuation lines.
 # So if quotes are on a continuation line, we will not see it.
@@ -148,7 +150,7 @@ def ParseBody(d, body, origin):
   return rr
 
 def Serve(d):
-  addy = gonew(net.UDPAddr)
+  addy = go_new(net.UDPAddr)
   addy.Port = PORT.X
 
   say "Listening..."
