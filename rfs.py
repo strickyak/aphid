@@ -28,22 +28,22 @@ def localPath(path):
 def AReadAt(path, n, pos):
   #say 'YYY <<< AReadAt', path, n, pos
   fd = os.Open(localPath(path))
-  defer fd.Close()
-  buf, eof = aphid.WrapReadAt(fd, n, pos)
-  #say 'YYY >>> AReadAt', buf, eof
-  return buf, eof
+  with defer fd.Close():
+    buf, eof = aphid.WrapReadAt(fd, n, pos)
+    #say 'YYY >>> AReadAt', buf, eof
+    return buf, eof
 
 def AWriteAt(path, data, pos):
   fd = os.OpenFile(localPath(path), os.O_WRONLY | os.O_CREATE, 0666)
-  defer fd.Close()
-  return fd.WriteAt(data, pos)
+  with defer fd.Close():
+    return fd.WriteAt(data, pos)
 
 def AListDir(path):
   fd = os.Open(localPath(path))
-  defer fd.Close()
-  vec = fd.Readdir(-1)
-  z = [(i.Name(), i.IsDir(), i.Size(), i.ModTime().Unix()) for i in vec]
-  return z
+  with defer fd.Close():
+    vec = fd.Readdir(-1)
+    z = [(i.Name(), i.IsDir(), i.Size(), i.ModTime().Unix()) for i in vec]
+    return z
 
 class RfsServer(rpc.Server):
   def __init__(hostport, keyname, key):

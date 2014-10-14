@@ -37,22 +37,23 @@ BS = 512 # Block Size
 def cat1(path, out):
   fd = afs.Open(path)
   #say 'YYY cat1', fd
-  defer fd.Close()
-  while True:
-    #say 'YYY cat1 fd.Read', fd
-    buf, eof = fd.Read(BS)
-    #say 'YYY cat1 fd.Read', buf, eof
-    if buf:
-      ### aphid.WrapWrite(out, buf)  # Writes fully.
-      n = len(buf)
-      while n > 0:
-        c = out.Write(buf)
-        buf = buf[c:]
-        n -= c
-        #say 'YYYYYYYY', n, c
-    #say 'YYY called aphid.WrapWrite', len(buf), buf
-    if eof:
-      break
+  with defer fd.Close():
+    while True:
+      #say 'YYY cat1 fd.Read', fd
+      buf, eof = fd.Read(BS)
+      #say 'YYY cat1 fd.Read', buf, eof
+      if buf:
+        ### aphid.WrapWrite(out, buf)  # Writes fully.
+        n = len(buf)
+        while n > 0:
+          c = out.Write(buf)
+          buf = buf[c:]
+          n -= c
+          #say 'YYYYYYYY', n, c
+      #say 'YYY called aphid.WrapWrite', len(buf), buf
+      if eof:
+        break
+    pass
   pass
 
 def Cat(args):
@@ -60,15 +61,14 @@ def Cat(args):
   if CREATE.X:
     must not APPEND.X
     out = afs.Create(CREATE.X)
-    defer out.Close()
   if APPEND.X:
     must not CREATE.X
     out = afs.Append(APPEND.X)
-    defer out.Close()
   if not out:
     out = afs.Append('/Std/out')
-  for arg in args:
-    cat1(arg, out)
+  with defer out.Close():
+    for arg in args:
+      cat1(arg, out)
   pass
 
 
@@ -85,21 +85,21 @@ def FindFiles1(top):
     A.Err('fu find: Cannot Open (%s): %q\n' % (ex, top))
     A.SetExitStatus(2)
     return
-  defer d.Close()
-  try:
-    for name, isDir, mtime, sz in d.List():
-      #say 'FFFFFF', name, isDir, mtime, sz
-      jname = J(top, name)
-      #say 'FFFFFFJ', jname, isDir, mtime, sz
-      if isDir:
-        for x in FindFiles1(jname):
-          yield x
-      else:
-        yield jname, isDir, mtime, sz
-  except as ex:
-    A.Err('fu find: Cannot List (%s): %q' % (ex, top))
-    A.SetExitStatus(2)
-    return
+  with defer d.Close():
+    try:
+      for name, isDir, mtime, sz in d.List():
+        #say 'FFFFFF', name, isDir, mtime, sz
+        jname = J(top, name)
+        #say 'FFFFFFJ', jname, isDir, mtime, sz
+        if isDir:
+          for x in FindFiles1(jname):
+            yield x
+        else:
+          yield jname, isDir, mtime, sz
+    except as ex:
+      A.Err('fu find: Cannot List (%s): %q' % (ex, top))
+      A.SetExitStatus(2)
+      return
 
 def Sync(args):
   if len(args) != 2:

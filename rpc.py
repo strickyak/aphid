@@ -17,9 +17,9 @@ SerialCounter = 100
 def Serial():
   global SerialCounter
   SerialMutex.Lock()
-  defer SerialMutex.Unlock()
-  SerialCounter += 1
-  return (SerialPrefix, SerialCounter)
+  with defer SerialMutex.Unlock():
+    SerialCounter += 1
+    return (SerialPrefix, SerialCounter)
 
 class Request:
   def __init__(proc, args):
@@ -63,18 +63,18 @@ class Server:
 
   def DoRead(conn):
     r = bufio.NewReader(conn)
-    defer conn.Close()
-    while True:
-      try:
-        dark = ReadChunk(r)
-      except as ex:
-        must str(ex) == 'EOF'
-        return
-      pay, ser = .sealer.Open(dark)
-      unp = rye_unpickle(pay)
-      serial, proc, args = unp
-      must ser == serial
-      go .Execute(conn, serial, proc, args)
+    with defer conn.Close():
+      while True:
+        try:
+          dark = ReadChunk(r)
+        except as ex:
+          must str(ex) == 'EOF'
+          return
+        pay, ser = .sealer.Open(dark)
+        unp = rye_unpickle(pay)
+        serial, proc, args = unp
+        must ser == serial
+        go .Execute(conn, serial, proc, args)
 
   def Execute(conn, serial, proc, args):
     result, err = None, None
