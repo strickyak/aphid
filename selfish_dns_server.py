@@ -15,14 +15,13 @@ def ServeAnswerOnPort(answer, p):
     n, addr = conn.ReadFromUDP(buf)
     say n, addr, buf
 
-    assert buf[2] & 128 == 0
+    if buf[2] & 128:  # Question, not response.
+      continue
     buf[2] = 128  # Response.
     buf[3] = 0    # No recursion.
-    assert buf[5] == 1    # One question.
+    if buf[5] != 1:  # One question.
+      continue
     buf[7] = 1    # One answer.
-
-    assert buf[4] == 0
-    assert buf[5] == 1
 
     i = 12
     while buf[i]:
