@@ -134,3 +134,7 @@ d = Eval('{ "color": "red", "area": 51 } ')
 e = { "color": "red", "area": 51 }
 
 assert sorted([(k, d[k]) for k in d]) == sorted([(k, e[k]) for k in e])
+
+def main(argv):
+  for a in argv:
+    say a, Eval(a)
