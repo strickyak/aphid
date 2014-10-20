@@ -22,4 +22,4 @@ _fu_find_test.py:
 	python ../rye/rye.py run fu_find_test.py
 
 clean:
-	for x in */ryemodule.go ; do rm -r `dirname $$x`/ ; done
+	for x in */ryemodule.go ; do rm -rf `dirname $$x`/ ; done
