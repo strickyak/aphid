@@ -94,6 +94,8 @@ def ParseBody(d, body, origin):
     fw1 = FindWord(line)
     if fw1:
       _, word1, line = fw1
+      if word1 == '@':
+        word1 = origin
       if word1[0] != '$':
         current = word1  # Set new default.
     else:

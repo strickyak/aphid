@@ -9,7 +9,9 @@ class Cipher:
     key = byt(key)
     must len(key) in KEY_SIZES, len(key)
     .block = aes.NewCipher(key)
+    say .block
     .gcm = cipher.NewGCM(.block)
+    say .gcm
     .nonceSize = int(.gcm.NonceSize())
     .overhead = int(.gcm.Overhead())
 
@@ -41,3 +43,5 @@ def main(argv):
   recovered, extra = c.Open(sealed)
   say recovered, extra
   must (str(recovered), extra) == (plain, serial)
+  say c.gcm.Overhead()
+  say c.gcm.NonceSize()
