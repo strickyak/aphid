@@ -31,13 +31,6 @@ QUOTE2 = regexp.MustCompile('["]["]')
 
 Interned = {}
 
-def min(v):  # TODO: support min as builtin.
-  z = None
-  for e in v:
-    if z is None or e < z:
-      z = e
-  return z
-
 def Tokenize(text):
   z = []  # YAK
   while text:
