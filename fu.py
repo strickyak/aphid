@@ -128,11 +128,19 @@ def Sync1(source, dest):
       say rel_src_path, 'need to create this'
   
 
-Ensemble = { 'test1': Test1, 'cat': Cat, 'find': FindFiles, 'sync': Sync }
+Ensemble = {
+    'test1': Test1,
+    'cat': Cat,
+    'find': FindFiles,
+    'sync': Sync
+}
 
-CREATE = flag.String('create', '', 'Create output file with "cat" command.')
-APPEND = flag.String('append', '', 'Append output file with "cat" command.')
-RFS = flag.String('rfs', 'localhost:9876', 'Location of rfs server')
+CREATE = flag.String('create', '',
+    'Create output file with "cat" command.')
+APPEND = flag.String('append', '',
+    'Append output file with "cat" command.')
+RFS = flag.String('rfs', 'localhost:9876',
+    'Location of rfs server')
 
 def main(args):
   args = flag.Munch(args)
