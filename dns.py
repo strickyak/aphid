@@ -245,7 +245,7 @@ class ReadQuestion:
     while buf[.i]:
       n = buf[.i]
       .i += 1
-      b = byt(n)
+      b = mkbyt(n)
       for j in range(n):
         b[j] = buf[.i+j]
       if .name:

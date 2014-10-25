@@ -21,7 +21,7 @@ def ServeAnswerOnPort(answer, p):
 
 def DoOnce(conn, quad):
   try:
-    buf = byt(400)
+    buf = mkbyt(400)
     say "Reading..."
     n, addr = conn.ReadFromUDP(buf)
     say n, addr

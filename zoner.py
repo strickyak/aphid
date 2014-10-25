@@ -160,7 +160,7 @@ def Serve(d):
   conn.SetReadBuffer(4096)
 
   while True:
-    buf = byt(UDPMAX)
+    buf = mkbyt(UDPMAX)
     say "ReadingFromUDP..."
     n, addr = conn.ReadFromUDP(buf)
     say n, addr, buf
@@ -173,7 +173,7 @@ def Answer(d, buf, n, addr, conn):
   q = dns.ReadQuestion(buf, n)
   vec = d.get(q.name)
   if vec:
-    buf2 = byt(UDPMAX)
+    buf2 = mkbyt(UDPMAX)
     w = dns.Writer(buf2)
     w.WriteHead1(q.serial, 0)
     na = 0

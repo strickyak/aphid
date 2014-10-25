@@ -1,5 +1,4 @@
 from go import net
-#from go import reflect
 
 class DnsHeader:
   def __init__(self):
@@ -17,7 +16,7 @@ class DnsHeader:
     self.ar = []
 
   def FormQuestion(self):
-    hdr = byt(12 * '\000')
+    hdr = mkbyt(12)
     say (hdr)
     hdr[0] = 50
     say (hdr)

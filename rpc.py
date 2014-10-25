@@ -9,7 +9,7 @@ from go import github.com/strickyak/aphid
 from . import eval
 from . import gcm
 
-SerialPrefix = byt(12)  # Per Process nonce.
+SerialPrefix = mkbyt(12)  # Per Process nonce.
 rand.Read(SerialPrefix)
 
 SerialMutex = go_new(sync.Mutex)

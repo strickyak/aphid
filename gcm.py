@@ -16,7 +16,7 @@ class Cipher:
     .overhead = int(.gcm.Overhead())
 
   def Nonce():
-    buf = byt(.nonceSize)
+    buf = mkbyt(.nonceSize)
     rand.Read(buf)  # Uses ReadFull.
     return buf
 
