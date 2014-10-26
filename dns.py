@@ -24,10 +24,24 @@ MAILA           = 254 #A request for mail agent RRs (Obsolete - see MX)
 STAR            = 255 #A request for all records
 
 # classes
-IN              = 1 #the Internet
-CS              = 2 #the CSNET class (Obsolete - used only for examples in
-CH              = 3 #the CHAOS class
-HS              = 4 #Hesiod [Dyer 87]
+IN              = 1 # the Internet
+CS              = 2 # the CSNET class (Obsolete - used only for examples in
+CH              = 3 # the CHAOS class
+HS              = 4 # Hesiod [Dyer 87]
+
+# opcodes
+QUERY           = 0 # a standard query
+IQUERY          = 1 # an inverse query
+STATUS          = 2 # a server status request
+
+# RCODE
+NO_ERROR        = 0
+FORMAT_ERROR    = 1
+SERVER_ERROR    = 2
+NAME_ERROR      = 3
+NOT_IMPLEMENTED = 4
+REFUSED         = 5
+
 
 TTL = 111
 
@@ -142,8 +156,8 @@ class TxtRec(ResourceRec):
 #    |                    ARCOUNT                    |
 #    +--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+
 
-QR = 1 << 15
-AA = 1 << 11
+QR = 1 << 15  # Response, not query.
+AA = 1 << 10  # Authoritative Answer.
 QR_AA = QR | AA
 
 class Writer:
@@ -174,10 +188,10 @@ class Writer:
 
   def StartRData():
     .mark = .i   # Remember this place; FinishRData will write length here.
-    .i += 2      # Skip 2 bytes for that length.
+    .i += 2      # Skip 2 bytes for the length.
 
   def FinishRData():
-    n = .i - .mark  # Size written since mark in StartRData().
+    n = .i - .mark - 2  # Size written since mark in StartRData().
     tmp, .i = .i, .mark  # Temp replace .i with the mark
     .Write2(n)
     .i = tmp  # Restore .i
