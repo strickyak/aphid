@@ -177,11 +177,18 @@ def Answer(d, buf, n, addr, conn):
     if vec:
       na = sum([int(q.typ == 255 or rr.typ == q.typ) for rr in vec])
       w.WriteHead1(q.serial, dns.NO_ERROR)
-      w.WriteHead2(1, na, 0, 0)
-      w.WriteQuestion(q)
-      for rr in vec:
-        if q.typ == 255 or rr.typ == q.typ:
-          rr.WriteRR(w)
+      if na:
+        w.WriteHead2(1, na, 0, 0)
+        w.WriteQuestion(q)
+        for rr in vec:
+          if q.typ == 255 or rr.typ == q.typ:
+            rr.WriteRR(w)
+      else:
+        soa = FindSOA(d, q.name)
+        w.WriteHead2(1, na, int(bool(soa)), 0)
+        w.WriteQuestion(q)
+        if soa:
+          soa.WriteRR(w)
     else:
       soa = FindSOA(d, q.name)
       w.WriteHead1(q.serial, dns.NAME_ERROR)
