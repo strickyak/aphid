@@ -130,6 +130,7 @@ def ParseBody(d, body, origin):
     if words[0] == '$ORIGIN':
       say words
       origin = dns.Absolute(words[1], current)
+      say words, origin
       i += 1
       continue
 
@@ -139,8 +140,8 @@ def ParseBody(d, body, origin):
       i += 1
       continue
 
-    ##### say quoted, words, orig
-    rr = dns.MakeRR(words, quoted, current, ttl)
+    say quoted, origin, words, orig
+    rr = dns.MakeRR(words, quoted, origin, ttl)
     if rr:
       vec = d.get(rr.name)
       if vec is None:
@@ -163,7 +164,7 @@ def Serve(d):
     buf = mkbyt(UDPMAX)
     say "ReadingFromUDP..."
     n, addr = conn.ReadFromUDP(buf)
-    say n, addr, buf
+    #say n, addr, buf
 
     go Answer(d, buf, n, addr, conn)
 
@@ -172,6 +173,8 @@ def Answer(d, buf, n, addr, conn):
     hexdump.HexDump(buf[:n], 'Packet IN')
     q = dns.ReadQuestion(buf, n)
     vec = d.get(q.name)
+    if not vec:
+      vec = FindStarRecords(d, q.name, q.typ)
     buf2 = mkbyt(UDPMAX)
     w = dns.Writer(buf2)
     if vec:
@@ -202,6 +205,24 @@ def Answer(d, buf, n, addr, conn):
     conn.WriteToUDP(packet, addr)
   except as ex:
     say 'CAUGHT', ex
+
+def FindStarRecords(d, name, typ):
+  words = name.split('.')
+  for i in range(len(words)):
+    star_domain = '*.' + '.'.join(words[i:])
+    say star_domain
+    vec = d.get(star_domain)
+    if vec:
+      say vec
+      for rr in vec:
+        say rr
+        if rr.typ == typ:
+          z = rr.Clone()
+          if not z:
+            continue  # Some record types (SOA, NS) cannot be cloned.
+          z { name: name }
+          say z
+          return [z]
 
 def FindSOA(d, name):
   words = name.split('.')

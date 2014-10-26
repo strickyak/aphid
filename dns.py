@@ -88,14 +88,19 @@ class CnameRec(ResourceRec):
     .targ = targ
   def WriteRData(w):
     w.WriteDomain(.targ)
+  def Clone():
+    return CnameRec(.name, .ttl, .targ)
 
 class A4Rec(ResourceRec):
-  def __init__(name, ttl, quad):
+  def __init__(name, ttl, squad):
     super(name, ttl, A4)
-    .quad = [int(x) for x in strings.Split(quad, '.')]
+    .squad = squad
+    .quad = [int(x) for x in strings.Split(squad, '.')]
     must len(.quad) == 4
   def WriteRData(w):
     w.WriteQuad(.quad)
+  def Clone():
+    return A4Rec(.name, .ttl, .squad)
   
 # primary(*) email(*) serial(4) refresh(4) retry(4) expire(4) minimum(4)
 class SoaRec(ResourceRec):
@@ -116,6 +121,8 @@ class SoaRec(ResourceRec):
     w.Write4(.retry)
     w.Write4(.expire)
     w.Write4(.minimum)
+  def Clone():
+    return None  # Do not clone SOA records.
   
 class NsRec(ResourceRec):
   def __init__(name, ttl, targ):
@@ -123,6 +130,8 @@ class NsRec(ResourceRec):
     .targ = targ
   def WriteRData(w):
     w.WriteDomain(.targ)
+  def Clone():
+    return None
 
 class MxRec(ResourceRec):
   def __init__(name, ttl, pref, targ):
@@ -132,6 +141,8 @@ class MxRec(ResourceRec):
   def WriteRData(w):
     w.Write2(.pref)
     w.WriteDomain(.targ)
+  def Clone():
+    return MxRec(.name, .ttl, .pref, .targ)
 
 class TxtRec(ResourceRec):
   def __init__(name, ttl, s):
@@ -139,6 +150,8 @@ class TxtRec(ResourceRec):
     .s = s
   def WriteRData(w):
     w.WriteString(.s)
+  def Clone():
+    return TxtRec(.name, .ttl, .s)
 
 #                                    1  1  1  1  1  1
 #      0  1  2  3  4  5  6  7  8  9  0  1  2  3  4  5
@@ -275,18 +288,19 @@ class ReadQuestion:
 
 NUMERIC = regexp.MustCompile('^[0-9]+$').FindString
 
-def Absolute(domain, current):
+def Absolute(domain, origin):
   if domain[-1] == '.':
     return domain[:-1]
   else:
-    return '%s.%s' % (domain, current)
+    return '%s.%s' % (domain, origin)
     
-def MakeRR(words, quoted, current, ttl):
+def MakeRR(words, quoted, origin, ttl):
   say 'MakeRR', ttl
   if len(words) + len(quoted) < 3:
     return None
 
-  domain = Absolute(words[0], current)
+  domain = Absolute(words[0], origin)
+  say 'MakeRR TOPIC', domain, origin, words
 
   i = 1
   if NUMERIC(words[i]):  # override TTL if number.
@@ -304,19 +318,19 @@ def MakeRR(words, quoted, current, ttl):
     return z
 
   if strings.ToUpper(words[i]) == 'CNAME':
-    target = Absolute(words[i+1], current)
+    target = Absolute(words[i+1], origin)
     z = CnameRec(domain, ttl, target)
     say 'CNAME', domain, target, z
     return z
 
   if strings.ToUpper(words[i]) == 'NS':
-    target = Absolute(words[i+1], current)
+    target = Absolute(words[i+1], origin)
     z = NsRec(domain, ttl, target)
     say 'NS', domain, target, z
     return z
 
   if strings.ToUpper(words[i]) == 'SOA':
-    mname, rname = Absolute(words[i+1], current), Absolute(words[i+2], current)
+    mname, rname = Absolute(words[i+1], origin), Absolute(words[i+2], origin)
     serial, refresh, retry, expire, minimum = words[i+3:]
     z = SoaRec(domain, ttl, mname, rname, serial, refresh, retry, expire, minimum)
     say 'SOA', domain, target, z
@@ -331,7 +345,7 @@ def MakeRR(words, quoted, current, ttl):
 
   if strings.ToUpper(words[i]) == 'MX':
     pref = int(words[i+1])
-    target = Absolute(words[i+2], current)
+    target = Absolute(words[i+2], origin)
     z = MxRec(domain, ttl, pref, target)
     say 'MX', domain, target, z
     return z
