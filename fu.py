@@ -74,28 +74,25 @@ def Cat(args):
 
 def FindFiles(args):
   for a in args:
-    for name, isDir, mtime, sz in FindFiles1(a):
-      print '%s %v %d %d' % (name, isDir, mtime, sz)
+    for name, isDir, mtime, sz in FindFiles1(a, ''):
+      print '%s %s %d %d' % (J(a, name), 'D' if isDir else 'F', mtime, sz)
 
-def FindFiles1(top):
-  #say '<<<', top
+def FindFiles1(top, subdir):
+  path = J(top, subdir)
   try:
-    d = afs.Open(top)
+    d = afs.Open(path)
   except as ex:
-    A.Err('fu find: Cannot Open (%s): %q\n' % (ex, top))
+    A.Err('fu find: Cannot Open (%s): %q\n' % (ex, path))
     A.SetExitStatus(2)
     return
   with defer d.Close():
     try:
-      for name, isDir, mtime, sz in d.List():
-        #say 'FFFFFF', name, isDir, mtime, sz
-        jname = J(top, name)
-        #say 'FFFFFFJ', jname, isDir, mtime, sz
+      for name, isDir, mtime, sz in sorted(d.List()):
+        jname = J(subdir, name)
+        yield jname, isDir, mtime, sz
         if isDir:
-          for x in FindFiles1(jname):
+          for x in FindFiles1(top, jname):
             yield x
-        else:
-          yield jname, isDir, mtime, sz
     except as ex:
       A.Err('fu find: Cannot List (%s): %q' % (ex, top))
       A.SetExitStatus(2)
@@ -107,25 +104,42 @@ def Sync(args):
     A.SetExitStatus(2)
     return
 
-  Sync1(args[0], args[1])
+  nf, nd = 0, 0
+  for path, isDir, why in Sync1(*args):
+    print path, 'D' if isDir else 'F', why
+    if isDir:
+      nd += 1
+    else:
+      nf += 1
+  A.Info('Need to make %d directories. copy %d files.' % (nd, nf))
 
 # rye run fu.py *.py -- sync /Here/static_test_src /Here/static_test_dst
 def Sync1(source, dest):
-  src_files = FindFiles1(source)
-  dst_files = FindFiles1(dest)
+  dst_promise = go FindFiles1(dest, '')
+  src_promise = go FindFiles1(source, '')
+  dst_files = dst_promise.Wait()
+  src_files = src_promise.Wait()
 
   dest_dict = {}
-
-  # I want to convert my list to a dict of tuples
-  # Use the relative path as the key
   for path, isDir, mtime, size in dst_files:
-    rel_dest_path = path[len(dest):]
-    dest_dict[rel_dest_path] = (isDir, mtime, size)
+    dest_dict[path] = (isDir, mtime, size)
 
   for path, isDir, mtime, size in src_files:
-    rel_src_path = path[len(source):]
-    if dest_dict.get(rel_src_path) == None:
-      say rel_src_path, 'need to create this'
+    d = dest_dict.get(path)
+    if not d:
+      yield path, isDir, 'MISSING'
+    elif not isDir:
+      _isDir, _mtime, _size = d
+      if isDir != _isDir:
+        yield path, isDir, 'isDir'
+      elif size != _size:
+        yield path, isDir, 'size'
+      elif mtime != _mtime:
+        yield path, isDir, 'mtime'
+      else:
+        pass
+    else:
+      pass
   
 
 Ensemble = {
@@ -135,12 +149,10 @@ Ensemble = {
     'sync': Sync
 }
 
-CREATE = flag.String('create', '',
-    'Create output file with "cat" command.')
-APPEND = flag.String('append', '',
-    'Append output file with "cat" command.')
-RFS = flag.String('rfs', 'localhost:9876',
-    'Location of rfs server')
+CREATE = flag.String('create', '', 'Create output file with "cat" command.')
+APPEND = flag.String('append', '', 'Append output file with "cat" command.')
+RFS    = flag.String('rfs', 'localhost:9876', 'Location of rfs server')
+YES    = flag.Bool(  'y', False, 'Really sync.')
 
 def main(args):
   args = flag.Munch(args)
@@ -152,7 +164,7 @@ def main(args):
   cmd, args = args[0], args[1:]
   f = Ensemble.get(cmd)
   if not f:
-    A.Err("Available commands: %v" % sorted(Ensemble.keys()))
+    A.Err("Available commands: %v" % repr(sorted(Ensemble.keys())))
     A.Fatal("No such command: %q" % cmd)
     os.Exit(11)
 
