@@ -71,6 +71,10 @@ def Cat(args):
       cat1(arg, w)
   pass
 
+def Cp(args):
+  src, dst = args
+  Copy1File(src, dst)
+
 def Copy1File(src, dst):
   r = afs.Open(src)
   with defer r.Close():
@@ -156,7 +160,7 @@ def Sync1(source, dest):
 Ensemble = {
     'test1': Test1,
     'cat': Cat,
-    'cp': Copy1File,
+    'cp': Cp,
     'find': FindFiles,
     'sync': Sync
 }
