@@ -1,4 +1,4 @@
-all: clean _queue_test _rpc _laph_test _dns_ask _gcm _eval _fu_find_test.py
+all: clean _queue_test _rpc _laph_test _dns_ask _gcm _eval _fu_find_test.py _all_okay
 
 _queue_test:
 	python ../rye/rye.py run queue_test.py
@@ -20,6 +20,9 @@ _eval:
 
 _fu_find_test.py:
 	python ../rye/rye.py run fu_find_test.py
+
+_all_okay:
+	echo ALL OKAY.
 
 clean:
 	for x in */ryemodule.go ; do rm -rf `dirname $$x`/ ; done

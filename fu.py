@@ -162,7 +162,7 @@ Ensemble = {
     'cat': Cat,
     'cp': Cp,
     'find': FindFiles,
-    'sync': Sync
+    'sync': Sync,
 }
 
 CREATE = flag.String('create', '', 'Create output file with "cat" command.')
