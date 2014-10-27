@@ -57,20 +57,28 @@ def cat1(path, out):
   pass
 
 def Cat(args):
-  out = None
+  w = None
   if CREATE.X:
     must not APPEND.X
-    out = afs.Create(CREATE.X)
+    w = afs.Create(CREATE.X)
   if APPEND.X:
     must not CREATE.X
-    out = afs.Append(APPEND.X)
-  if not out:
-    out = afs.Append('/Std/out')
-  with defer out.Close():
+    w = afs.Append(APPEND.X)
+  if not w:
+    w = afs.Append('/Std/out')
+  with defer w.Close():
     for arg in args:
-      cat1(arg, out)
+      cat1(arg, w)
   pass
 
+def Copy1File(src, dst):
+  r = afs.Open(src)
+  with defer r.Close():
+    w = afs.Create(dst) 
+    with defer w.Close():
+      cat1(src, w)
+      mt = r.ModTime()
+      afs.SetModTime(dst, mt)
 
 def FindFiles(args):
   for a in args:
@@ -103,14 +111,17 @@ def Sync(args):
     A.Err('fu sync: To perform a sync, we need a destination and a path.')
     A.SetExitStatus(2)
     return
+  source, dest = args
 
   nf, nd = 0, 0
-  for path, isDir, why in Sync1(*args):
+  for path, isDir, why in Sync1(source, dest):
     print path, 'D' if isDir else 'F', why
     if isDir:
       nd += 1
     else:
       nf += 1
+      if YES.X:
+        Copy1File(J(source, path), J(dest, path))
   A.Info('Need to make %d directories. copy %d files.' % (nd, nf))
 
 # rye run fu.py *.py -- sync /Here/static_test_src /Here/static_test_dst
@@ -145,6 +156,7 @@ def Sync1(source, dest):
 Ensemble = {
     'test1': Test1,
     'cat': Cat,
+    'cp': Copy1File,
     'find': FindFiles,
     'sync': Sync
 }

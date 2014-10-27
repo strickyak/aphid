@@ -1,12 +1,16 @@
 from go import os
 from go import path/filepath
 from go import regexp
+from go import time
+
 from go import github.com/strickyak/aphid
 
 from . import rfs
 
+J = filepath.Join
 HEAD_TAIL = regexp.MustCompile('^[/]*([A-Za-z0-9_:.]+)([/]+(.*))?$')
 DOUBLE_DOT = regexp.MustCompile('[.][.]')
+OCTAL700 = 7 * 64
 
 def Clean(path):
   #"Clean and check DOUBLE_DOT."
@@ -46,10 +50,14 @@ def Append(path):
 
 def List(path):
     path = Clean(path)
-    hd, tl = splitFactory(path)
     fact, tl = splitFactory(path)
     for a,b,c,d in fact.List(tl):
-      yield Clean('/%s/%s' % (hd, a)),b,c,d
+      yield Clean('/%s/%s' % (fact, a)),b,c,d
+
+def SetModTime(path, secs):
+    path = Clean(path)
+    fact, tl = splitFactory(path)
+    fact.SetModTime(tl, secs)
 
 class StdFs:
   def __init__():
@@ -72,21 +80,26 @@ class HereFs:
     pass
 
   def Open(path):
-    return HereFd(os.Open('./%s' % path))
+    return HereFd(os.Open(J('.', path)))
 
   def Create(path):
-    return HereFd(os.Create('./%s' % path))
+    os.MkdirAll(filepath.Dir(J('.', path)), OCTAL700)
+    return HereFd(os.Create(J('.', path)))
 
   def Append(path):
-    return HereFd(os.OpenFile('./%s' % path, os.ModeAppend | 0666, ))
+    return HereFd(os.OpenFile(J('.', path), os.ModeAppend | 0666, ))
+
+  def SetModTime(path, secs):
+    mtime = time.Unix(secs, 0)
+    os.Chtimes(J('.', path), mtime, mtime)
 
 class HereFd:
   def __init__(fd):
     .fd = fd
 
-  def Stat():
-    say .fd
-    raise .fd
+  def ModTime():
+    st = .fd.Stat()
+    return st.ModTime().Unix()
 
   def Read(n):
     z = aphid.WrapRead(.fd, n)
