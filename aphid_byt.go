@@ -57,7 +57,7 @@ func (b *bbuf) Read8() int64 {
 }
 
 func (b *bbuf) WriteChunk(a []byte) {
-	if len(a) > 0xFFFFFFFF {
+	if len(a) > 0x7FFFFFFF {
 		panic("Way Too Big")
 	}
 	b.WriteByte(ChunkMagic) // magic.
