@@ -5,6 +5,9 @@ _queue_test:
 
 _rpc:
 	python ../rye/rye.py run rpc.py
+	python ../rye/rye.py build rfs.py
+	python ../rye/rye.py build afs.py
+	python ../rye/rye.py build fu.py
 
 _laph_test:
 	python ../rye/rye.py run laph_test.py
@@ -25,4 +28,4 @@ _all_okay:
 	echo ALL OKAY.
 
 clean:
-	for x in */ryemodule.go ; do rm -rf `dirname $$x`/ ; done
+	-for x in */ryemodule.go ; do test -f "$$x" && rm -rf `dirname $$x`/ ; done

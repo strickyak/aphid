@@ -1,5 +1,5 @@
 from go import os
-from go import path/filepath
+from go import path as P
 from go import regexp
 from go import time
 
@@ -7,14 +7,13 @@ from go import github.com/strickyak/aphid
 
 from . import rfs
 
-J = filepath.Join
 HEAD_TAIL = regexp.MustCompile('^[/]*([A-Za-z0-9_:.]+)([/]+(.*))?$')
 DOUBLE_DOT = regexp.MustCompile('[.][.]')
 OCTAL700 = 7 * 64
 
 def Clean(path):
-  #"Clean and check DOUBLE_DOT."
-  path = filepath.Clean(path)
+  "Clean and check DOUBLE_DOT."
+  path = P.Clean(path)
   must not DOUBLE_DOT.FindString(path), repr(path)
   return path
 
@@ -25,7 +24,7 @@ def splitHeadTail(path):
     m = HEAD_TAIL.FindStringSubmatch(path)
     must m, 'Bad path pattern: %q' % path
     _, hd, _, tl = m
-    return hd, filepath.Clean(tl)
+    return hd, P.Clean(tl)
 
 def splitFactory(path):
     hd, tl = splitHeadTail(path)
@@ -80,18 +79,18 @@ class HereFs:
     pass
 
   def Open(path):
-    return HereFd(os.Open(J('.', path)))
+    return HereFd(os.Open(P.Join('.', path)))
 
   def Create(path):
-    os.MkdirAll(filepath.Dir(J('.', path)), OCTAL700)
-    return HereFd(os.Create(J('.', path)))
+    os.MkdirAll(P.Dir(P.Join('.', path)), OCTAL700)
+    return HereFd(os.Create(P.Join('.', path)))
 
   def Append(path):
-    return HereFd(os.OpenFile(J('.', path), os.ModeAppend | 0666, ))
+    return HereFd(os.OpenFile(P.Join('.', path), os.ModeAppend | 0666, ))
 
   def SetModTime(path, secs):
     mtime = time.Unix(secs, 0)
-    os.Chtimes(J('.', path), mtime, mtime)
+    os.Chtimes(P.Join('.', path), mtime, mtime)
 
 class HereFd:
   def __init__(fd):
@@ -131,7 +130,7 @@ class ThereFs:
 
 class ThereFd:
   def __init__(path, mode):
-    path = filepath.Clean(path)
+    path = P.Clean(path)
     m = HEAD_TAIL.FindStringSubmatch(path)
     must m, 'Bad path pattern: %q' % path
     _, where, _, tl = m
