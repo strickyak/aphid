@@ -13,7 +13,7 @@ class Table:
 
   def loadDir():
     glob = filepath.Glob(filepath.Join(.dirpath,'t.*'))
-    for g in glob:
+    for g in glob if glob else []:
       .slurpFile(g)
 
   def slurpFile(filename):
