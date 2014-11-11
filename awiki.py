@@ -2,6 +2,7 @@ from go import fmt
 from go import html/template
 from go import regexp
 from . import bundle
+from . import atemplate
 
 F = fmt.Sprintf
 
@@ -17,15 +18,7 @@ class AWikiMaster:
   def Handler4(w, r, host, path):
     if path == '/favicon.ico':
       return
-    AWikiSlave(self).Handler4(w, r, host, path)
-    
-class AWikiSlave:
-  def __init__(master):
-    .master = master
-    .bname = master.bname
-    .bund = master.bund
 
-  def Handler4(w, r, host, path):
     pvec = path.split('/')
     say pvec
     m = SUBJECT_VERB_OBJECT(pvec[-1])
@@ -51,7 +44,13 @@ class AWikiSlave:
 </dl>
 '''
     t = template.New('DebugTemplate').Parse(DEB)
-    t.Execute(w, d)
+    # t.Execute(w, d)
 
+    atemplate.T.Execute(w, dict(
+        Content = repr(d),
+        Title = subj,
+        HeadBox = verb,
+        FootBox = obj,
+    ))
 
 pass
