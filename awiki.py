@@ -1,5 +1,9 @@
+from go import fmt
+from go import html/template
 from go import regexp
 from . import bundle
+
+F = fmt.Sprintf
 
 SUBJECT_VERB_OBJECT = regexp.MustCompile(
     '([A-Z]+[a-z]+[A-Z][A-Za-z0-9_]*)(([.]+)(([A-Za-z0-9_]+)(([.]+)(([-A-Za-z0-9_.]+))?)?)??)?$'
@@ -30,13 +34,24 @@ class AWikiSlave:
       raise 'TODO, redirect to home page'
 
     _, subj, _, dots, _, verb, _, dotz, _, obj = m
-    say subj, verb, obj
+    say subj, dots, verb, obj
 
-    w.Header().Set('Content-Type', 'text/plain')
-    w.Write('subj = %s\r\n', subj)
-    w.Write('dots  =%s\r\n', dots)
-    w.Write('verb = %s\r\n', verb)
-    w.Write('obj = %s\r\n', obj)
-    say 'OK'
+    d = dict(subj=subj, dots=dots, verb=verb, obj=obj)
+
+    w.Header().Set('Content-Type', 'text/html')
+
+    DEB = '''<html><body>
+<title>{{.subj}}</title>
+<h2>{{.subj}}</h2>
+<dl>
+  <dt>SUBJ = <dd>{{.subj}}
+  <dt>DOTS = <dd>{{.dots}}
+  <dt>VERB = <dd>{{.verb}}
+  <dt>OBJ = <dd>{{.obj}}
+</dl>
+'''
+    t = template.New('DebugTemplate').Parse(DEB)
+    t.Execute(w, d)
+
 
 pass
