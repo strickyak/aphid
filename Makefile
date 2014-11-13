@@ -25,7 +25,7 @@ _fu_find_test.py:
 	python ../rye/rye.py run fu_find_test.py
 
 _skiplist_test:
-	GOMAXPROCS=4 python ../rye/rye.py run skiplist_test.py -- --n=100
+	GOMAXPROCS=4 python ../rye/rye.py run skiplist_test.py --n=100
 
 _dh_test:
 	python ../rye/rye.py run dh_test.py
