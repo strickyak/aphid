@@ -34,66 +34,71 @@ class Bundle:
 
   def ListDirs(dirpath):
     z = []
-    dpath = .dpath(dirpath)
+    dp = .dpath(dirpath)
     try:
-      fd = os.Open(F.Join(.bundir, dpath))
+      fd = os.Open(dp)
     except:
       return z
     vec = fd.Readdir(-1)
     for info in vec:
       s = info.Name()
       if s.startswith('d.'):
-        z.append(s)
+        z.append(s[2:])
     return z
     
   def ListFiles(dirpath):
     z = []
-    dpath = .dpath(dirpath)
+    dp = .dpath(dirpath)
     try:
-      fd = os.Open(F.Join(.bundir, dpath))
+      fd = os.Open(dp)
     except:
       return z
     vec = fd.Readdir(-1)
     for info in vec:
       s = info.Name()
       if s.startswith('f.'):
-        z.append(s)
+        z.append(s[2:])
     return z
     
   def ListRevs(file_path):
     z = []
-    fpath = .fpath(file_path)
+    fp = .fpath(file_path)
     try:
-      fd = os.Open(F.Join(.bundir, fpath))
+      fd = os.Open(F.Join(.bundir, fp))
     except:
       return z
     vec = fd.Readdir(-1)
     for info in vec:
       s = info.Name()
       if s.startswith('r.'):
-        z.append(s)
+        z.append(s[2:])
     return z
 
   def dpath(dirpath):
+    say dirpath
     vec = [str(s) for s in F.SplitList(dirpath)]
-    return F.Join(.bundir, *['d.%s' % s for s in vec])
+    say vec
+    z = F.Join(.bundir, *['d.%s' % s for s in vec])
+    say z
+    return z
 
   def fpath(file_path):
     vec = [str(s) for s in F.SplitList(file_path)]
     fname = vec.pop()
-    dpath = F.Join(*['d.%s' % s for s in vec])
-    return F.Join(.bundir, dpath, 'f.%s' % fname)
+    dp = F.Join(*['d.%s' % s for s in vec])
+    return F.Join(dp, 'f.%s' % fname)
 
   def Open(file_path):
-    fpath = .fpath(file_path)
-    gg = sorted([str(f) for f in F.Glob(F.Join(fpath, 'r.*'))])
+    fp = .fpath(file_path)
+    gg = sorted([str(f) for f in F.Glob(F.Join(fp, 'r.*'))])
     if not gg:
       raise 'no such file', .name, file_path
     return os.Open(gg[-1])  # The latest one is last, in sorted order.
 
   def Create(file_path):
-    fpath = .fpath(file_path)
-    os.MkdirAll(fpath, DIR_PERM)
+    fp = .fpath(file_path)
+    os.MkdirAll(fp, DIR_PERM)
+    raise 'TODO'
 
 
 class fileCreator:
