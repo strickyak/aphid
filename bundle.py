@@ -76,21 +76,30 @@ class Bundle:
 
   def dpath(dirpath):
     say dirpath
-    vec = [str(s) for s in F.SplitList(dirpath)]
+    vec = [str(s) for s in dirpath.split('/') if s]
     say vec
     z = F.Join(.bundir, *['d.%s' % s for s in vec])
-    say z
+    say "dpath -> ", z
     return z
 
   def fpath(file_path):
-    vec = [str(s) for s in F.SplitList(file_path)]
+    say file_path
+    vec = [str(s) for s in file_path.split('/') if s]
+    say vec
     fname = vec.pop()
-    dp = F.Join(*['d.%s' % s for s in vec])
-    return F.Join(dp, 'f.%s' % fname)
+    say fname
+    dp = .dpath('/'.join(vec))
+    say dp
+    z = F.Join(dp, 'f.%s' % fname)
+    say "fpath -> ", z
+    return z
 
   def Open(file_path):
+    say file_path
     fp = .fpath(file_path)
+    say fp
     gg = sorted([str(f) for f in F.Glob(F.Join(fp, 'r.*'))])
+    say gg
     if not gg:
       raise 'no such file', .name, file_path
     return os.Open(gg[-1])  # The latest one is last, in sorted order.

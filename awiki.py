@@ -1,6 +1,7 @@
 #from go import bytes
 #from go import bufio
 from go import fmt
+from go import io/ioutil
 #from go import html/template
 from go import regexp
 from . import bundle
@@ -49,9 +50,16 @@ def BeHtml(w):
   w.Header().Set('Content-Type', 'text/html')
 
 def VerbDemo(w, r, m, wp):
+  t = '(Empty.)'
+  try:
+    fd = m.bund.Open('/wiki/%s/@wiki' % wp.d['Subject'])
+    with defer fd.Close():
+      t = str(ioutil.ReadAll(fd))
+  except as ex:
+    t = '(Error: %s)' % ex
   BeHtml(w)
   d = dict(
-      Content = repr(wp),
+      Content = t,
       Title = wp.d['Subject'],
       HeadBox = wp.d['Verb'],
       FootBox = wp.d['Object'],

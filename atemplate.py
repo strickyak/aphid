@@ -25,7 +25,7 @@ Main.Parse('''
   {{end}}
 
   {{define "FootBar"}}
-    <table border="0" cellpadding="50"><tr><td>&nbsp;</tr></table>
+    <table border="0" cellpadding="50"><tr><td>&nbsp;</tr></table> <!-- vertical spacer -->
 
     <table class="FootBar" width="100%" border="0" cellpadding="8" style="background: #EEEEEE;"><tr>
     <td>{{.FootBox}}
