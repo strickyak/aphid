@@ -57,7 +57,7 @@ View = Main.Clone().Parse('''
   {{end}}''')
 
 Edit = Main.Clone().Parse('''
-  {{define "WikiEdit"}}
+  {{define "Inner"}}
     <p>
     <!--== form ==-->
     <form method="POST" action="{{.Page}}.save...">
