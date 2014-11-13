@@ -24,13 +24,13 @@ def EmitDir(w, r, fd, prefix, path):
 def DirExists(filename):
   try:
     return os.Stat(filename).IsDir()
-  except as err:
+  except:
     return False
 
 def FileExists(filename):
   try:
     return not os.Stat(filename).IsDir()
-  except as err:
+  except:
     return False
 
 class WebDir:
