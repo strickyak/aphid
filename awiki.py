@@ -43,23 +43,23 @@ class AWikiMaster:
     if not wp:
       raise 'Bad WikiParams: %q' % path
 
-    VERBS[wp.Verb](w, r, wp)
+    VERBS[wp.Verb](w, r, self, wp)
 
 def BeHtml(w):
   w.Header().Set('Content-Type', 'text/html')
 
-def VerbDemo(w, r, wp):
+def VerbDemo(w, r, m, wp):
   BeHtml(w)
   d = dict(
       Content = repr(wp),
       Title = wp.d['Subject'],
       HeadBox = wp.d['Verb'],
       FootBox = wp.d['Object'],
-      #Debug = ["one", "two", "three"],
+      Debug = m.bund.ListFiles('wiki')
   )
   atemplate.Demo.Execute(w, d)
 
-def VerbView(w, r, wp):
+def VerbView(w, r, m, wp):
   BeHtml(w)
   d = dict(
       Content = repr(wp),
@@ -67,10 +67,10 @@ def VerbView(w, r, wp):
       HeadBox = wp.d['Verb'],
       FootBox = "THIS IS A VEIW",
       Debug = go_value(["apple", "banana", "coconut"]),
-      )
+  )
   atemplate.View.Execute(w, d)
 
-def VerbEdit(w, r, wp):
+def VerbEdit(w, r, m, wp):
   BeHtml(w)
   d = dict(
       Content = repr(wp),
@@ -78,13 +78,13 @@ def VerbEdit(w, r, wp):
       HeadBox = wp.d['Verb'],
       FootBox = "THIS IS A VEIW",
       Debug = []
-      )
+  )
   atemplate.Edit.Execute(w, d)
 
 VERBS = dict(
   demo= VerbDemo,
   view= VerbView,
   edit= VerbEdit,
-  )
+)
 VERBS[''] = VerbDemo
 pass
