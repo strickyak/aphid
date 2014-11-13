@@ -1,5 +1,7 @@
+#from go import bytes
+#from go import bufio
 from go import fmt
-from go import html/template
+#from go import html/template
 from go import regexp
 from . import bundle
 from . import atemplate
@@ -10,6 +12,24 @@ SUBJECT_VERB_OBJECT = regexp.MustCompile(
     '([A-Z]+[a-z]+[A-Z][A-Za-z0-9_]*)(([.]+)(([A-Za-z0-9_]+)(([.]+)(([-A-Za-z0-9_.]+))?)?)??)?$'
     ).FindStringSubmatch
 
+class WikiParams:
+  def __init__(host):
+    .host = host
+  def SetPath(path):
+    pvec = path.split('/')
+    say pvec
+    m = SUBJECT_VERB_OBJECT(pvec[-1])
+    say m
+    if not m:
+      return False
+
+    _, .Subject, _, .Dots, _, .Verb, _, .dots2, _, .Object = m
+    say .Subject, .Dots, .Verb, .Object
+
+    .d = dict(Subject=.Subject, Dots=.Dots, Verb=.Verb, Object=.Object)
+    say .d
+    return self
+
 class AWikiMaster:
   def __init__(bname):
     .bname = bname
@@ -19,38 +39,52 @@ class AWikiMaster:
     if path == '/favicon.ico':
       return
 
-    pvec = path.split('/')
-    say pvec
-    m = SUBJECT_VERB_OBJECT(pvec[-1])
-    say m
-    if not m:
-      raise 'TODO, redirect to home page'
+    wp = WikiParams(host).SetPath(path)
+    if not wp:
+      raise 'Bad WikiParams: %q' % path
 
-    _, subj, _, dots, _, verb, _, dotz, _, obj = m
-    say subj, dots, verb, obj
+    VERBS[wp.Verb](w, r, wp)
 
-    d = dict(subj=subj, dots=dots, verb=verb, obj=obj)
+def BeHtml(w):
+  w.Header().Set('Content-Type', 'text/html')
 
-    w.Header().Set('Content-Type', 'text/html')
+def VerbDemo(w, r, wp):
+  BeHtml(w)
+  d = dict(
+      Content = repr(wp),
+      Title = wp.d['Subject'],
+      HeadBox = wp.d['Verb'],
+      FootBox = wp.d['Object'],
+      #Debug = ["one", "two", "three"],
+  )
+  atemplate.Demo.Execute(w, d)
 
-    DEB = '''<html><body>
-<title>{{.subj}}</title>
-<h2>{{.subj}}</h2>
-<dl>
-  <dt>SUBJ = <dd>{{.subj}}
-  <dt>DOTS = <dd>{{.dots}}
-  <dt>VERB = <dd>{{.verb}}
-  <dt>OBJ = <dd>{{.obj}}
-</dl>
-'''
-    t = template.New('DebugTemplate').Parse(DEB)
-    # t.Execute(w, d)
+def VerbView(w, r, wp):
+  BeHtml(w)
+  d = dict(
+      Content = repr(wp),
+      Title = wp.d['Subject'],
+      HeadBox = wp.d['Verb'],
+      FootBox = "THIS IS A VEIW",
+      Debug = go_value(["apple", "banana", "coconut"]),
+      )
+  atemplate.View.Execute(w, d)
 
-    atemplate.T.Execute(w, dict(
-        Content = repr(d),
-        Title = subj,
-        HeadBox = verb,
-        FootBox = obj,
-    ))
+def VerbEdit(w, r, wp):
+  BeHtml(w)
+  d = dict(
+      Content = repr(wp),
+      Title = wp.d['Subject'],
+      HeadBox = wp.d['Verb'],
+      FootBox = "THIS IS A VEIW",
+      Debug = []
+      )
+  atemplate.Edit.Execute(w, d)
 
+VERBS = dict(
+  demo= VerbDemo,
+  view= VerbView,
+  edit= VerbEdit,
+  )
+VERBS[''] = VerbDemo
 pass
