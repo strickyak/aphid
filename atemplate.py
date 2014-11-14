@@ -93,7 +93,7 @@ ViewMissing = FancyBase.Clone().Parse('''
 List = FancyBase.Clone().Parse('''
   {{define "Inner"}}
     <ul>
-      {{range .List | UnRye}} <li> {{.}}
+      {{range .List | UnRye}} <li> <a href="{{.}}">{{.}}</a>
       {{else}} <li> (Empty List.)
       {{end}}
     </ul>
