@@ -1,4 +1,5 @@
 from go import bufio
+from go import io/ioutil
 from go import os
 from go import path/filepath as F
 from go import regexp
@@ -6,6 +7,7 @@ from go import time
 from . import table
 
 DIR_PERM = 7*7*7 + 5*7 + 5 # Octal 0755
+FILE_PERM = 6*7*7 + 4*7 + 4 # Octal 0644
 
 Bundles = {}  # Map names to bundle.
 
@@ -33,28 +35,34 @@ class Bundle:
     .wikdir = F.Join(.bundir, 'd.wiki')
 
   def ListDirs(dirpath):
+    say 'ListDirs', dirpath
     z = []
     dp = .dpath(dirpath)
-    try:
-      fd = os.Open(dp)
-    except:
-      return z
+    fd = os.Open(dp)
     vec = fd.Readdir(-1)
+    say vec
     for info in vec:
+      say info
       s = info.Name()
       if s.startswith('d.'):
         z.append(s[2:])
+    say z
     return z
     
   def ListFiles(dirpath):
+    say 'ListFiles', dirpath
     z = []
     dp = .dpath(dirpath)
-    try:
-      fd = os.Open(dp)
-    except:
-      return z
+    say dp
+    #try:
+    fd = os.Open(dp)
+    say fd
+    #except:
+    #  return z
     vec = fd.Readdir(-1)
+    say vec
     for info in vec:
+      say info, info.Name()
       s = info.Name()
       if s.startswith('f.'):
         z.append(s[2:])
@@ -94,22 +102,44 @@ class Bundle:
     say "fpath -> ", z
     return z
 
-  def Open(file_path):
+  def ReadFile(file_path):
+    return ioutil.ReadFile(.nameOfFileToOpen(file_path))
+
+  def WriteFile(file_path, s):
+    # TODO: use fileCreator.
+    ioutil.WriteFile(.nameOfFileToCreate(file_path), s, FILE_PERM)
+
+  def nameOfFileToOpen(file_path):
     say file_path
     fp = .fpath(file_path)
     say fp
     gg = sorted([str(f) for f in F.Glob(F.Join(fp, 'r.*'))])
     say gg
     if not gg:
-      raise 'no such file', .name, file_path
-    return os.Open(gg[-1])  # The latest one is last, in sorted order.
+      raise 'no such file: bundle=%s path=%s' % (.name, file_path)
+    z = gg[-1]  # The latest one is last, in sorted order.
+    say 'nameOfFileToOpen', z
+    return z
+
+  def nameOfFileToCreate(file_path):
+    say file_path
+    fp = .fpath(file_path)
+    say fp
+    sec, ns = time.Now().Unix[0]
+    ms = sec * 1000 + ns // 1000000
+    z = '%s/r.%d.%s' % (fp, ms, .suffix)
+    say 'nameOfFileToCreate', z
+    return z
+
+  def Open(file_path):
+    return os.Open(.nameOfFileToOpen(file_path))
 
   def Create(file_path):
     fp = .fpath(file_path)
     os.MkdirAll(fp, DIR_PERM)
     raise 'TODO'
 
-
+# TODO: Try this fileCreator, for atomic creates.
 class fileCreator:
   def __init__(fpath, suffix):
     .fpath = fpath

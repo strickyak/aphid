@@ -1,9 +1,25 @@
 from go import html/template
-from go import github.com/strickyak/aphid
 
-Main = template.New("atemplate.py")
-aphid.AddAphidTemplateFunctions(Main)
-Main.Parse('''
+PlainBase = template.New("atemplate.py")
+
+def AddContentsFunction(t):
+  "Install a template function 'UnRye' that gets the contents from a PGo."
+  "Usage: {{range .Debug | UnRye}} <li> {{.}}"
+  native:
+    # Get the template from the argument.
+    't := a_t.Contents().(*i_template.Template)'
+    # We will install a FuncMap.
+    'fmap := make(i_template.FuncMap)'
+    # The FuncMap has one function, UnRye, that gets a P's contents.
+    'fmap["UnRye"] = func (p P) interface{} {'
+    '  return p.Contents()'
+    '}'
+    # Set the FuncMap.
+    't.Funcs(fmap)'
+# Add the above FuncMap to the PlainBase.
+AddContentsFunction(PlainBase)
+
+PlainBase.Parse('''
   {{template "Main" .}}
 
   {{define "Main"}}
@@ -19,6 +35,28 @@ Main.Parse('''
   {{end}}
 
   {{define "HeadBar"}}
+  {{end}}
+
+  {{define "FootBar"}}
+  {{end}}
+
+  {{define "Debug"}}
+    <p>
+    <hr>
+    <p>
+    <b>Debug:</b>
+    <ul class="Debug">
+      {{range .Debug | UnRye}} <li> {{.}}
+      {{else}} <li> (No Debug Info.)
+      {{end}}
+    </ul>
+    <p>
+  {{end}}
+''')
+
+
+FancyBase = PlainBase.Clone().Parse('''
+  {{define "HeadBar"}}
     <table class="HeadBar" width=100% border=0 cellpadding=8 style="background: #EEEEEE;"><tr>
     <td>{{.HeadBox}}
     </tr></table>
@@ -31,32 +69,37 @@ Main.Parse('''
     <td>{{.FootBox}}
     </tr></table>
   {{end}}
-
-  {{define "Debug"}}
-    <p>
-    <b>Debug:</b>
-    <ul class="Debug">
-      {{range .Debug | Contents}} <li> {{.}}
-      {{else}} <li> (No Debug Info.)
-      {{end}}
-    </ul>
-    <p>
-  {{end}}
 ''')
 
-Demo = Main.Clone().Parse('''
+
+Demo = FancyBase.Clone().Parse('''
   {{define "Inner"}}
     <p>Begin Demo<p>{{.Content}}<p>End Demo<p>
     [Demo]
   {{end}}''')
 
-View = Main.Clone().Parse('''
+View = FancyBase.Clone().Parse('''
   {{define "Inner"}}
-    <p>Begin Content<p>{{.Content}}<p>End Content<p>
-    [View]
+    {{.Html | html}}
+    { {.Html | UnRye} }
   {{end}}''')
 
-Edit = Main.Clone().Parse('''
+ViewMissing = FancyBase.Clone().Parse('''
+  {{define "Inner"}}
+    Page {{.Subject}} does not exist.<p>
+    You may <a href="{{.Subject}}{{.Dots}}edit">create</a> it.
+  {{end}}''')
+
+List = FancyBase.Clone().Parse('''
+  {{define "Inner"}}
+    <ul>
+      {{range .List | UnRye}} <li> {{.}}
+      {{else}} <li> (Empty List.)
+      {{end}}
+    </ul>
+  {{end}}''')
+
+Edit = PlainBase.Clone().Parse('''
   {{define "Inner"}}
     <p>
     <!--== form ==-->

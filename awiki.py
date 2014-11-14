@@ -1,16 +1,10 @@
-#from go import bytes
-#from go import bufio
-from go import fmt
-from go import io/ioutil
-#from go import html/template
-from go import regexp
-from . import bundle
-from . import atemplate
+from go import bytes, bufio, fmt, html/template, net/http, io/ioutil, regexp
+from . import atemplate, bundle, markdown
 
 F = fmt.Sprintf
 
 SUBJECT_VERB_OBJECT = regexp.MustCompile(
-    '([A-Z]+[a-z]+[A-Z][A-Za-z0-9_]*)(([.]+)(([A-Za-z0-9_]+)(([.]+)(([-A-Za-z0-9_.]+))?)?)??)?$'
+    '([0-9]+|[A-Z]+[a-z]+[A-Z][A-Za-z0-9_]*)(([.]+)(([A-Za-z0-9_]+)(([.]+)(([-A-Za-z0-9_.]+)?)?)?)?)?$'
     ).FindStringSubmatch
 
 class WikiParams:
@@ -46,18 +40,15 @@ class AWikiMaster:
 
     VERBS[wp.Verb](w, r, self, wp)
 
-def BeHtml(w):
+def EmitHtml(w, d, t):
   w.Header().Set('Content-Type', 'text/html')
+  t.Execute(w, d)
 
 def VerbDemo(w, r, m, wp):
-  t = '(Empty.)'
   try:
-    fd = m.bund.Open('/wiki/%s/@wiki' % wp.d['Subject'])
-    with defer fd.Close():
-      t = str(ioutil.ReadAll(fd))
+    t = m.bund.ReadFile('/wiki/%s/@wiki' % wp.d['Subject'])
   except as ex:
     t = '(Error: %s)' % ex
-  BeHtml(w)
   d = dict(
       Content = t,
       Title = wp.d['Subject'],
@@ -65,32 +56,48 @@ def VerbDemo(w, r, m, wp):
       FootBox = wp.d['Object'],
       Debug = m.bund.ListFiles('wiki')
   )
-  atemplate.Demo.Execute(w, d)
+  EmitHtml(w, d, atemplate.Demo)
+
+def VerbList(w, r, m, wp):
+  if wp.d['Subject'] != '0':
+    http.Redirect(w, r, "0.list", http.StatusMovedPermanently)
+  vec = m.bund.ListDirs('/wiki')
+  d = dict(
+      List = vec,
+      Title = 'List of Pages',
+      HeadBox = 'Foo',
+      FootBox = 'Foo',
+      Debug = [],
+  )
+  EmitHtml(w, d, atemplate.List)
 
 def VerbView(w, r, m, wp):
-  BeHtml(w)
+  try:
+    text = m.bund.ReadFile('/wiki/%s/@wiki' % wp.d['Subject'])
+  except as ex:
+    text = '(Error: %s)' % ex
   d = dict(
-      Content = repr(wp),
+      Html = markdown.Process(text),
       Title = wp.d['Subject'],
       HeadBox = wp.d['Verb'],
       FootBox = "THIS IS A VEIW",
       Debug = go_value(["apple", "banana", "coconut"]),
   )
-  atemplate.View.Execute(w, d)
+  EmitHtml(w, d, atemplate.View)
 
 def VerbEdit(w, r, m, wp):
-  BeHtml(w)
   d = dict(
       Content = repr(wp),
-      Title = wp.d['Subject'],
+      Title = "Edit Page: " + wp.d['Subject'],
       HeadBox = wp.d['Verb'],
-      FootBox = "THIS IS A VEIW",
+      FootBox = "THIS IS AN DIT",
       Debug = []
   )
-  atemplate.Edit.Execute(w, d)
+  EmitHtml(w, d, atemplate.Edit)
 
 VERBS = dict(
   demo= VerbDemo,
+  list= VerbList,
   view= VerbView,
   edit= VerbEdit,
 )
