@@ -125,8 +125,7 @@ class Bundle:
     say file_path
     fp = .fpath(file_path)
     say fp
-    sec, ns = time.Now().Unix[0]
-    ms = sec * 1000 + ns // 1000000
+    ms = NowMillis()
     z = '%s/r.%d.%s' % (fp, ms, .suffix)
     say 'nameOfFileToCreate', z
     return z
@@ -144,9 +143,7 @@ class fileCreator:
   def __init__(fpath, suffix):
     .fpath = fpath
     .suffix = suffix
-    now = time.Now()
-    sec, ns = now.Unix(), now.UnixNano()
-    ms = sec*1000 + ns // 1000000
+    ms = NowMillis()
     .tmp = 'tmp.%014d.%s' % (ms, .suffix)
     .fd = os.Create(.tmp)
     .bw = bufio.NewWriter(.fd)
@@ -162,9 +159,14 @@ class fileCreator:
     .bw.Flush()
     .fd.Close()
 
-    now = time.Now()
-    sec, ns = now.Unix(), now.UnixNano()
-    ms = sec*1000 + ns // 1000000
+    ms = NowMillis()
     dest = 'r.%014d.%s' % (ms, .suffix)
 
     os.Rename(.tmp, dest)
+
+def NowMillis():
+    now = time.Now()
+    sec, ns = now.Unix(), now.UnixNano()
+    return sec*1000 + ns // 1000000
+
+pass

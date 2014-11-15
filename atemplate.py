@@ -3,18 +3,14 @@ from go import html/template
 PlainBase = template.New("atemplate.py")
 
 def AddContentsFunction(t):
-  "Install a template function 'UnRye' that gets the contents from a PGo."
-  "Usage: {{range .Debug | UnRye}} <li> {{.}}"
+  "Install a template function 'unrye' that gets the contents from a PGo."
+  "Usage: {{range .Debug | unrye}} <li> {{.}}"
   native:
-    # Get the template from the argument.
     't := a_t.Contents().(*i_template.Template)'
-    # We will install a FuncMap.
     'fmap := make(i_template.FuncMap)'
-    # The FuncMap has one function, UnRye, that gets a P's contents.
-    'fmap["UnRye"] = func (p P) interface{} {'
+    'fmap["unrye"] = func (p P) interface{} {'
     '  return p.Contents()'
     '}'
-    # Set the FuncMap.
     't.Funcs(fmap)'
 # Add the above FuncMap to the PlainBase.
 AddContentsFunction(PlainBase)
@@ -46,7 +42,7 @@ PlainBase.Parse('''
     <p>
     <b>Debug:</b>
     <ul class="Debug">
-      {{range .Debug | UnRye}} <li> {{.}}
+      {{range .Debug | unrye}} <li> {{.}}
       {{else}} <li> (No Debug Info.)
       {{end}}
     </ul>
@@ -80,8 +76,9 @@ Demo = FancyBase.Clone().Parse('''
 
 View = FancyBase.Clone().Parse('''
   {{define "Inner"}}
-    {{.Html | html}}
-    { {.Html | UnRye} }
+    <div class="ViewInner">
+      {{.Html | unrye}}
+    </div>
   {{end}}''')
 
 ViewMissing = FancyBase.Clone().Parse('''
@@ -93,7 +90,7 @@ ViewMissing = FancyBase.Clone().Parse('''
 List = FancyBase.Clone().Parse('''
   {{define "Inner"}}
     <ul>
-      {{range .List | UnRye}} <li> <a href="{{.}}">{{.}}</a>
+      {{range .List | unrye}} <li> <a href="{{.}}">{{.}}</a>
       {{else}} <li> (Empty List.)
       {{end}}
     </ul>
@@ -103,11 +100,11 @@ Edit = PlainBase.Clone().Parse('''
   {{define "Inner"}}
     <p>
     <!--== form ==-->
-    <form method="POST" action="{{.Page}}.save...">
+    <form method="POST" action="{{.Subject}}{{.Dots}}edit...">
     <b>Title:</b> <input name=title size=80 value="{{.Title}}">
     <p>
     <textarea name=text wrap=virtual rows=30 cols=80 style="width: 95%;"
-    >${{.Text}}</textarea>
+    >{{.Text}}</textarea>
     <p>
     <input type=submit value=Save> &nbsp;
     <input type=reset>

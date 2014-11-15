@@ -46,12 +46,12 @@ def EmitHtml(w, d, t):
 
 def VerbDemo(w, r, m, wp):
   try:
-    t = m.bund.ReadFile('/wiki/%s/@wiki' % wp.d['Subject'])
+    t = m.bund.ReadFile('/wiki/%s/@wiki' % wp.Subject)
   except as ex:
     t = '(Error: %s)' % ex
   d = dict(
       Content = t,
-      Title = wp.d['Subject'],
+      Title = wp.Subject,
       HeadBox = wp.d['Verb'],
       FootBox = wp.d['Object'],
       Debug = m.bund.ListFiles('wiki')
@@ -59,7 +59,7 @@ def VerbDemo(w, r, m, wp):
   EmitHtml(w, d, atemplate.Demo)
 
 def VerbList(w, r, m, wp):
-  if wp.d['Subject'] != '0':
+  if wp.Subject != '0':
     http.Redirect(w, r, "0.list", http.StatusMovedPermanently)
   vec = m.bund.ListDirs('/wiki')
   d = dict(
@@ -73,12 +73,26 @@ def VerbList(w, r, m, wp):
 
 def VerbView(w, r, m, wp):
   try:
-    text = m.bund.ReadFile('/wiki/%s/@wiki' % wp.d['Subject'])
-  except as ex:
-    text = '(Error: %s)' % ex
+    text = m.bund.ReadFile('/wiki/%s/@wiki' % wp.Subject)
+  except:
+    # Offer to let them make the page.
+    d = dict(
+        Title = 'Page does not exist: %q' % wp.Subject,
+        Subject = wp.Subject,
+        Dots = wp.d['Dots'],
+        HeadBox = "",
+        FootBox = "",
+        Debug = go_value(["apple", "banana", "coconut"]),
+    )
+    EmitHtml(w, d, atemplate.ViewMissing)
+    return
+
+  say 'VerbView', text
+  html = markdown.Process(text)
+  say 'VerbView', html
   d = dict(
-      Html = markdown.Process(text),
-      Title = wp.d['Subject'],
+      Html = html,
+      Title = wp.Subject,
       HeadBox = wp.d['Verb'],
       FootBox = "THIS IS A VEIW",
       Debug = go_value(["apple", "banana", "coconut"]),
@@ -86,11 +100,23 @@ def VerbView(w, r, m, wp):
   EmitHtml(w, d, atemplate.View)
 
 def VerbEdit(w, r, m, wp):
+  text = r.FormValue('text')
+  if text:
+    # Save it.
+    m.bund.WriteFile('/wiki/%s/@wiki' % wp.Subject, text)
+    http.Redirect(w, r,
+                  "%s%sview" % (wp.Subject, wp.d['Dots']),
+                  http.StatusTemporaryRedirect)
+    return
+  try:
+    text = m.bund.ReadFile('/wiki/%s/@wiki' % wp.Subject)
+  except:
+    text = 'TODO: Edit me!'
   d = dict(
-      Content = repr(wp),
-      Title = "Edit Page: " + wp.d['Subject'],
-      HeadBox = wp.d['Verb'],
-      FootBox = "THIS IS AN DIT",
+      Text = text,
+      Title = "Edit Page %q" % wp.Subject,
+      Subject = wp.Subject,
+      Dots = wp.Dots,
       Debug = []
   )
   EmitHtml(w, d, atemplate.Edit)
