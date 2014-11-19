@@ -4,6 +4,7 @@ from go import path/filepath
 from . import skiplist
 
 class Table:
+  # Construct with dirpath where the t.* files are, and they will be loaded.
   def __init__(dirpath):
     .dirpath = dirpath
     .ts = None
@@ -12,14 +13,14 @@ class Table:
     .loadDir()
 
   def loadDir():
-    glob = filepath.Glob(filepath.Join(.dirpath,'t.*'))
-    for g in glob if glob else []:
+    for g in filepath.Glob(filepath.Join(.dirpath,'t.*')):
       .slurpFile(g)
 
   def slurpFile(filename):
     hold = []
     for line in ReadFileLines(filename):
       if line.startswith(';'):
+        # Semicolon lines commit the hold.
         .addem(hold)
         hold = []
       elif line.startswith('+'):
@@ -32,13 +33,15 @@ class Table:
         
   def addem(hold):
     for ts, k, v in hold:
-      if v:
-        .d[k] = (ts, v)
-        .d.Set(k, (ts, v))
-      else:
-        .d.Remove(k)
-
-
+      # Look for ts of existing record with key k.
+      # Remember that ts are strings, not numbers.
+      t = .d[k][0] if k in .d else ''
+      if ts >= t:
+        if v:
+          .d[k] = (ts, v)
+          .d.Set(k, (ts, v))
+        else:
+          .d.Remove(k)
 
 
 def ReadFileLines(filename):
