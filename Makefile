@@ -34,4 +34,5 @@ _all_okay:
 	echo ALL OKAY.
 
 clean:
-	-for x in */ryemodule.go ; do test -f "$$x" && rm -rf `dirname $$x`/ ; done
+	T=`find . -name ryemain.go` ; set -x ; for x in $$T ; do rm -f $$x ; rmdir `dirname $$x` ; done
+	T=`find . -name ryemodule.go` ; set -x ; for x in $$T ; do rm -f $$x ; D=`dirname $$x` ; B=`basename $$D` ; rm -f $$D/$$B ; rmdir $$D ; done
