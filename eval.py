@@ -18,35 +18,35 @@ def Eval(s):
   z = ep.Parse(k, x)
   ep.Skip()
   if ep.p != ep.n:
-    raise 'Eval: Leftover chars', ep.s[ep.p:], z
+    raise Exception('Eval: Leftover chars')
   return z
 
 class EvalParser:
   def __init__(s):
-    .s = s
-    .n = len(s)
-    .p = 0
+    self.s = s
+    self.n = len(s)
+    self.p = 0
 
   def Skip():
-    w = RE_WHITE.FindString(.s[.p:])
-    .p += len(w)
+    w = RE_WHITE.FindString(self.s[self.p:])
+    self.p += len(w)
 
   def Token():
-    .Skip()
-    if .p == .n:
+    self.Skip()
+    if self.p == self.n:
       # say 'Token', None, None
       return None, None
     for r, k in DETECTERS:
-      m = r.FindString(.s[.p:])
+      m = r.FindString(self.s[self.p:])
       if m:
-        .p += len(m)
+        self.p += len(m)
         # say 'Token', k, m
         return k, m
-    raise 'eval.EvalParser: Cannot Parse', .s[.p:], .s
+    raise Exception('eval.EvalParser: Cannot Parse')
 
   def Parse(k, x):
     if not k:
-      raise 'eval.EvalParser: Unexpected end of string', .s
+      raise Exception('eval.EvalParser: Unexpected end of string')
     if k == 'K':
       if x[0] in ['n', 'N']:
         return None
@@ -54,7 +54,7 @@ class EvalParser:
         return True
       if x[0] in ['f', 'F']:
         return False
-      raise 'eval.EvalParser: Weird token', x, .s
+      raise Exception('eval.EvalParser: Weird token')
     if k == 'N':
       #say strconv.ParseInt(x, 10, 64)
       return strconv.ParseInt(x, 10, 64)
@@ -66,58 +66,58 @@ class EvalParser:
     if x == '[':
       v = []
       while True:
-        k2, x2 = .Token()
+        k2, x2 = self.Token()
         if not k2:
-          raise 'eval.EvalParser: Unexpected end of string', .s
+          raise Exception('eval.EvalParser: Unexpected end of string')
         if x2 == ']':
           break
         if x2 == ',':
           continue
-        a = .Parse(k2, x2)
+        a = self.Parse(k2, x2)
         v.append(a)
       return v
     if x == '(':
       v = []
       while True:
-        k2, x2 = .Token()
+        k2, x2 = self.Token()
         if not k2:
-          raise 'eval.EvalParser: Unexpected end of string', .s
+          raise Exception('eval.EvalParser: Unexpected end of string')
         if x2 == ')':
           break
         if x2 == ',':
           continue
-        a = .Parse(k2, x2)
+        a = self.Parse(k2, x2)
         v.append(a)
       return tuple(v)
     if x == '{':
       d = {}
       while True:
-        k2, x2 = .Token()
+        k2, x2 = self.Token()
         if not k2:
-          raise 'eval.EvalParser: Unexpected end of string', .s
+          raise Exception('eval.EvalParser: Unexpected end of string')
         if x2 == '}':
           break
         if x2 == ',':
           continue
 
-        a = .Parse(k2, x2)
+        a = self.Parse(k2, x2)
 
-        k2, x2 = .Token()
+        k2, x2 = self.Token()
         if x2 != ':':
-          raise 'eval.EvalParser: expected ":" after key'
+          raise Exception('eval.EvalParser: expected ":" after key')
 
-        k2, x2 = .Token()
-        b = .Parse(k2, x2)
+        k2, x2 = self.Token()
+        b = self.Parse(k2, x2)
 
         d[a] = b
       return d
-    raise 'eval.EvalParser: Weird token', k, x
+    raise Exception('eval.EvalParser: Weird token')
 
 def Unquote(a):
   # TODO -- unescape
   if a[0] == a[-1]:
     return a[1:-1]
-  raise 'eval.Unquote: bad input', a
+  raise Exception('eval.Unquote: bad input')
 
 assert Eval('True') is True
 assert Eval('False') is False
@@ -127,8 +127,9 @@ assert Eval('12345') == 12345
 assert Eval('-12345') == -12345
 assert Eval('-1234.5') == -1234.5
 
-assert Eval('[ 123, 4.5, False] ') == [ 123, 4.5, False]
+assert Eval('[ 123, 4.5, False] ') == [123, 4.5, False]
 # TODO: DiCT::EQ  # assert Eval('{ "color": "red", "area": 51 } ') == { "color": "red", "area": 51 }
+assert Eval('{ "color": "red", "area": 51 } ') == { "color": "red", "area": 51 }
 
 d = Eval('{ "color": "red", "area": 51 } ')
 e = { "color": "red", "area": 51 }
@@ -137,4 +138,4 @@ assert sorted([(k, d[k]) for k in d]) == sorted([(k, e[k]) for k in e])
 
 def main(argv):
   for a in argv:
-    say a, Eval(a)
+    print a, Eval(a)

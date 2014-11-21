@@ -2,13 +2,13 @@
 #   rye run rfs.py *.py -- -port=9988 -root=/etc  &
 #   rye run fu.py *.py  -- --rfs=127.0.0.1:9988 find /There/localhost:9988/java
 
-import go/os
-import go/path/filepath
+from go import os
+from go import path/filepath
 
-import ./A
-import ./flag
-import ./afs
-import ./rfs
+from . import A
+from . import flag
+from . import afs
+from . import rfs
 
 J = filepath.Join
 
