@@ -1,13 +1,10 @@
-from go import bufio
-from go import net
-from go import sync
-from go import time
+from go import bufio, bytes, io
+from go import net, sync, time
 from go import crypto/rand
 
 from go import github.com/strickyak/aphid
 
-from . import eval
-from . import gcm
+from . import eval, gcm
 
 SerialPrefix = mkbyt(12)  # Per Process nonce.
 rand.Read(SerialPrefix)
@@ -28,12 +25,24 @@ class Request:
     .serial = None
     .replyQ = aphid.NewChan(1)
 
+CHUNK_MAGIC = 191
+
 def WriteChunk(w, data):
-  data = byt(data)
-  bb = aphid.NewBuffer()
-  bb.WriteChunk(data)
-  z = bb.Bytes()
-  w.Write(z)
+  n = len(data)
+  head = byt([CHUNK_MAGIC, n>>24, n>>16, n>>8, n])
+  buf = bytes.NewBuffer(head)
+  buf.Write(data)
+  io.Copy(w, buf)
+
+def ReadChunk(r):
+  head = mkbyt(5)
+  io.ReadFull(r, head)
+  must head[0] == CHUNK_MAGIC
+  n = (head[1]<<24) | (head[2]<<16) | (head[3]<<8) | head[4]
+  must n < (2 << 20)  # 2 Meg Max
+  pay = mkbyt(n)
+  io.ReadFull(r, pay)
+  return pay
 
 class Server:
   def __init__(hostport, keyname, key):
@@ -144,20 +153,6 @@ class Promise:
       raise err
     return result
 
-
-def ReadChunk(r):
-  b = r.ReadByte()
-  if b != 199:
-    raise 'ReadChunk: bad magic'
-  a = r.ReadByte()
-  b = r.ReadByte()
-  c = r.ReadByte()
-  d = r.ReadByte()
-  n = (a<<24) | (b<<16) | (c<<8) | d
-  z, eof = aphid.WrapRead(r, n)
-  if eof:
-    raise "got EOF"
-  return z
 
 def DemoSum(*args):
   z = 0.0
