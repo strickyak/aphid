@@ -4,7 +4,7 @@ from go import crypto/rand
 
 from go import github.com/strickyak/aphid
 
-from . import eval, gcm
+from . import eval, gcm, keyring
 
 SerialPrefix = mkbyt(12)  # Per Process nonce.
 rand.Read(SerialPrefix)
