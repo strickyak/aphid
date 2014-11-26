@@ -110,9 +110,23 @@ Edit = PlainBase.Clone().Parse('''
     <input type=reset>
     <tt>&nbsp; <big>[<a href={{.Title}}{{.Dots}}>Cancel</a>]</big></tt>
     </form>
-    <!--== form ==-->
-    <p>
   {{end}}''')
+
+Attach = PlainBase.Clone().Parse('''
+  {{define "Inner"}}
+    <p>
+    <!--== form ==-->
+    <form method="POST" action="{{.Subject}}{{.Dots}}attach..." enctype="multipart/form-data">
+    <p>
+    Upload a new attachment:
+    <input type="file" name="file">
+    <p>
+    <input type=submit value=Save> &nbsp;
+    <input type=reset>
+    <tt>&nbsp; <big>[<a href={{.Title}}{{.Dots}}>Cancel</a>]</big></tt>
+    </form>
+  {{end}}''')
+
 
 # Light blue title (on golang.org): #E0EBF5
 # Light gray #EEEEEE

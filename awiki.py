@@ -121,11 +121,39 @@ def VerbEdit(w, r, m, wp):
   )
   EmitHtml(w, d, atemplate.Edit)
 
+def VerbAttach(w, r, m, wp):
+  f = None
+  if r.Method != "GET":
+    r.ParseMultipartForm(1024*1024)
+    f = r.MultipartForm.File['file'][0].Header.Get('file')
+  if f:
+    # Save it.
+    fname = r.MultipartForm.File['file'][0].Filename
+    # TODO: clean the fname.
+    m.bund.WriteFile('/wiki/%s/%s' % (wp.Subject, fname), "a rabbit")
+    http.Redirect(w, r,
+                  "%s%sattach" % (wp.Subject, wp.d['Dots']),
+                  http.StatusTemporaryRedirect)
+    return
+  try:
+    stuff = repr(m.bund.ListFiles('/wiki/%s' % wp.Subject))
+  except as ex:
+    stuff = "ERROR: %q" % ex
+  d = dict(
+      Text = stuff,
+      Title = "Attachments for Page %q" % wp.Subject,
+      Subject = wp.Subject,
+      Dots = wp.Dots,
+      Debug = []
+  )
+  EmitHtml(w, d, atemplate.Attach)
+
 VERBS = dict(
   demo= VerbDemo,
   list= VerbList,
   view= VerbView,
   edit= VerbEdit,
+  attach= VerbAttach,
 )
 VERBS[''] = VerbDemo
 pass
