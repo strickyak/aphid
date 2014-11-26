@@ -6,8 +6,8 @@ from go import regexp
 from go import time
 from . import table
 
-DIR_PERM = 7*7*7 + 5*7 + 5 # Octal 0755
-FILE_PERM = 6*7*7 + 4*7 + 4 # Octal 0644
+DIR_PERM = 0755
+FILE_PERM = 0644
 
 Bundles = {}  # Map names to bundle.
 
