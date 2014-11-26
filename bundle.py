@@ -11,6 +11,9 @@ FILE_PERM = 0644
 
 Bundles = {}  # Map names to bundle.
 
+def RevFormat(fpath, tag, ms, suffix, mtime, size):
+  return '%s/%s.%014d.%s.%d.%d' % (fpath, tag, ms, suffix, mtime, size)
+
 PARSE_BUNDLE_PATH = regexp.MustCompile('(^|.*/)b[.]([A-Za-z0-9_]+)$').FindStringSubmatch
 
 def LoadBundles(topdir='.', suffix='0'):
@@ -83,90 +86,93 @@ class Bundle:
     return z
 
   def dpath(dirpath):
-    say dirpath
     vec = [str(s) for s in dirpath.split('/') if s]
-    say vec
     z = F.Join(.bundir, *['d.%s' % s for s in vec])
-    say "dpath -> ", z
+    say dirpath, z
     return z
 
   def fpath(file_path):
     say file_path
     vec = [str(s) for s in file_path.split('/') if s]
-    say vec
     fname = vec.pop()
-    say fname
     dp = .dpath('/'.join(vec))
-    say dp
     z = F.Join(dp, 'f.%s' % fname)
-    say "fpath -> ", z
+    say file_path, z
     return z
 
   def ReadFile(file_path):
     return ioutil.ReadFile(.nameOfFileToOpen(file_path))
 
   def WriteFile(file_path, s):
-    # TODO: use fileCreator.
-    ioutil.WriteFile(.nameOfFileToCreate(file_path), s, FILE_PERM)
+    say 'WriteFile', file_path, len(s)
+    w = atomicFileCreator(.fpath(file_path), .suffix, mtime=None, size=len(s))
+    try:
+      if type(s) is str:
+        w.WriteString(s)  # Fully.
+      else:
+        w.Write(byt(s))  # Fully.
+    except as ex:
+      w.Abort()
+      raise ex
+    w.Close()
 
   def nameOfFileToOpen(file_path):
-    say file_path
     fp = .fpath(file_path)
-    say fp
     gg = sorted([str(f) for f in F.Glob(F.Join(fp, 'r.*'))])
-    say gg
     if not gg:
       raise 'no such file: bundle=%s path=%s' % (.name, file_path)
     z = gg[-1]  # The latest one is last, in sorted order.
-    say 'nameOfFileToOpen', z
-    return z
-
-  def nameOfFileToCreate(file_path):
-    say file_path
-    fp = .fpath(file_path)
-    say fp
-    ms = NowMillis()
-    z = '%s/r.%d.%s' % (fp, ms, .suffix)
-    say 'nameOfFileToCreate', z
+    say file_path, z
     return z
 
   def Open(file_path):
     return os.Open(.nameOfFileToOpen(file_path))
 
-  def Create(file_path):
-    fp = .fpath(file_path)
-    os.MkdirAll(fp, DIR_PERM)
-    raise 'TODO'
-
-# TODO: Try this fileCreator, for atomic creates.
-class fileCreator:
-  def __init__(fpath, suffix):
+class atomicFileCreator:
+  def __init__(fpath, suffix, mtime, size):
     .fpath = fpath
     .suffix = suffix
+    .mtime = mtime
+    .size = size
+
     ms = NowMillis()
-    .tmp = 'tmp.%014d.%s' % (ms, .suffix)
+    if not .mtime:
+      .mtime = ms // 1000
+    .tmp = RevFormat(.fpath, 'tmp', ms, .suffix, .mtime, .size)
+    say 'os.Create', .tmp
     .fd = os.Create(.tmp)
     .bw = bufio.NewWriter(.fd)
 
+  def Flush():
+    return .bw.Flush()
   def Write(bb):
-    return .bw.Write(bb)
+    return .bw.Write(bb)  # bufio writes fully, or error.
   def WriteByte(b):
-    .bw.Write(b)
+    .bw.WriteByte(b)
   def WriteString(s):
     return .bw.WriteString(s)
+
+  def Abort():
+    try:
+      .fd.Close()
+    except:
+      pass
+    say 'Abort: os.Remove', .tmp
+    os.Remove(.tmp)
+    .bw = None
+    .fd = None
 
   def Close():
     .bw.Flush()
     .fd.Close()
 
     ms = NowMillis()
-    dest = 'r.%014d.%s' % (ms, .suffix)
+    dest = RevFormat(.fpath, 'r', ms, .suffix, .mtime, .size)
 
+    say 'os.Rename', .tmp, dest
     os.Rename(.tmp, dest)
 
 def NowMillis():
-    now = time.Now()
-    sec, ns = now.Unix(), now.UnixNano()
-    return sec*1000 + ns // 1000000
+    return time.Now().UnixNano() // 1000000
 
 pass
