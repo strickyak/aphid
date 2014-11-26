@@ -121,18 +121,27 @@ def VerbEdit(w, r, m, wp):
   )
   EmitHtml(w, d, atemplate.Edit)
 
+MATCH_FILENAME = regexp.MustCompile('.*filename="([^"]+)"').FindStringSubmatch
 def VerbAttach(w, r, m, wp):
   f = None
   if r.Method != "GET":
     r.ParseMultipartForm(1024*1024)
-    f = r.MultipartForm.File['file'][0].Header.Get('file')
+    say r.MultipartForm.File
+    say r.MultipartForm.File['file'][0].Header
+    cd = r.MultipartForm.File['file'][0].Header.Get('Content-Disposition')
+    say cd
+    match = MATCH_FILENAME(cd)
+    say match
+    if match:
+      f = match[1]
+  say f
   if f:
     # Save it.
     fname = r.MultipartForm.File['file'][0].Filename
     # TODO: clean the fname.
     m.bund.WriteFile('/wiki/%s/%s' % (wp.Subject, fname), "a rabbit")
     http.Redirect(w, r,
-                  "%s%sattach" % (wp.Subject, wp.d['Dots']),
+                  "%s%sview" % (wp.Subject, wp.d['Dots']),
                   http.StatusTemporaryRedirect)
     return
   try:

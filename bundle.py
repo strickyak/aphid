@@ -140,6 +140,7 @@ class atomicFileCreator:
       .mtime = ms // 1000
     .tmp = RevFormat(.fpath, 'tmp', ms, .suffix, .mtime, .size)
     say 'os.Create', .tmp
+    os.MkdirAll(.fpath, DIR_PERM)
     .fd = os.Create(.tmp)
     .bw = bufio.NewWriter(.fd)
 
