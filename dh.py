@@ -12,7 +12,7 @@ def String(x):
 
 def DefineGroup(sz, g, m):
   # Drop all non-upper-hex chars from string m.
-  m = ''.join([c for c in m if '0'<=c and c<='9' or 'A'<=c and c<='F'])
+  m = ''.join([c for c in m if '0'<= c <='9' or 'A'<= c <='F'])
   # g is a small int, but m is a large hexadecimal string.
   generator = big.NewInt(g)
   modulus, ok = big.NewInt(0).SetString(m, 16)
