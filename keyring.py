@@ -1,4 +1,6 @@
 from go import bytes, io/ioutil
+from go import crypto/rand as crand
+from . import dh
 
 "The global Ring."
 Ring = {}
@@ -66,9 +68,45 @@ def Save(fname, ring):
   ioutil.WriteFile(fname, bb.Bytes(), WRITE_PERM)
 
 def main(args):
-  "main() copies one file to another, both named in args."
-  rfile = args.pop(0)
-  wfile = args.pop(0)
+  if args:
+    cmd = args.pop(0)
 
-  Load(rfile, Ring)
-  Save(wfile, Ring)
+  say cmd, args
+  if cmd == "cp":
+    rfile = args.pop(0)
+    wfile = args.pop(0)
+    must not args
+    Load(rfile, Ring)
+    Save(wfile, Ring)
+
+  if cmd == "newdh":
+    key_id = args.pop(0)
+    key_name = args.pop(0)
+    rfile = args.pop(0)
+    wfile = args.pop(0)
+    must not args
+    Load(rfile, Ring)
+    obj = dh.Forge(key_id, key_name, dh.G3072)
+    Ring[key_id] = Line() {
+        num:key_id, name:key_name, kind:'dh',
+        pub:dh.String(obj.pub), sec:dh.String(obj.sec), sym:None, base:None
+    }
+    Save(wfile, Ring)
+
+  if cmd == "newsym":
+    key_id = args.pop(0)
+    key_name = args.pop(0)
+    rfile = args.pop(0)
+    wfile = args.pop(0)
+    must not args
+    Load(rfile, Ring)
+    bb = mkbyt(32)
+    c = crand.Read(bb)
+    must c == 32
+    obj = dh.Forge(key_id, key_name, dh.G3072)
+    Ring[key_id] = Line() {
+        num:key_id, name:key_name, kind:'dh',
+        pub:None, sec:None, sym:('%x'%str(bb)), base:None
+    }
+    Save(wfile, Ring)
+

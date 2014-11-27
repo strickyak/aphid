@@ -15,6 +15,7 @@ from go import strings
 from go import regexp
 from go import io/ioutil
 from go import net
+from . import bundle
 from . import dns
 from . import flag
 from . import hexdump
@@ -241,6 +242,17 @@ def Slurp(d, filename):
   body = ioutil.ReadFile(filepath.Join(TOP.X, filename))
   ParseBody(d, body, origin)
 
+def SlurpTriples(d):
+  "SlurpTriples of kind 'zone', maps origin zone to bund/filepath, with in&out dict d."
+  bdict = {}
+  for origin, filespec in sorted(flag.Triples.get('zone', {}).items()):
+    bundname, file_path = filespec.split('/', 1)
+    bund = bundle.Bundles.get(bundname)
+    must bund, bundname
+
+    body = bund.ReadFile(file_path)
+    ParseBody(d, body, origin)
+
 def main(argv):
   filenames = flag.Munch(argv)
   d = {}
@@ -248,4 +260,5 @@ def main(argv):
     raise 'Arguments required for zonefile filenames'
   for filename in filenames:
     Slurp(d, filename)
+  SlurpTriples(d)
   Serve(d)
