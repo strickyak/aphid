@@ -8,19 +8,22 @@ def Fatal(s):
 def Err(s):
   fmt.Fprintf(os.Stderr, '\n@1 %s\n', s)
 
+def Warn(s):
+  fmt.Fprintf(os.Stderr, '\n@2 %s\n', s)
+
 def Throw(s):
   err = str(s)
-  fmt.Fprintf(os.Stderr, '\n@2 %s\n' % err)
+  fmt.Fprintf(os.Stderr, '\n@3 %s\n' % err)
   raise err
 
 def Note(s):
-  fmt.Fprintf(os.Stderr, '\n@3 %s\n', s)
-
-def Info(s):
   fmt.Fprintf(os.Stderr, '\n@4 %s\n', s)
 
+def Info(s):
+  fmt.Fprintf(os.Stderr, '\n@5 %s\n', s)
+
 def Debug(level, s):
-  fmt.Fprintf(os.Stderr, '\n@%d %s\n', level + 5, s)
+  fmt.Fprintf(os.Stderr, '\n@%d %s\n', level + 6, s)
 
 Status = 0
 def SetExitStatus(status):
