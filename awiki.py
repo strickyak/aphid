@@ -46,7 +46,7 @@ def EmitHtml(w, d, t):
 
 def VerbDemo(w, r, m, wp):
   try:
-    t = m.bund.ReadFile('/wiki/%s/@wiki' % wp.Subject)
+    t = m.bund.ReadFile('/wiki/%s/__wiki__' % wp.Subject)
   except as ex:
     t = '(Error: %s)' % ex
   d = dict(
@@ -73,7 +73,7 @@ def VerbList(w, r, m, wp):
 
 def VerbView(w, r, m, wp):
   try:
-    text = m.bund.ReadFile('/wiki/%s/@wiki' % wp.Subject)
+    text = m.bund.ReadFile('/wiki/%s/__wiki__' % wp.Subject)
   except:
     # Offer to let them make the page.
     d = dict(
@@ -103,13 +103,13 @@ def VerbEdit(w, r, m, wp):
   text = r.FormValue('text')
   if text:
     # Save it.
-    m.bund.WriteFile('/wiki/%s/@wiki' % wp.Subject, text)
+    m.bund.WriteFile('/wiki/%s/__wiki__' % wp.Subject, text)
     http.Redirect(w, r,
                   "%s%sview" % (wp.Subject, wp.d['Dots']),
                   http.StatusTemporaryRedirect)
     return
   try:
-    text = m.bund.ReadFile('/wiki/%s/@wiki' % wp.Subject)
+    text = m.bund.ReadFile('/wiki/%s/__wiki__' % wp.Subject)
   except:
     text = 'TODO: Edit me!'
   d = dict(
