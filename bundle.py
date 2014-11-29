@@ -4,7 +4,7 @@ from go import os
 from go import path/filepath as F
 from go import regexp
 from go import time
-from . import table
+from . import table, A
 
 DIR_PERM = 0755
 FILE_PERM = 0644
@@ -13,6 +13,8 @@ Bundles = {}  # Map names to bundle.
 
 def RevFormat(fpath, tag, ms, suffix, mtime, size):
   return '%s/%s.%014d.%s.%d.%d' % (fpath, tag, ms, suffix, mtime, size)
+
+PARSE_REV_FILENAME = regexp.MustCompile('^r[.](\w+)[.](\w+)[.]([0-9]+)[.]([0-9]+)$').FindStringSubmatch
 
 PARSE_BUNDLE_PATH = regexp.MustCompile('(^|.*/)b[.]([A-Za-z0-9_]+)$').FindStringSubmatch
 
@@ -52,18 +54,53 @@ class Bundle:
     say z
     return z
     
+  def List2(dirpath):
+    say 'List2', dirpath
+    dp = .dpath(dirpath)
+    fd = os.Open(dp)
+    vec = fd.Readdir(-1)
+    say vec
+    for info in vec:
+      say info
+      s = info.Name()
+      if s.startswith('d.'):
+        yield s[2:], True
+      elif s.startswith('f.'):
+        yield s[2:], False
+      else:
+        A.Warn('Ignoring strange file: %q %q', dirpath, s)
+    
+  def List4(dirpath):
+    say 'List4', dirpath
+    dp = .dpath(dirpath)
+    fd = os.Open(dp)
+    vec = fd.Readdir(-1)
+    say vec
+    for info in vec:
+      say info
+      s = info.Name()
+      if s.startswith('d.'):
+        yield s[2:], True, -1, -1
+      elif s.startswith('f.'):
+        fd2 = os.Open(F.Join(dp, s))
+        vec2 = fd2.Readdir(-1)
+        revs = [fi.Name()
+                 for fi in vec2
+                 if PARSE_REV_FILENAME(fi.Name())]
+        if not revs:
+          continue
+        rev_name = sorted(revs)[-1] # latest.
+        _, name3, suffix3, mtime3, size3 = PARSE_REV_FILENAME(rev_name)
+        yield s[2:], False, int(mtime3), int(size3)
+      else:
+        A.Warn('Ignoring strange file: %q %q', dirpath, s)
+    
   def ListFiles(dirpath):
     say 'ListFiles', dirpath
     z = []
     dp = .dpath(dirpath)
-    say dp
-    #try:
     fd = os.Open(dp)
-    say fd
-    #except:
-    #  return z
     vec = fd.Readdir(-1)
-    say vec
     for info in vec:
       say info, info.Name()
       s = info.Name()
@@ -84,6 +121,25 @@ class Bundle:
       if s.startswith('r.'):
         z.append(s[2:])
     return z
+
+  def Stat3(file_path):
+    dpath = .dpath(file_path)
+    try:
+      st = os.Stat(dpath)
+      return True, -1, -1
+    except:
+      pass
+    fpath = .fpath(file_path)
+    fd = os.Open(fpath)
+    names = [(fi.Name(), fi)
+             for fi in fd.Readdir(-1)
+             if fi.Name().startswith('r.')]
+    if not names:
+      raise 'No such file in bundle %s: %q' % (.name, file_path)
+
+    _, latest_fi = names[-1]
+    assert not latest_fi.IsDir()
+    return False, latest_fi.ModTime(), latest_fi.Size()
 
   def dpath(dirpath):
     vec = [str(s) for s in dirpath.split('/') if s]
