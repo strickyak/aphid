@@ -1,16 +1,14 @@
-from go import html
+from go import bytes, html, os, regexp
 from go import net/http
-from go import os
 from go import path/filepath
-from go import regexp
-from . import flag
-from . import bundle
+
+from . import bundle, flag
 from . import awiki
 
 BIND = flag.String('bind_addr', ':8080', 'Bind to this address to server web.')
 
 IS_EVIL_PATH = regexp.MustCompile('(^|[/])[.]').FindString
-MATCH_HOST_IN_PATH = regexp.MustCompile('/@([-A-Za-z0-9.]+)($|/.*)$').FindStringSubmatch
+MATCH_HOST_IN_PATH = regexp.MustCompile('/@([-A-Za-z0-9.]+)@($|/.*$)').FindStringSubmatch
 IS_DOMAIN = regexp.MustCompile('^[-a-z0-9.]+$').FindString
 
 def EmitDir(w, r, fd, prefix, path):
@@ -19,6 +17,14 @@ def EmitDir(w, r, fd, prefix, path):
   for name in names:
     name = html.EscapeString(name)
     w.Write('<li><a href="%s">%q</a></li>\n' % (name, name))
+  w.Write('</ul>\n')
+
+def EmitBundDir(w, r, prefix, path, names):
+  w.Write('<html><body><h3>Directory %s</h3> <ul>\n' % path)
+  for name in names:
+    name = html.EscapeString(name)
+    name = ''.join( [('_' if c == '@' else c) for c in name] )
+    w.Write('<li><a href="./%s">%q</a></li>\n' % (name, name))
   w.Write('</ul>\n')
 
 def DirExists(filename):
@@ -72,9 +78,35 @@ class WebDir:
       w.Header().Set('Content-Type', 'text/plain')
       w.Write( 'Exception:\n%s\n' % ex)
 
+class BundDir:
+  def __init__(bund_name):
+    .bund_name = bund_name
+    .b = bundle.Bundles[bund_name]
+
+  def Handle4(w, r, host, path):
+    try:
+      if path.endswith('/'):
+        dd = sorted(.b.ListDirs(path))
+        ff = sorted(.b.ListFiles(path))
+        names = ["%s/" % d for d in dd] + ff
+        EmitBundDir(w, r, None, path, names)
+
+      else:
+        isDir, modTime, size = .b.Stat3(path)
+        if isDir:
+          http.Redirect(w, r, path + '/', http.StatusMovedPermanently)
+
+        br = bytes.NewReader(.b.ReadFile(path))  # TODO, avoid loading in memory?
+        http.ServeContent(w, r, path, modTime, br)
+
+    except as ex:
+      w.Header().Set('Content-Type', 'text/plain')
+      w.Write( 'Exception:\n%s\n' % ex)
+
 def RoutingFunc(w, r):
   path = r.URL.Path
   host = r.Host
+  say host, path
   try:
     # Subvert "." files and ".." directories
     if IS_EVIL_PATH(path):
@@ -83,10 +115,13 @@ def RoutingFunc(w, r):
     # Perhaps extract an overriding Host from the path.
     m = MATCH_HOST_IN_PATH(path)
     if m:
-      _, host, path = m
-      if not path:  # Require a trailing '/' after the "/@host":
-        http.Redirect(w, r, '/@%s/' % host, http.StatusMovedPermanently)
+      _, host2, path2 = m
+      say host2, path2
+      if not path2:  # Require a trailing '/' after the "/@@host":
+        http.Redirect(w, r, '/@%s@/' % host2, http.StatusMovedPermanently)
         return
+      host, path = host2, path2
+      say host2, path2
 
     # Normalize the host, without post, to lowercase, using 'default' if it is missing (for HTTP/1.0).
     if not host:
@@ -99,6 +134,7 @@ def RoutingFunc(w, r):
 
     # Lookup and call the host handler.
     fn = HostHandlers.get(host)
+    say host, path, fn
     if not fn:
       raise 'Unknown host: %q; path: %q' % (host, path)
 
@@ -125,6 +161,10 @@ def ProcessTriples():
         HostHandlers[k] = h
       elif name == 'wiki':
         HostHandlers[k] = awiki.AWikiMaster(v).Handler4
+      elif name == 'web':
+        HostHandlers[k] = WebDir(v).Handle4
+      elif name == 'web_bund':
+        HostHandlers[k] = BundDir(v).Handle4
       else:
         raise 'Bad Triple name: %q' % name
   
