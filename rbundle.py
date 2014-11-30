@@ -14,6 +14,7 @@ class RBundleClient(rpc2.Client):
     return .Call("RStat3", [bund, path]).Wait()
 
   def RList4(bund, path):
+    say bund, path
     return .Call("RList4", [bund, path]).Wait()
 
   def RReadFile(bund, path):
@@ -26,7 +27,9 @@ def RStat3(bund, path):
   return bundle.Bundles[bund].Stat3(path)
 
 def RList4(bund, path):
-  return bundle.Bundles[bund].List4(path)
+  say bund, path
+  say bundle.Bundles
+  return list(bundle.Bundles[bund].List4(path))
 
 def RReadFile(bund, path):
   return bundle.Bundles[bund].ReadFile(path)
@@ -47,7 +50,6 @@ RING = flag.String('rbundle_keyring', 'test.ring', 'Test Keyring')
 
 def main(args):
   args = flag.Munch(args)
-
   keyring.Load(RING.X, keyring.Ring)
 
   if args:
