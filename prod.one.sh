@@ -3,6 +3,7 @@ set -x
 cd /opt/aphid
 
 /opt/aphid/amain \
+  --self_ip=$(host $(hostname)  | awk '{print $NF}') \
   --a_bundle_topdir=. \
   --a_dns_bind=":53" \
   --a_http_bind=":80" \
