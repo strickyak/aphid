@@ -14,8 +14,9 @@ Bundles = {}  # Map names to bundle.
 def RevFormat(fpath, tag, ms, suffix, mtime, size):
   return '%s/%s.%014d.%s.%d.%d' % (fpath, tag, ms, suffix, mtime, size)
 
-PARSE_REV_FILENAME = regexp.MustCompile('^r[.](\w+)[.](\w+)[.]([0-9]+)[.]([0-9]+)$').FindStringSubmatch
+PARSE_REV_FILENAME = regexp.MustCompile('^r[.](\w+)[.](\w+)[.]([-0-9]+)[.]([-0-9]+)$').FindStringSubmatch
 
+# Extracts bundle name at [2] from path to bundle.
 PARSE_BUNDLE_PATH = regexp.MustCompile('(^|.*/)b[.]([A-Za-z0-9_]+)$').FindStringSubmatch
 
 def LoadBundles(topdir='.', suffix='0'):
@@ -30,6 +31,10 @@ def LoadBundles(topdir='.', suffix='0'):
       _, _, bname = m
       say bname
       Bundles[bname] = Bundle(bname, d, suffix)
+
+def LoadBundle(bname, topdir='.', suffix='0'):
+  bundir = F.Join(topdir, 'b.%s' % bname)
+  Bundles[bname] = Bundle(bname, bundir, suffix)
 
 class Bundle:
   def __init__(name, bundir, suffix):

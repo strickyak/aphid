@@ -3,20 +3,37 @@ from go import net/http
 from . import A, bundle, flag
 from . import aweber
 from . import azoner
+from . import keyring
+from . import rbundle
 
-A_HTTP_BIND = flag.String('a_http_bind', ':8080', 'bind HTTP')
+FLAG_BUNDLE_TOPDIR = flag.String('a_bundle_topdir', '.', 'where are the bundles')
+FLAG_RBUNDLE_BIND = flag.String('a_rbundle_bind', ':8081', 'bind remote bundle rpc')
+FLAG_DNS_BIND = flag.String('a_dns_bind', ':8053', 'bind udp for dns')
+FLAG_HTTP_BIND = flag.String('a_http_bind', ':8080', 'bind HTTP')
+FLAG_RING = flag.String('a_keyring', 'test.ring', 'Test Keyring')
 
 def main(args):
   args = flag.Munch(args)
+  must not args, args
 
-  bundle.LoadBundles(topdir='.')
+  # Load files.
+  keyring.Load(FLAG_RING.X, keyring.Ring)
+
+  # TODO -- triples for bundles, with config.
+  #bundle.LoadBundles(topdir=FLAG_BUNDLE_TOPDIR.X)
+  for k, v in flag.Triples.get('bundle', {}).items():
+    bundle.LoadBundle(k, topdir=FLAG_BUNDLE_TOPDIR.X)
+
+  # Remote Bundle:
+  go rbundle.RBundleServer(FLAG_RBUNDLE_BIND.X, keyring.Ring).ListenAndServe()
 
   # DNS Zones:
   zonedict = {}
   azoner.SlurpTriples(zonedict)
-  go azoner.Serve(zonedict)
+  go azoner.Serve(zonedict, FLAG_DNS_BIND.X)
 
   # WEB:
   aweber.ProcessTriples()
+  http.HandleFunc('/favicon.ico', lambda w, r: None)
   http.HandleFunc('/', aweber.RoutingFunc)
-  http.ListenAndServe(A_HTTP_BIND.X , None)
+  http.ListenAndServe(FLAG_HTTP_BIND.X , None)

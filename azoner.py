@@ -20,11 +20,9 @@ from . import dns
 from . import flag
 from . import hexdump
 
-BIND = flag.String('bind_addr', ':53', 'UDP host:port to listen on for DNS.')
-SELF = flag.String('self_ip', '127.0.0.1', '$SELF IP Address as a dotted quad.')
-TOP = flag.String('top_dir', '.', 'Directory that filenames are relative to.')
+DNS_SELF = flag.String('self_ip', '127.0.0.1', '$SELF IP Address as a dotted quad.')
 
-UDPMAX = 512  # Should be enough bytes for DNS packets.
+UDPMAX = 512  # Should be enough bytes for normal DNS packets.
 
 # [1] is Before the quote, [2] is In the quote, [3] is after.
 FindQuote = regexp.MustCompile('^([^;"]*)["]([^"]*)["](.*)$').FindStringSubmatch
@@ -125,7 +123,7 @@ def ParseBody(d, body, origin):
 
     # Replace @ with origin, and $SELF with our self_ip address.
     words = [(origin if w == '@' else w) for w in words]
-    words = [(SELF.X if w == '$SELF' else w) for w in words]
+    words = [(DNS_SELF.X if w == '$SELF' else w) for w in words]
 
     # Special commands, $ORIGIN and $TTL.
     if words[0] == '$ORIGIN':
@@ -154,8 +152,8 @@ def ParseBody(d, body, origin):
 
   return rr
 
-def Serve(d):
-  addy = net.ResolveUDPAddr("udp", BIND.X)
+def Serve(d, bind):
+  addy = net.ResolveUDPAddr("udp", bind)
 
   say "Listening..."
   conn = net.ListenUDP("udp4", addy)
@@ -235,13 +233,6 @@ def FindSOA(d, name):
         if rr.typ == dns.SOA:
           return rr
 
-def Slurp(d, filename):
-  say filename
-  _, origin = filepath.Split(filename)
-  say origin
-  body = ioutil.ReadFile(filepath.Join(TOP.X, filename))
-  ParseBody(d, body, origin)
-
 def SlurpTriples(d):
   "SlurpTriples of kind 'zone', maps origin zone to bund/filepath, with in&out dict d."
   bdict = {}
@@ -250,15 +241,13 @@ def SlurpTriples(d):
     bund = bundle.Bundles.get(bundname)
     must bund, bundname
 
+    say origin, file_path
     body = bund.ReadFile(file_path)
     ParseBody(d, body, origin)
 
-def main(argv):
-  filenames = flag.Munch(argv)
+def main(args):
+  args = flag.Munch(args)
+  must not args
   d = {}
-  if not filenames:
-    raise 'Arguments required for zonefile filenames'
-  for filename in filenames:
-    Slurp(d, filename)
   SlurpTriples(d)
-  Serve(d)
+  Serve(d, ':8053')

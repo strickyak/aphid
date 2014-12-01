@@ -78,25 +78,34 @@ class WebDir:
       w.Header().Set('Content-Type', 'text/plain')
       w.Write( 'Exception:\n%s\n' % ex)
 
+STRIP_WEB = regexp.MustCompile('^/web($|/.*$)').FindStringSubmatch
+def StripWeb(s):
+  m = STRIP_WEB(s)
+  say s, m
+  return m[1] if m else s
+
 class BundDir:
   def __init__(bund_name):
     .bund_name = bund_name
     .b = bundle.Bundles[bund_name]
 
   def Handle4(w, r, host, path):
+    doDir = path.endswith('/')
+    wpath = filepath.Join('/web', path)
+    preLen = len('/web')
     try:
-      if path.endswith('/'):
-        dd = sorted(.b.ListDirs(path))
-        ff = sorted(.b.ListFiles(path))
-        names = ["%s/" % d for d in dd] + ff
+      if doDir:
+        dd = sorted(.b.ListDirs(wpath))
+        ff = sorted(.b.ListFiles(wpath))
+        names = ["%s/" % x for x in dd] + [x for x in ff]
         EmitBundDir(w, r, None, path, names)
 
       else:
-        isDir, modTime, size = .b.Stat3(path)
+        isDir, modTime, size = .b.Stat3(wpath)
         if isDir:
           http.Redirect(w, r, path + '/', http.StatusMovedPermanently)
 
-        br = bytes.NewReader(.b.ReadFile(path))  # TODO, avoid loading in memory?
+        br = bytes.NewReader(.b.ReadFile(wpath))  # TODO, avoid loading in memory?
         http.ServeContent(w, r, path, modTime, br)
 
     except as ex:
@@ -161,12 +170,12 @@ def ProcessTriples():
         HostHandlers[k] = h
       elif name == 'wiki':
         HostHandlers[k] = awiki.AWikiMaster(v).Handler4
-      elif name == 'web':
+      elif name == 'webdir':
         HostHandlers[k] = WebDir(v).Handle4
-      elif name == 'web_bund':
+      elif name == 'web':
         HostHandlers[k] = BundDir(v).Handle4
       else:
-        raise 'Bad Triple name: %q' % name
+        pass
   
 HostHandlers = dict()
 

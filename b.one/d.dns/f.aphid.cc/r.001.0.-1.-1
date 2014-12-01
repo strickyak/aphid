@@ -1,0 +1,8 @@
+$TTL 1111
+
+aphid.cc.		IN SOA	yak.net. dns.yak.net. (20001234 1000 500 2592000 600)
+
+aphid.cc.		IN TXT	"aphid"
+
+aphid.cc.		IN A	$SELF
+*.aphid.cc.		IN A	$SELF
