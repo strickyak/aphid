@@ -1,94 +1,51 @@
-from go import os
-from go import path/filepath
+from go import bytes, io, os, time
+from go import io/ioutil, path/filepath
 
 from . import A, flag, keyring, rbundle
 
 J = filepath.Join
+FPERM = 0644
+DPERM = 0755
 
-#def Test1(args):
-#  fs = rfs.RfsClient(RFS.X, rfs.KEYNAME, rfs.KEY)
-#
-#  vec = fs.ListDir('vga')
-#  say 'ListDir', vec
-#  assert len(vec) > 2
-#  assert len(vec[1]) == 4
-#
-#  buf, eof = fs.ReadAt('motd', 8, 0)
-#  say 'ReadAt', buf, eof
-#  assert len(buf) == 8
-#  assert not eof
-#
-#  buf, eof = fs.ReadAt('motd', 12, 8)
-#  say 'ReadAt', buf, eof
-#  assert len(buf) == 12
-#  assert not eof
-#
-#  print "OK"
-#
-#BS = 512 # Block Size
-#
-#def cat1(path, out):
-#  fd = afs.Open(path)
-#  #say 'YYY cat1', fd
-#  with defer fd.Close():
-#    while True:
-#      #say 'YYY cat1 fd.Read', fd
-#      buf, eof = fd.Read(BS)
-#      #say 'YYY cat1 fd.Read', buf, eof
-#      if buf:
-#        ### aphid.WrapWrite(out, buf)  # Writes fully.
-#        n = len(buf)
-#        while n > 0:
-#          c = out.Write(buf)
-#          buf = buf[c:]
-#          n -= c
-#          #say 'YYYYYYYY', n, c
-#      #say 'YYY called aphid.WrapWrite', len(buf), buf
-#      if eof:
-#        break
-#    pass
-#  pass
-#
-#def Cat(args):
-#  w = None
-#  if CREATE.X:
-#    must not APPEND.X
-#    w = afs.Create(CREATE.X)
-#  if APPEND.X:
-#    must not CREATE.X
-#    w = afs.Append(APPEND.X)
-#  if not w:
-#    w = afs.Append('/Std/out')
-#  with defer w.Close():
-#    for arg in args:
-#      cat1(arg, w)
-#  pass
-#
-#def Cp(args):
-#  src, dst = args
-#  Copy1File(src, dst)
-#
-#def Copy1File(src, dst):
-#  r = afs.Open(src)
-#  with defer r.Close():
-#    w = afs.Create(dst) 
-#    with defer w.Close():
-#      cat1(src, w)
-#      mt = r.ModTime()
-#      afs.SetModTime(dst, mt)
+def Push(args):
+  stop = J(DIR.X, BUND.X, 'STOP')  # Build prefix plus word 'STOP'.
+  prefix_len = len(stop) - 4  # Without the 'STOP'.
+
+  def fn(path, info, err):
+    if err is None and not info.IsDir():
+      short_path = path[prefix_len:]
+      say path, short_path
+      client.RWriteFile(BUND.X, short_path, ioutil.ReadFile(path))
+
+  say 'filepath.Walk', J(DIR.X, BUND.X)
+  filepath.Walk(J(DIR.X, BUND.X), fn)
+  say 'filepath.Walk DONE.'
+
+def Pull(args):
+  if not args:
+    args = ['/']
+  for a in args:
+    for name, isDir, mtime, sz in FindFiles1(a):
+      jname = J(DIR.X, BUND.X, name)
+      if isDir:
+        os.MkdirAll(jname, DPERM)
+      else:
+        b = client.RReadFile(BUND.X, name)
+        ioutil.WriteFile(jname, b, FPERM)
+        t = time.Unix(mtime, 0)
+        os.Chtimes(jname, t, t)
 
 def Cat(args):
   for name in args:
-    say name
     b = client.RReadFile(BUND.X, name)
-    say b
-    say [x for x in b]
-    say str(b)
-    say [x for x in str(b)]
+    io.Copy(os.Stdout, bytes.NewReader(b))
 
-def FindFiles(args):
-  for name, isDir, mtime, sz in FindFiles1('/'):
-    print '%s %s %d %d' % (name, 'D' if isDir else 'F', mtime, sz)
+def Find(args):
+  if not args:
+    args = ['/']
+  for a in args:
+    for name, isDir, mtime, sz in FindFiles1(a):
+      print '%s %10d %10d %s' % ('D' if isDir else 'F', mtime, sz, name)
 
 def FindFiles1(path):
   try:
@@ -150,8 +107,10 @@ def FindFiles1(path):
   
 
 Ensemble = {
-    'find': FindFiles,
+    'find': Find,
     'cat': Cat,
+    'pull': Pull,
+    'push': Push,
 }
 
 BUND = flag.String('bund', '', 'Remote bundle name.')
