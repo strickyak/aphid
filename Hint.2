@@ -1,0 +1,6 @@
+ 2038  find /tmp/t2 -ls
+  2039  cp -av /etc/brltty  /tmp/t2/xyz/tty 
+   2040  au/au -bund=xyz -dir=/tmp/t2 push
+    2041  au/au -bund=xyz -dir=/tmp/t3 pull 
+     2042  diff -r /tmp/t2 /tmp/t3 
+
