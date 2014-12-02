@@ -7,9 +7,34 @@ J = filepath.Join
 FPERM = 0644
 DPERM = 0755
 
+def BigLocalDir(_):
+  z = {}
+  fnord = J(DIR.X, BUND.X, 'FNORD')  # Build prefix plus word 'FNORD'.
+  prefix_len = len(fnord) - 5  # Without the 'FNORD'.
+
+  def fn(path, info, err):
+    if err is None and not info.IsDir():
+      short_path = path[prefix_len:]
+      z[short_path] = (info.ModTime().Unix(), info.Size())
+
+  filepath.Walk(J(DIR.X, BUND.X), fn)
+  for k, v in sorted(z.items()):
+    print k, v
+  return z
+
+def BigRemoteDir(_):
+  z = {}
+  for name, isDir, mtime, sz in FindFiles1('/'):
+    if not isDir:
+      name = name.lstrip('/')
+      z[name] = (mtime, sz)
+  for k, v in sorted(z.items()):
+    print k, v
+  return z
+
 def Push(args):
-  stop = J(DIR.X, BUND.X, 'STOP')  # Build prefix plus word 'STOP'.
-  prefix_len = len(stop) - 4  # Without the 'STOP'.
+  fnord = J(DIR.X, BUND.X, 'FNORD')  # Build prefix plus word 'FNORD'.
+  prefix_len = len(fnord) - 5  # Without the 'FNORD'.
 
   def fn(path, info, err):
     if err is None and not info.IsDir():
@@ -59,58 +84,13 @@ def FindFiles1(path):
     A.Err('fu find: Cannot List (%s): %q' % (ex, path))
     A.SetExitStatus(2)
 
-#def Sync(args):
-#  if len(args) != 2:
-#    A.Err('fu sync: To perform a sync, we need a destination and a path.')
-#    A.SetExitStatus(2)
-#    return
-#  source, dest = args
-#
-#  nf, nd = 0, 0
-#  for path, isDir, why in Sync1(source, dest):
-#    print path, 'D' if isDir else 'F', why
-#    if isDir:
-#      nd += 1
-#    else:
-#      nf += 1
-#      if YES.X:
-#        Copy1File(J(source, path), J(dest, path))
-#  A.Info('Need to make %d directories. copy %d files.' % (nd, nf))
-#
-## rye run fu.py *.py -- sync /Here/static_test_src /Here/static_test_dst
-#def Sync1(source, dest):
-#  dst_promise = go FindFiles1(dest, '')
-#  src_promise = go FindFiles1(source, '')
-#  dst_files = dst_promise.Wait()
-#  src_files = src_promise.Wait()
-#
-#  dest_dict = {}
-#  for path, isDir, mtime, size in dst_files:
-#    dest_dict[path] = (isDir, mtime, size)
-#
-#  for path, isDir, mtime, size in src_files:
-#    d = dest_dict.get(path)
-#    if not d:
-#      yield path, isDir, 'MISSING'
-#    elif not isDir:
-#      _isDir, _mtime, _size = d
-#      if isDir != _isDir:
-#        yield path, isDir, 'isDir'
-#      elif size != _size:
-#        yield path, isDir, 'size'
-#      elif mtime != _mtime:
-#        yield path, isDir, 'mtime'
-#      else:
-#        pass
-#    else:
-#      pass
-  
-
 Ensemble = {
     'find': Find,
     'cat': Cat,
     'pull': Pull,
     'push': Push,
+    'BigLocalDir': BigLocalDir,
+    'BigRemoteDir': BigRemoteDir,
 }
 
 BUND = flag.String('bund', '', 'Remote bundle name.')
