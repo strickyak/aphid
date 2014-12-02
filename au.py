@@ -39,8 +39,9 @@ def Push(args):
   def fn(path, info, err):
     if err is None and not info.IsDir():
       short_path = path[prefix_len:]
+      mtime = info.ModTime().Unix()
       say path, short_path
-      client.RWriteFile(BUND.X, short_path, ioutil.ReadFile(path))
+      client.RWriteFile(BUND.X, short_path, ioutil.ReadFile(path), mtime=mtime)
 
   say 'filepath.Walk', J(DIR.X, BUND.X)
   filepath.Walk(J(DIR.X, BUND.X), fn)

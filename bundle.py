@@ -170,9 +170,9 @@ class Bundle:
     else:
       return ioutil.ReadFile(.nameOfFileToOpen(file_path))
 
-  def WriteFile(file_path, s):
+  def WriteFile(file_path, s, mtime=-1):
     say 'WriteFile', file_path, len(s)
-    mtime = time.Now().Unix()
+    mtime = mtime if mtime>0 else time.Now().Unix()
     w = atomicFileCreator(.fpath(file_path), .suffix, mtime=mtime, size=len(s))
     with defer w.Close():
       if .key:
