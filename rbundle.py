@@ -60,6 +60,7 @@ def main(args):
       path = args.pop(0)
       say cli.RList4(bund, path)
   else:
-    bundle.LoadBundles()
+    for k, v in flag.Triples.get('bundle', {}).items():
+      bundle.LoadBundle(k)
     server = RBundleServer(BIND.X, keyring.Ring)
     server.ListenAndServe()

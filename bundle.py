@@ -1,9 +1,7 @@
-from go import bufio
+from go import bufio, os, regexp, time
 from go import io/ioutil
-from go import os
 from go import path/filepath as F
-from go import regexp
-from go import time
+from go import github.com/strickyak/redhed
 from . import table, A
 
 DIR_PERM = 0755
@@ -19,28 +17,30 @@ PARSE_REV_FILENAME = regexp.MustCompile('^r[.](\w+)[.](\w+)[.]([-0-9]+)[.]([-0-9
 # Extracts bundle name at [2] from path to bundle.
 PARSE_BUNDLE_PATH = regexp.MustCompile('(^|.*/)b[.]([A-Za-z0-9_]+)$').FindStringSubmatch
 
-def LoadBundles(topdir='.', suffix='0'):
-  vec = F.Glob(F.Join(topdir, 'b.*'))
-  if not vec:
-    raise 'No bundles in top directory', topdir
-  for d in vec:
-    say d
-    m = PARSE_BUNDLE_PATH(d)
-    say m
-    if m:
-      _, _, bname = m
-      say bname
-      Bundles[bname] = Bundle(bname, d, suffix)
+#def LoadBundles(topdir='.', suffix='0'):
+#  vec = F.Glob(F.Join(topdir, 'b.*'))
+#  if not vec:
+#    raise 'No bundles in top directory', topdir
+#  for d in vec:
+#    say d
+#    m = PARSE_BUNDLE_PATH(d)
+#    say m
+#    if m:
+#      _, _, bname = m
+#      say bname
+#      Bundles[bname] = Bundle(bname, d, suffix)
 
-def LoadBundle(bname, topdir='.', suffix='0'):
+def LoadBundle(bname, topdir='.', suffix='0', keyid=None, key=None):
   bundir = F.Join(topdir, 'b.%s' % bname)
-  Bundles[bname] = Bundle(bname, bundir, suffix)
+  Bundles[bname] = Bundle(bname, bundir, suffix, keyid=keyid, key=key)
 
 class Bundle:
-  def __init__(name, bundir, suffix):
+  def __init__(name, bundir, suffix, keyid=None, key=None):
     .name = name
     .bundir = bundir
     .suffix = suffix
+    if key:
+      .key = redhed.NewKey(keyid, key)
     .table = table.Table(F.Join(.bundir, 'd.table'))
     .wikdir = F.Join(.bundir, 'd.wiki')
 
@@ -162,20 +162,34 @@ class Bundle:
     return z
 
   def ReadFile(file_path):
-    return ioutil.ReadFile(.nameOfFileToOpen(file_path))
+    if .key:
+      fd = os.Open(.nameOfFileToOpen(file_path))
+      with defer fd.Close():
+        r = redhed.NewReader(fd, .key)
+        return ioutil.ReadAll(r)
+    else:
+      return ioutil.ReadFile(.nameOfFileToOpen(file_path))
 
   def WriteFile(file_path, s):
     say 'WriteFile', file_path, len(s)
-    w = atomicFileCreator(.fpath(file_path), .suffix, mtime=None, size=len(s))
-    try:
-      if type(s) is str:
-        w.WriteString(s)  # Fully.
-      else:
-        w.Write(byt(s))  # Fully.
-    except as ex:
-      w.Abort()
-      raise ex
-    w.Close()
+    mtime = time.Now().Unix()
+    w = atomicFileCreator(.fpath(file_path), .suffix, mtime=mtime, size=len(s))
+    with defer w.Close():
+      if .key:
+        ww = w
+        w = redhed.NewWriter(ww, .key, file_path, mtime)
+
+      try:
+        if type(s) is str:
+          w.WriteString(s)  # Fully.
+        else:
+          w.Write(byt(s))  # Fully.
+      except as ex:
+        w.Abort()
+        raise ex
+
+      if ww:
+        w.Close()
 
   def nameOfFileToOpen(file_path):
     fp = .fpath(file_path)
@@ -208,14 +222,18 @@ class atomicFileCreator:
   def Flush():
     return .bw.Flush()
   def Write(bb):
+    say 'Write', len(bb)
     return .bw.Write(bb)  # bufio writes fully, or error.
   def WriteByte(b):
+    say 'WriteByte', b
     .bw.WriteByte(b)
   def WriteString(s):
+    say 'WriteString', len(s)
     return .bw.WriteString(s)
 
   def Abort():
     try:
+      say 'ABORTING ============='
       .fd.Close()
     except:
       pass
@@ -225,6 +243,7 @@ class atomicFileCreator:
     .fd = None
 
   def Close():
+    say 'CLOSING ============='
     .bw.Flush()
     .fd.Close()
 
@@ -233,6 +252,20 @@ class atomicFileCreator:
 
     say 'os.Rename', .tmp, dest
     os.Rename(.tmp, dest)
+
+native:
+  'func (self *C_atomicFileCreator) WriteAt(p []byte, off int64) (n int, err error) {' 
+  '  _ = off'
+  '  bb := MkByt(p)'
+  '  self.M_1_Write(bb)'
+  '  return  len(p), nil'
+  '}'
+
+  'func (self *C_atomicFileCreator) Write(p []byte) (n int, err error) {'
+  '  bb := MkByt(p)'
+  '  self.M_1_Write(bb)'
+  '  return  len(p), nil'
+  '}'
 
 def NowMillis():
     return time.Now().UnixNano() // 1000000

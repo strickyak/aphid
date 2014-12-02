@@ -181,7 +181,8 @@ HostHandlers = dict()
 
 def main(argv):
   argv = flag.Munch(argv)
-  bundle.LoadBundles(topdir='.')
+  for k, v in flag.Triples.get('bundle', {}).items():
+    bundle.LoadBundle(k)
 
   RegisterDirectories(argv)
   ProcessTriples()
