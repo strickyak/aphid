@@ -32,12 +32,39 @@ def BigRemoteDir(_):
     print k, v
   return z
 
-def NewPush(args):
+def BigDirs():
   lo = go BigLocalDir([])
   re = go BigRemoteDir([])
-  lo = lo.Wait()
-  re = re.Wait()
-  # zzzzzzzzzzzzzzzzzzzzzzzzz
+  return lo.Wait(), re.Wait()
+
+def NewPull(args):
+  lo, re = BigDirs()
+
+  for k, v in sorted(re.items()):
+    mtime, size = v
+    v2 = lo.get(k)
+    if v2 == v:
+      continue  # Don't copy if mtime & size are same.
+
+    jname = J(DIR.X, BUND.X, k)
+    b = client.RReadFile(BUND.X, k)
+    os.MkdirAll(filepath.Dir(jname), DPERM)
+    ioutil.WriteFile(jname, b, FPERM)
+    t = time.Unix(mtime, 0)
+    os.Chtimes(jname, t, t)
+
+def NewPush(args):
+  lo, re = BigDirs()
+
+  for k, v in sorted(lo.items()):
+    mtime, size = v
+    v2 = re.get(k)
+    if v2 == v:
+      continue  # Don't copy if mtime & size are same.
+      
+    say k, mtime, size, v2
+    jname = J(DIR.X, BUND.X, k)
+    client.RWriteFile(BUND.X, k, ioutil.ReadFile(jname), mtime=mtime)
 
 def Push(args):
   fnord = J(DIR.X, BUND.X, 'FNORD')  # Build prefix plus word 'FNORD'.
@@ -97,6 +124,8 @@ Ensemble = {
     'cat': Cat,
     'pull': Pull,
     'push': Push,
+    'newpull': NewPull,
+    'newpush': NewPush,
     'BigLocalDir': BigLocalDir,
     'BigRemoteDir': BigRemoteDir,
 }

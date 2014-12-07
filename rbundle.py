@@ -14,7 +14,6 @@ class RBundleClient(rpc2.Client):
     return .Call("RStat3", [bund, path]).Wait()
 
   def RList4(bund, path):
-    say bund, path
     return .Call("RList4", [bund, path]).Wait()
 
   def RReadFile(bund, path):
@@ -24,17 +23,19 @@ class RBundleClient(rpc2.Client):
     return .Call("RWriteFile", [bund, path, data, mtime]).Wait()
 
 def RStat3(bund, path):
+  say bund, path
   return bundle.Bundles[bund].Stat3(path)
 
 def RList4(bund, path):
   say bund, path
-  say bundle.Bundles
   return list(bundle.Bundles[bund].List4(path))
 
 def RReadFile(bund, path):
+  say bund, path
   return bundle.Bundles[bund].ReadFile(path)
 
 def RWriteFile(bund, path, data, mtime):
+  say bund, path, mtime, len(data)
   return bundle.Bundles[bund].WriteFile(path, data, mtime)
 
 class RBundleServer(rpc2.Server):

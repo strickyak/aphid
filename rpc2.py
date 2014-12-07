@@ -28,7 +28,7 @@ SHAKE_MAGIC = 222
 
 def WriteChunk(w, data):
   n = len(data)
-  say w, n
+  #say w, n
   head = byt([CHUNK_MAGIC, n>>24, n>>16, n>>8, n])
   buf = bytes.NewBuffer(head)
   buf.Write(data)
@@ -36,15 +36,15 @@ def WriteChunk(w, data):
 
 def ReadChunk(r):
   head = mkbyt(5)
-  say 'read head'
+  #say 'read head'
   io.ReadFull(r, head)
   must head[0] == CHUNK_MAGIC
   n = (head[1]<<24) | (head[2]<<16) | (head[3]<<8) | head[4]
   must n < (2 << 20)  # 2 Meg Max
   pay = mkbyt(n)
-  say 'read full', n
+  #say 'read full', n
   io.ReadFull(r, pay)
-  say 'read done'
+  #say 'read done'
   return pay
 
 class Server:
@@ -82,13 +82,13 @@ class ServerConn:
 
   def WriteActor():
     while True:
-      say 'get'
+      #say 'get'
       tup = .resultQ.Get()
-      say 'got', tup
+      #say 'got', tup
       if tup is None:
         break
       serial, result, err = tup
-      say serial, result, err
+      #say serial, result, err
 
       p = .sealer.Seal(rye_pickle( (serial, result, err) ), serial)
       WriteChunk(.conn, p)
@@ -109,7 +109,7 @@ class ServerConn:
         pay, ser = .sealer.Open(dark)
         serial, proc, args = rye_unpickle(pay)
         must ser == serial
-        say proc, args
+        #say proc, args
         go .Execute(serial, proc, args)
 
   def Execute(serial, proc, args):
@@ -118,14 +118,14 @@ class ServerConn:
       fn = .server.procs.get(proc)
       if not fn:
         raise 'rpc function not registered in Server', proc
-      say fn
+      #say fn
       result = fn(*args)
-      say result
+      #say result
     except as ex:
       say ex
       err = ex
     .resultQ.Put( (serial, result, err) )
-    say "put", ( (serial, result, err) )
+    #say "put", ( (serial, result, err) )
 
 
 def MutualKey(ring, clientId, serverId):
@@ -193,10 +193,10 @@ class Client:
 
 
   def Call(proc, args):
-    say proc, args
+    #say proc, args
     req = Request(proc, args)
     .inQ.Put(req)
-    say 'RETURNING PROMISE', req.replyQ
+    #say 'RETURNING PROMISE', req.replyQ
     return Promise(req.replyQ)
 
 class Promise:
@@ -204,9 +204,9 @@ class Promise:
     .chan = chan
 
   def Wait():
-    say 'WAITING', .chan
+    #say 'WAITING', .chan
     result, err = .chan.Get()
-    say 'WAITED', result, err
+    #say 'WAITED', result, err
     if err:
       raise err
     return result
