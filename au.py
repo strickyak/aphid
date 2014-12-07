@@ -32,6 +32,13 @@ def BigRemoteDir(_):
     print k, v
   return z
 
+def NewPush(args):
+  lo = go BigLocalDir([])
+  re = go BigRemoteDir([])
+  lo = lo.Wait()
+  re = re.Wait()
+  # zzzzzzzzzzzzzzzzzzzzzzzzz
+
 def Push(args):
   fnord = J(DIR.X, BUND.X, 'FNORD')  # Build prefix plus word 'FNORD'.
   prefix_len = len(fnord) - 5  # Without the 'FNORD'.

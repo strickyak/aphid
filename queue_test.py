@@ -7,7 +7,7 @@ class A:
   def __init__(a):
     .a = a
 
-ch = go_chan(L)
+ch = rye_chan(L)
 say ch
 def Count(n):
   for i in range(n):

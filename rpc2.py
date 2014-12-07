@@ -2,8 +2,6 @@ from go import bufio, bytes, io
 from go import net, sync, time
 from go import crypto/rand
 
-from go import github.com/strickyak/aphid
-
 from . import dh, eval, gcm, keyring
 
 SerialPrefix = mkbyt(12)  # Per Process nonce.
@@ -23,7 +21,7 @@ class Request:
     .proc = proc
     .args = args
     .serial = None
-    .replyQ = aphid.NewChan(1)
+    .replyQ = rye_chan(1)
 
 CHUNK_MAGIC = 191
 SHAKE_MAGIC = 222
@@ -78,7 +76,7 @@ class ServerConn:
 
   def Run():
     .Handshake()
-    .resultQ = aphid.NewChan(5)
+    .resultQ = rye_chan(5)
     go .WriteActor()
     go .ReadActor()
 
@@ -154,7 +152,7 @@ class Client:
     .serverId = serverId
     .sealer = gcm.Cipher(MutualKey(ring, clientId, serverId))
     .requests = {}
-    .inQ = aphid.NewChan(5)
+    .inQ = rye_chan(5)
     .conn = net.Dial('tcp', hostport)
     .Handshake()
     go .ReadActor()
@@ -212,62 +210,3 @@ class Promise:
     if err:
       raise err
     return result
-
-
-def DemoSum(*args):
-  z = 0.0
-  for a in args:
-    z += float(a)
-  return z
-
-def DemoSleepAndDouble(millis):
-  time.Sleep(millis * time.Millisecond)
-  return 2 * millis
-
-def main(args):
-  ring1, ring2 = {}, {} # ring1 for client, ring2 for server.
-
-  obj1 = dh.Forge('1', 'key1', dh.G3072)
-  obj2 = dh.Forge('2', 'key2', dh.G3072)
-
-  ring1['1'] = keyring.Line() {
-    num:'1', name:'key1', kind:'dh',
-    pub:dh.String(obj1.pub), sec:dh.String(obj1.sec), sym:None, base:None
-  }
-  ring1['2'] = keyring.Line() {
-    num:'2', name:'key2', kind:'dh',
-    pub:dh.String(obj2.pub), sec:None, sym:None, base:None
-  }
-
-  ring2['1'] = keyring.Line() {
-    num:'1', name:'key1', kind:'dh',
-    pub:dh.String(obj1.pub), sec:None, sym:None, base:None
-  }
-  ring2['2'] = keyring.Line() {
-    num:'2', name:'key2', kind:'dh',
-    pub:dh.String(obj2.pub), sec:dh.String(obj2.sec), sym:None, base:None
-  }
-
-  svr = Server(':9999', ring=ring2)
-  svr.Register('DemoSum', DemoSum)
-  svr.Register('DemoSleepAndDouble', DemoSleepAndDouble)
-  go svr.ListenAndServe()
-
-  time.Sleep(100 * time.Millisecond)
-  cli = Client('localhost:9999', ring1, '1', '2')
-  z = cli.Call('DemoSum', [100,200,300]).Wait()
-  say z
-  assert z == 600.0
-  assert z == 600
-  assert 600 == z
-
-  d = {}
-  for i in range(5):
-    d[i] = cli.Call('DemoSleepAndDouble', [i * 100])
-    say i, d[i]
-
-  for i in range(5):
-    say 'GGGGETTING', i, d[i]
-    z = d[i].Wait()
-    say 'GGGGOT', i, d[i], z
-    assert z == i * 200

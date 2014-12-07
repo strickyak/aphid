@@ -1,4 +1,7 @@
-all: clean _queue_test _rpc _laph_test _dns_ask _gcm _eval _fu_find_test.py _skiplist_test _dh_test _all_okay
+all: clean _au_build _queue_test _rpc _rpc2_test _laph_test _dns_ask _gcm _eval _fu_find_test.py _skiplist_test _dh_test _all_okay
+
+_au_build:
+	python ../rye/rye.py build au.py
 
 _queue_test:
 	python ../rye/rye.py run queue_test.py
@@ -8,6 +11,9 @@ _rpc:
 	#python ../rye/rye.py build rfs.py
 	#python ../rye/rye.py build afs.py
 	#python ../rye/rye.py build fu.py
+
+_rpc2_test:
+	python ../rye/rye.py build rpc2_test.py
 
 _laph_test:
 	cd old1 && python ../../rye/rye.py run laph_test.py
