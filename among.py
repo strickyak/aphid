@@ -4,7 +4,7 @@ from . import flag, keyring, rbundle
 ALL = flag.String('among_all', '', 'List of all nodes')
 MY_ID = flag.String('among_my_id', '', 'My id')
 
-WATCHDOG_PERIOD = 15
+WATCHDOG_PERIOD = 60
 
 def Now():
   return time.Now().Unix()
@@ -41,11 +41,17 @@ class Node:
       go .PingAndUpdate()
       Sleep(WATCHDOG_PERIOD / 2.0)
       if .lasttime < Now() - WATCHDOG_PERIOD:
-        # Shutdown this Node Connection, and start another.
-        p = Node(.id, .where)
-        go p.Watchdog()
-        Others[.where] = p
-        break
+            break
+
+    # Shutdown this Node Connection, and start another.
+    p = Node(.id, .where)
+    go p.Watchdog()
+    Others[.where] = p
+
+    try:
+      .client.Close()
+    except as ex:
+      say 'Watchdog Shutdown Exception:', ex
 
   def PingAndUpdate(): 
     try:

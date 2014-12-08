@@ -206,6 +206,13 @@ class Client:
     .inQ.Put(req)
     return Promise(req.replyQ)
 
+  def Close():
+    try:
+      .conn.Close()
+    except as ex:
+      say 'EXCEPTION', ex
+
+
 class Promise:
   def __init__(chan):
     .chan = chan
