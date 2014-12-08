@@ -1,4 +1,4 @@
-from go import os
+from go import os, time
 from go import path/filepath
 
 from . import A, bundle, flag, keyring, rpc2
@@ -9,6 +9,9 @@ KEY = byt('ABCDEFGHabcdefgh')
 class RBundleClient(rpc2.Client):
   def __init__(hostport, ring, clientId, serverId):
     super(hostport, ring, clientId, serverId)
+
+  def Ping():
+    return .Call("Ping", []).Wait()
 
   def RStat3(bund, path):
     return .Call("RStat3", [bund, path]).Wait()
@@ -21,6 +24,9 @@ class RBundleClient(rpc2.Client):
 
   def RWriteFile(bund, path, data, mtime=-1):
     return .Call("RWriteFile", [bund, path, data, mtime]).Wait()
+
+def Ping():
+  return time.Now().UnixNano()
 
 def RStat3(bund, path):
   say bund, path
@@ -41,6 +47,7 @@ def RWriteFile(bund, path, data, mtime):
 class RBundleServer(rpc2.Server):
   def __init__(hostport, ring):
     super(hostport, ring)
+    .Register('Ping', Ping)
     .Register('RStat3', RStat3)
     .Register('RList4', RList4)
     .Register('RReadFile', RReadFile)
