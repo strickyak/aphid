@@ -1,5 +1,6 @@
-from go import bytes, io/ioutil
+from go import bytes, encoding/hex, fmt, io/ioutil
 from go import crypto/rand as crand
+from go import crypto/aes, crypto/sha256
 from . import dh
 
 "The global Ring."
@@ -47,6 +48,15 @@ class Line:
     must .kind
     return self
 
+def Find(k, ring):
+    vec = [x for x in Ring.values() if x.num == k]
+    vec += [x for x in Ring.values() if x.name == k and x.num != k]
+    if len(vec) > 1:
+      raise 'Too Many match key', k
+    if not len(vec):
+      raise 'No such key', k
+    return vec[0]
+
 def Load(fname, ring):
   "Load the ring (adding to the dict) from the file."
   for s in str(ioutil.ReadFile(fname)).split('\n'):
@@ -79,7 +89,7 @@ def main(args):
     Load(rfile, Ring)
     Save(wfile, Ring)
 
-  if cmd == "newdh":
+  elif cmd == "mkdh":
     key_id = args.pop(0)
     key_name = args.pop(0)
     rfile = args.pop(0)
@@ -93,7 +103,7 @@ def main(args):
     }
     Save(wfile, Ring)
 
-  if cmd == "newsym":
+  elif cmd == "mksym":
     key_id = args.pop(0)
     key_name = args.pop(0)
     rfile = args.pop(0)
@@ -109,4 +119,35 @@ def main(args):
         pub:None, sec:None, sym:('%x'%str(bb)), base:None
     }
     Save(wfile, Ring)
+
+  elif cmd == "mkweb":
+    key_id = args.pop(0)
+    key_name = args.pop(0)
+    key_base = args.pop(0)
+    pw = args.pop(0)
+    rfile = args.pop(0)
+    wfile = args.pop(0)
+
+    must not args
+    Load(rfile, Ring)
+    base = Find(key_base, Ring)
+    hash_pw = sha256.Sum256(pw)
+    bc = aes.NewCipher(hash_pw)
+    symkey, webkey = mkbyt(32), mkbyt(32)
+    say base.sym, symkey
+    hex.Decode(symkey, base.sym)
+    say (symkey, base.sym)
+    bc.Encrypt(webkey[:16], symkey[:16])
+    bc.Encrypt(webkey[16:], symkey[16:])
+    say webkey
+    line = Line(key_id, key_name, 'web')
+    line.sym = mkbyt(64)
+    hex.Encode(line.sym, webkey)
+    line.base = key_base
+    say line
+    Ring[key_id] = line
+    Save(wfile, Ring)
+
+  else:
+    raise 'Unknown command:', cmd
 
