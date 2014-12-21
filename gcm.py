@@ -9,9 +9,9 @@ class Cipher:
     key = byt(key)
     must len(key) in KEY_SIZES, len(key)
     .block = aes.NewCipher(key)
-    say .block
+    #say .block
     .gcm = cipher.NewGCM(.block)
-    say .gcm
+    #say .gcm
     .nonceSize = int(.gcm.NonceSize())
     .overhead = int(.gcm.Overhead())
 

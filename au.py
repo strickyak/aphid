@@ -19,7 +19,7 @@ def BigLocalDir(_):
 
   filepath.Walk(J(DIR.X, BUND.X), fn)
   for k, v in sorted(z.items()):
-    print k, v
+    print k, v, '[%s]local' % J(DIR.X, BUND.X)
   return z
 
 def BigRemoteDir(_):
@@ -29,7 +29,7 @@ def BigRemoteDir(_):
       name = name.lstrip('/')
       z[name] = (mtime, sz)
   for k, v in sorted(z.items()):
-    print k, v
+    print k, v, '[%s]remote' % BUND.X
   return z
 
 def BigDirs():
@@ -62,7 +62,7 @@ def NewPush(args):
     if v2 == v:
       continue  # Don't copy if mtime & size are same.
       
-    say k, mtime, size, v2
+    say 'WRITING', k, mtime, size, v2
     jname = J(DIR.X, BUND.X, k)
     client.RWriteFile(BUND.X, k, ioutil.ReadFile(jname), mtime=mtime)
 
@@ -74,7 +74,7 @@ def Push(args):
     if err is None and not info.IsDir():
       short_path = path[prefix_len:]
       mtime = info.ModTime().Unix()
-      say path, short_path
+      say 'WRITING', path, short_path
       client.RWriteFile(BUND.X, short_path, ioutil.ReadFile(path), mtime=mtime)
 
   say 'filepath.Walk', J(DIR.X, BUND.X)
@@ -90,6 +90,7 @@ def Pull(args):
       if isDir:
         os.MkdirAll(jname, DPERM)
       else:
+        say 'READING', BUND.X, name
         b = client.RReadFile(BUND.X, name)
         ioutil.WriteFile(jname, b, FPERM)
         t = time.Unix(mtime, 0)

@@ -16,6 +16,13 @@ def Serial():
     SerialCounter += 1
     return (SerialPrefix, SerialCounter)
 
+def AtMost(n, s):
+  s = str(s)
+  return s if len(s) < n else s[:n]
+
+def ArgsSummary(args):
+  return str([AtMost(80, repr(x)) for x in args])
+
 class Request:
   def __init__(proc, args):
     .proc = proc
@@ -113,6 +120,7 @@ class ServerConn:
         go .Execute(serial, proc, args)
 
   def Execute(serial, proc, args):
+    say 'EXECUTE', proc, ArgsSummary(args)
     result, err = None, None
     try:
       fn = .server.procs.get(proc)
@@ -129,18 +137,18 @@ class ServerConn:
 
 
 def MutualKey(ring, clientId, serverId):
-  say ring, clientId, serverId
+  say 'MutualKey', clientId, serverId
   cli = ring[clientId]
   svr = ring[serverId]
   must cli.kind == 'dh'
   must svr.kind == 'dh'
   if cli.sec:
     secret = dh.DhSecret(cli.num, cli.name, dh.G3072, cli.pub, dh.Big(cli.sec))
-    say 'C', secret.MutualKey(svr.pub)
+    #say 'C', secret.MutualKey(svr.pub)
     return secret.MutualKey(svr.pub)
   if svr.sec:
     secret = dh.DhSecret(svr.num, svr.name, dh.G3072, svr.pub, dh.Big(svr.sec))
-    say 'S', secret.MutualKey(cli.pub)
+    #say 'S', secret.MutualKey(cli.pub)
     return secret.MutualKey(cli.pub)
   raise 'MISSING SECRET KEY'
 
@@ -193,20 +201,25 @@ class Client:
 
 
   def Call(proc, args):
-    #say proc, args
+    say 'CALLING', proc, ArgsSummary(args)
     req = Request(proc, args)
     .inQ.Put(req)
-    #say 'RETURNING PROMISE', req.replyQ
     return Promise(req.replyQ)
+
+  def Close():
+    try:
+      .conn.Close()
+    except as ex:
+      say 'EXCEPTION', ex
+
 
 class Promise:
   def __init__(chan):
     .chan = chan
 
   def Wait():
-    #say 'WAITING', .chan
     result, err = .chan.Get()
-    #say 'WAITED', result, err
+    say 'RETURNING', AtMost(80, result), err
     if err:
       raise err
     return result
