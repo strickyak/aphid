@@ -5,9 +5,13 @@ from go import encoding/base64
 E = base64.URLEncoding
 
 def Big(s):
+  must s
+  must type(s) == str
   return big.NewInt(0).SetBytes(E.DecodeString(s))
 
 def String(x):
+  must x
+  must go_typeof(x).String() == '*big.Int'
   return E.EncodeToString(x.Bytes())
 
 def DefineGroup(sz, g, m):
@@ -101,4 +105,7 @@ G3072 = DefineGroup(3072, 2, '''
       BBE11757 7A615D6C 770988C0 BAD946E2 08E24FA0 74E5AB31
       43DB5BFC E0FD108E 4B82D120 A93AD2CA FFFFFFFF FFFFFFFF
 ''')
+
+# Standardize Aphid's group.
+GROUP = G3072
 pass

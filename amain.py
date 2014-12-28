@@ -26,7 +26,7 @@ def main(args):
 
   for k, v in flag.Triples.get('xbundle', {}).items():
     key = keyring.Ring[v]
-    bundle.LoadBundle(k, topdir=FLAG_BUNDLE_TOPDIR.X, keyid=v, key=key.sym)
+    bundle.LoadBundle(k, topdir=FLAG_BUNDLE_TOPDIR.X, keyid=v, key=key.o_sym)
 
   # Remote Bundle:
   go rbundle.RBundleServer(FLAG_RBUNDLE_BIND.X, keyring.Ring).ListenAndServe()

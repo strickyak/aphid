@@ -82,7 +82,7 @@ def VerbView(w, r, m, wp):
         Dots = wp.d['Dots'],
         HeadBox = "",
         FootBox = "",
-        Debug = go_value(["apple", "banana", "coconut"]),
+        Debug = go_wrap(["apple", "banana", "coconut"]),
     )
     EmitHtml(w, d, atemplate.ViewMissing)
     return
@@ -95,7 +95,7 @@ def VerbView(w, r, m, wp):
       Title = wp.Subject,
       HeadBox = wp.d['Verb'],
       FootBox = "THIS IS A VEIW",
-      Debug = go_value(["apple", "banana", "coconut"]),
+      Debug = go_wrap(["apple", "banana", "coconut"]),
   )
   EmitHtml(w, d, atemplate.View)
 

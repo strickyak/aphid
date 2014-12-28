@@ -1,12 +1,14 @@
-from go import bytes, encoding/hex, fmt, io/ioutil
-from go import crypto/rand as crand
-from go import crypto/aes, crypto/sha256
-from . import dh
+from go import bytes, encoding/hex, fmt, io/ioutil, regexp
+from go/crypto import aes, rand, sha256
+from . import dh, sym
 
 "The global Ring."
 Ring = {}
 
 WRITE_PERM = 0644
+
+RE_HEX = regexp.MustCompile('^[0-9a-f]+$').FindString
+RE_BASE64 = regexp.MustCompile('^[-A-Za-z0-9_]+$').FindString
 
 class Line:
   "Line is a single key, either aes or dh, like one line from a keyring file."
@@ -18,6 +20,9 @@ class Line:
     .pub = None
     .sec = None
     .sym = None
+    .o_pub = None  # big.Int
+    .o_sec = None  # DhSecret
+    .o_sym = None  # byt
     .base = None
 
   def __str__():
@@ -46,6 +51,23 @@ class Line:
     must .num
     must .name
     must .kind
+
+    if .pub:
+      must type(.pub) == str
+      must RE_BASE64(.pub)
+      .o_pub = dh.Big(.pub)
+
+    if .sec:
+      must type(.sec) == str
+      must RE_BASE64(.sec)
+      .o_sec = dh.DhSecret(.num, .name, dh.GROUP, .o_pub, dh.Big(.sec))
+
+    if .sym:
+      must type(.sym) == str
+      must RE_HEX(.sym)
+      must len(.sym)== sym.LONG_KEY_HEX_LEN
+      .o_sec = sym.DecodeHex(.sym)
+
     return self
 
 def Find(k, ring):
@@ -96,7 +118,7 @@ def main(args):
     wfile = args.pop(0)
     must not args
     Load(rfile, Ring)
-    obj = dh.Forge(key_id, key_name, dh.G3072)
+    obj = dh.Forge(key_id, key_name, dh.GROUP)
     Ring[key_id] = Line() {
         num:key_id, name:key_name, kind:'dh',
         pub:dh.String(obj.pub), sec:dh.String(obj.sec), sym:None, base:None
@@ -111,9 +133,9 @@ def main(args):
     must not args
     Load(rfile, Ring)
     bb = mkbyt(32)
-    c = crand.Read(bb)
+    c = rand.Read(bb)
     must c == 32
-    obj = dh.Forge(key_id, key_name, dh.G3072)
+    obj = dh.Forge(key_id, key_name, dh.GROUP)
     Ring[key_id] = Line() {
         num:key_id, name:key_name, kind:'dh',
         pub:None, sec:None, sym:('%x'%str(bb)), base:None

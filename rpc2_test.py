@@ -18,8 +18,8 @@ def DemoSleepAndDouble(millis):
 def main(args):
   ring1, ring2 = {}, {} # ring1 for client, ring2 for server.
 
-  obj1 = dh.Forge('1', 'key1', dh.G3072)
-  obj2 = dh.Forge('2', 'key2', dh.G3072)
+  obj1 = dh.Forge('1', 'key1', dh.GROUP)
+  obj2 = dh.Forge('2', 'key2', dh.GROUP)
 
   ring1['1'] = keyring.Line() {
     num:'1', name:'key1', kind:'dh',

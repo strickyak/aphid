@@ -2,7 +2,7 @@ from go import bufio, os, regexp, time
 from go import io/ioutil
 from go import path/filepath as F
 from go import github.com/strickyak/redhed
-from . import table, A
+from . import sym, table, A
 
 DIR_PERM = 0755
 FILE_PERM = 0644
@@ -31,6 +31,9 @@ PARSE_BUNDLE_PATH = regexp.MustCompile('(^|.*/)b[.]([A-Za-z0-9_]+)$').FindString
 #      Bundles[bname] = Bundle(bname, d, suffix)
 
 def LoadBundle(bname, topdir='.', suffix='0', keyid=None, key=None):
+  if key:
+    must type(key) == byt
+    must len(key) == sym.LONG_KEY_BYT_LEN
   bundir = F.Join(topdir, 'b.%s' % bname)
   Bundles[bname] = Bundle(bname, bundir, suffix, keyid=keyid, key=key)
 

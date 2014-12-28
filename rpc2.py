@@ -2,7 +2,7 @@ from go import bufio, bytes, io
 from go import net, sync, time
 from go import crypto/rand
 
-from . import dh, eval, gcm, keyring
+from . import dh, eval, sym, keyring
 
 SerialPrefix = mkbyt(12)  # Per Process nonce.
 rand.Read(SerialPrefix)
@@ -79,7 +79,7 @@ class ServerConn:
     magic, c, s = msg
     must magic == SHAKE_MAGIC
     mut = MutualKey(.server.ring, str(c), str(s))
-    .sealer = gcm.Cipher(mut)
+    .sealer = sym.Cipher(mut)
 
   def Run():
     .Handshake()
@@ -143,11 +143,11 @@ def MutualKey(ring, clientId, serverId):
   must cli.kind == 'dh'
   must svr.kind == 'dh'
   if cli.sec:
-    secret = dh.DhSecret(cli.num, cli.name, dh.G3072, cli.pub, dh.Big(cli.sec))
+    secret = dh.DhSecret(cli.num, cli.name, dh.GROUP, cli.pub, dh.Big(cli.sec))
     #say 'C', secret.MutualKey(svr.pub)
     return secret.MutualKey(svr.pub)
   if svr.sec:
-    secret = dh.DhSecret(svr.num, svr.name, dh.G3072, svr.pub, dh.Big(svr.sec))
+    secret = dh.DhSecret(svr.num, svr.name, dh.GROUP, svr.pub, dh.Big(svr.sec))
     #say 'S', secret.MutualKey(cli.pub)
     return secret.MutualKey(cli.pub)
   raise 'MISSING SECRET KEY'
@@ -158,7 +158,7 @@ class Client:
     .ring = ring
     .clientId = clientId
     .serverId = serverId
-    .sealer = gcm.Cipher(MutualKey(ring, clientId, serverId))
+    .sealer = sym.Cipher(MutualKey(ring, clientId, serverId))
     .requests = {}
     .inQ = rye_chan(5)
     .conn = net.Dial('tcp', hostport)
