@@ -52,7 +52,7 @@ class Cipher:
     return plain, serial
 
 def main(argv):
-  key = 'ABCDEFGHabcdefgh'
+  key = byt(4 * 'ABCDEFGH')
   c = Cipher(key)
   plain = 'I wish I were an Oscar Meyer Wiener.'
   serial = ('nando', 3.14159)
