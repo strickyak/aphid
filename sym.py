@@ -1,33 +1,32 @@
 from go import encoding/hex, regexp
 from go/crypto import aes, cipher, rand
 
-KEY_SIZES = [16, 24, 32]
-
-# Standardize long & short keys.
-
-LONG_KEY_BYT_LEN = 32
-LONG_KEY_HEX_LEN = 64
+# Standardize key size.
+KEY_BYT_LEN = 32
+KEY_HEX_LEN = 64
 
 RE_HEX = regexp.MustCompile('^[0-9a-f]+$').FindString
 
 def DecodeHex(s):
   must RE_HEX(s)
-  must len(s) == LONG_KEY_HEX_LEN
-  z = mkbyt(LONG_KEY_BYT_LEN)
+  must len(s) == KEY_HEX_LEN
+  z = mkbyt(KEY_BYT_LEN)
   hex.Decode(z, s)
   return z
 
 def EncodeHex(b):
   must type(b) == byt
-  must len(b) == LONG_KEY_BYT_LEN
-  z = mkbyt(LONG_KEY_HEX_LEN)
+  must len(b) == KEY_BYT_LEN
+  z = mkbyt(KEY_HEX_LEN)
   hex.Decode(z, b)
   return str(z)
 
 class Cipher:
   def __init__(key):
-    key = byt(key)
-    must len(key) in KEY_SIZES, len(key)
+    """Construct a Cipher with a byt key with len KEY_BYT_LEN."""
+    must type(key) is byt
+    must len(key) == KEY_BYT_LEN
+
     .block = aes.NewCipher(key)
     #say .block
     .gcm = cipher.NewGCM(.block)

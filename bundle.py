@@ -17,23 +17,10 @@ PARSE_REV_FILENAME = regexp.MustCompile('^r[.](\w+)[.](\w+)[.]([-0-9]+)[.]([-0-9
 # Extracts bundle name at [2] from path to bundle.
 PARSE_BUNDLE_PATH = regexp.MustCompile('(^|.*/)b[.]([A-Za-z0-9_]+)$').FindStringSubmatch
 
-#def LoadBundles(topdir='.', suffix='0'):
-#  vec = F.Glob(F.Join(topdir, 'b.*'))
-#  if not vec:
-#    raise 'No bundles in top directory', topdir
-#  for d in vec:
-#    say d
-#    m = PARSE_BUNDLE_PATH(d)
-#    say m
-#    if m:
-#      _, _, bname = m
-#      say bname
-#      Bundles[bname] = Bundle(bname, d, suffix)
-
 def LoadBundle(bname, topdir='.', suffix='0', keyid=None, key=None):
   if key:
     must type(key) == byt
-    must len(key) == sym.LONG_KEY_BYT_LEN
+    must len(key) == sym.KEY_BYT_LEN
   bundir = F.Join(topdir, 'b.%s' % bname)
   Bundles[bname] = Bundle(bname, bundir, suffix, keyid=keyid, key=key)
 

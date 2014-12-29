@@ -1,27 +1,45 @@
-from go import bytes, bufio, fmt, html/template, net/http, io/ioutil, regexp
+from go import bufio, bytes, fmt, regexp, time
+from go import html/template, net/http, io/ioutil
+from go import github.com/strickyak/aphid
 from . import atemplate, bundle, markdown
 
 F = fmt.Sprintf
 
 SUBJECT_VERB_OBJECT = regexp.MustCompile(
-    '([0-9]+|[A-Z]+[a-z]+[A-Z][A-Za-z0-9_]*)(([.]+)(([A-Za-z0-9_]+)(([.]+)(([-A-Za-z0-9_.]+)?)?)?)?)?$'
+    '^([0-9]+|[A-Z]+[a-z]+[A-Z][A-Za-z0-9_]*)(([.]+)(([A-Za-z0-9_]+)(([.]+)(([-A-Za-z0-9_.]+)?)?)?)?)?$'
     ).FindStringSubmatch
+
+RE_ABNORMAL_CHARS = regexp.MustCompile('[^-A-Za-z0-9_.]')
+def CurlyEncode(s):
+  return RE_ABNORMAL_CHARS.ReplaceAllStringFunc(s, lambda c: '{%d}' % ord(c))
 
 class WikiParams:
   def __init__(host):
     .host = host
   def SetPath(path):
     pvec = path.split('/')
+    while pvec and (pvec[0] == '' or pvec[0].startswith('@')):
+      pvec.pop(0)
     say pvec
-    m = SUBJECT_VERB_OBJECT(pvec[-1])
-    say m
-    if not m:
-      return False
 
-    _, .Subject, _, .Dots, _, .Verb, _, .dots2, _, .Object = m
-    say .Subject, .Dots, .Verb, .Object
+    .Subject, .Dots, .Verb, .Object, .File = 'HomePage', '', '', '', ''
+    if len(pvec) > 0:
+      m = SUBJECT_VERB_OBJECT(pvec[0])
+      say m
+      if not m:
+        raise 'Cannot Parse SUBJECT_VERB_OBJECT', pvec[0]
+      _, .Subject, _, .Dots, _, .Verb, _, .Dots2, _, .Object = m
+      say .Subject, .Dots, .Verb, .Object
 
-    .d = dict(Subject=.Subject, Dots=.Dots, Verb=.Verb, Object=.Object)
+    if len(pvec) > 1:
+      .File = pvec[1]
+      if .File.startswith('.'):
+        raise 'Dotfiles Forbidden', .File
+
+    if len(pvec) > 2:
+      raise 'Extra junk at end of path.', len(pvec)
+
+    .d = dict(Subject=.Subject, Dots=.Dots, Verb=.Verb, Object=.Object, File=.File)
     say .d
     return self
 
@@ -34,15 +52,33 @@ class AWikiMaster:
     if path == '/favicon.ico':
       return
 
-    wp = WikiParams(host).SetPath(path)
-    if not wp:
-      raise 'Bad WikiParams: %q' % path
+    # Our rule is never end in '/' (unless it is exactly path '/').
+    say path
+    if path.endswith('/') and path != '/':
+      say "path.endswith('/')", path
+      say r.URL.Path
+      urlPath = r.URL.Path.rstrip('/')
+      say urlPath
+      http.Redirect(w, r, urlPath, http.StatusMovedPermanently)
+      return
 
+    wp = WikiParams(host).SetPath(path)
+
+    if wp.File:
+      wp.Verb = 'file'
     VERBS[wp.Verb](w, r, self, wp)
 
 def EmitHtml(w, d, t):
   w.Header().Set('Content-Type', 'text/html')
   t.Execute(w, d)
+
+def VerbFile(w, r, m, wp):
+  t = m.bund.ReadFile('/wiki/%s/%s' % (wp.Subject, wp.File))
+  say t
+  buf = aphid.NewReadSeekerHack(t)
+  say buf
+  modTime = time.Now()
+  http.ServeContent(w, r, r.URL.Path, modTime, buf)
 
 def VerbDemo(w, r, m, wp):
   try:
@@ -138,8 +174,10 @@ def VerbAttach(w, r, m, wp):
   if f:
     # Save it.
     fname = r.MultipartForm.File['file'][0].Filename
-    # TODO: clean the fname.
-    m.bund.WriteFile('/wiki/%s/%s' % (wp.Subject, fname), "a rabbit")
+    fname = CurlyEncode(fname)
+    fd = r.MultipartForm.File['file'][0].Open()
+    stuff = ioutil.ReadAll(fd)
+    m.bund.WriteFile('/wiki/%s/%s' % (wp.Subject, fname), stuff)
     http.Redirect(w, r,
                   "%s%sview" % (wp.Subject, wp.d['Dots']),
                   http.StatusTemporaryRedirect)
@@ -163,6 +201,7 @@ VERBS = dict(
   view= VerbView,
   edit= VerbEdit,
   attach= VerbAttach,
+  file= VerbFile,
 )
 VERBS[''] = VerbDemo
 pass
