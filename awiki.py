@@ -2,6 +2,9 @@ from go import bufio, bytes, fmt, regexp, time
 from go import html/template, net/http, io/ioutil
 from go import github.com/strickyak/aphid
 from . import atemplate, bundle, markdown
+from . import basic, flag, Eval
+
+BASIC = flag.String('basic', '', 'Test Basic Auth users')
 
 F = fmt.Sprintf
 
@@ -44,13 +47,23 @@ class WikiParams:
     return self
 
 class AWikiMaster:
-  def __init__(bname):
+  def __init__(bname, users=None):
     .bname = bname
     .bund = bundle.Bundles[.bname]
+    .users = users
+
+    if BASIC.X:  # For Testing
+      .users = Eval.Eval(BASIC.X)
 
   def Handler4(w, r, host, path):
     if path == '/favicon.ico':
       return
+
+    if .users:
+      user = basic.CheckBasicAuth(w, r, 'WIKI', .users)
+      say user
+      if not user:
+        return  # Already requested basic auth.
 
     # Our rule is never end in '/' (unless it is exactly path '/').
     say path

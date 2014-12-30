@@ -2,7 +2,7 @@ from go import bufio, bytes, io
 from go import net, sync, time
 from go import crypto/rand
 
-from . import dh, eval, sym, keyring
+from . import dh, sym, keyring
 
 SerialPrefix = mkbyt(12)  # Per Process nonce.
 rand.Read(SerialPrefix)

@@ -1,4 +1,4 @@
-all: clean _build _queue_test _rpc _rpc2_test _laph_test _dns_ask _sym _eval _fu_find_test.py _skiplist_test _dh_test _all_okay
+all: clean _build _queue_test _rpc _rpc2_test _laph_test _dns_ask _sym _Eval _fu_find_test.py _skiplist_test _dh_test _all_okay
 
 _build:
 	python ../rye/rye.py build au.py
@@ -25,8 +25,8 @@ _dns_ask:
 _sym:
 	python ../rye/rye.py run sym.py
 
-_eval:
-	python ../rye/rye.py run eval.py
+_Eval:
+	python ../rye/rye.py run Eval.py
 
 _fu_find_test.py:
 	#python ../rye/rye.py run fu_find_test.py

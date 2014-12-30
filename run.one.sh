@@ -1,6 +1,7 @@
 set -x
 
 rye run amain.py \
+  --basic='{"abc": "xyzz"}' \
   ::bundle::one:: \
   ::xbundle::xyz::YAK \
   \

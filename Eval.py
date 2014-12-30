@@ -42,11 +42,11 @@ class EvalParser:
         self.p += len(m)
         # say 'Token', k, m
         return k, m
-    raise Exception('eval.EvalParser: Cannot Parse')
+    raise Exception('Eval.EvalParser: Cannot Parse')
 
   def Parse(k, x):
     if not k:
-      raise Exception('eval.EvalParser: Unexpected end of string')
+      raise Exception('Eval.EvalParser: Unexpected end of string')
     if k == 'K':
       if x[0] in ['n', 'N']:
         return None
@@ -54,7 +54,7 @@ class EvalParser:
         return True
       if x[0] in ['f', 'F']:
         return False
-      raise Exception('eval.EvalParser: Weird token')
+      raise Exception('Eval.EvalParser: Weird token')
     if k == 'N':
       #say strconv.ParseInt(x, 10, 64)
       return strconv.ParseInt(x, 10, 64)
@@ -68,7 +68,7 @@ class EvalParser:
       while True:
         k2, x2 = self.Token()
         if not k2:
-          raise Exception('eval.EvalParser: Unexpected end of string')
+          raise Exception('Eval.EvalParser: Unexpected end of string')
         if x2 == ']':
           break
         if x2 == ',':
@@ -81,7 +81,7 @@ class EvalParser:
       while True:
         k2, x2 = self.Token()
         if not k2:
-          raise Exception('eval.EvalParser: Unexpected end of string')
+          raise Exception('Eval.EvalParser: Unexpected end of string')
         if x2 == ')':
           break
         if x2 == ',':
@@ -94,7 +94,7 @@ class EvalParser:
       while True:
         k2, x2 = self.Token()
         if not k2:
-          raise Exception('eval.EvalParser: Unexpected end of string')
+          raise Exception('Eval.EvalParser: Unexpected end of string')
         if x2 == '}':
           break
         if x2 == ',':
@@ -104,20 +104,20 @@ class EvalParser:
 
         k2, x2 = self.Token()
         if x2 != ':':
-          raise Exception('eval.EvalParser: expected ":" after key')
+          raise Exception('Eval.EvalParser: expected ":" after key')
 
         k2, x2 = self.Token()
         b = self.Parse(k2, x2)
 
         d[a] = b
       return d
-    raise Exception('eval.EvalParser: Weird token')
+    raise Exception('Eval.EvalParser: Weird token')
 
 def Unquote(a):
   # TODO -- unescape
   if a[0] == a[-1]:
     return a[1:-1]
-  raise Exception('eval.Unquote: bad input')
+  raise Exception('Eval.Unquote: bad input')
 
 assert Eval('True') is True
 assert Eval('False') is False
