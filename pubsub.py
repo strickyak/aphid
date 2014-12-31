@@ -20,11 +20,13 @@ def Publish(thing):
   with defer Mu.Unlock():
     d = Subs[thing.key1]
     for sub in d.values():
-      if sub.re2.FindString(thing.key2):
-         go sub.fn(thing)
+      if thing.origin != sub.origin:
+        if sub.re2.FindString(thing.key2):
+           go sub.fn(thing)
 
 class Sub:
-  def __init__(key1, re2, fn):
+  def __init__(origin, key1, re2, fn):
+    .origin = origin
     .key1 = key1
     .re2 = regexp.MustCompile(re2)
     .fn = fn
@@ -34,7 +36,8 @@ class Sub:
     return .str
 
 class Thing:
-  def __init__(key1, key2, props):
+  def __init__(origin, key1, key2, props):
+    .origin = origin
     .key1 = key1
     .key2 = key2
     .props = props
