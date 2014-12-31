@@ -2,9 +2,9 @@ from go import time
 from . import flag, keyring, rbundle
 
 ALL = flag.String('among_all', '', 'List of all nodes')
-MY_ID = flag.String('among_my_id', '', 'My id')
+ME = flag.String('among_me', '', 'My id')
 
-WATCHDOG_PERIOD = 60
+WATCHDOG_PERIOD = 2
 
 def Now():
   return time.Now().Unix()
@@ -18,11 +18,11 @@ def Start():
   say ALL.X, ALL.X.split(',')
   for w in ALL.X.split(','):
     say w
-    id, where = w.split('/')
-    if id != MY_ID.X:
-      p = Node(id, where)
-      go p.Watchdog()
-      Others[where] = p
+    id, where = w.split('=')
+    if id != ME.X:
+      node = Node(id, where)
+      go node.Watchdog()
+      Others[where] = node
 
 class Node:
   def __init__(id, where):
@@ -31,10 +31,11 @@ class Node:
     .where = where
     .lasttime = Now()
 
-    hostport, ring, clientId, serverId = .where, keyring.Ring, MY_ID.X, .id
+    hostport, ring, clientId, serverId = .where, keyring.Ring, ME.X, .id
     .client = rbundle.RBundleClient(hostport, ring, clientId, serverId)
 
   def Watchdog():
+    # Stay in this loop until watchdog fails to ping.
     while True:
       Sleep(WATCHDOG_PERIOD / 2.0)
       say 'go .PingAndUpdate()'
@@ -44,9 +45,9 @@ class Node:
             break
 
     # Shutdown this Node Connection, and start another.
-    p = Node(.id, .where)
-    go p.Watchdog()
-    Others[.where] = p
+    node = Node(.id, .where)
+    go node.Watchdog()
+    Others[.where] = node
 
     try:
       .client.Close()
