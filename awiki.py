@@ -2,7 +2,8 @@ from go import bufio, bytes, fmt, regexp, time
 from go import html/template, net/http, io/ioutil
 from go import github.com/strickyak/aphid
 from . import atemplate, bundle, markdown
-from . import basic, flag, Eval
+from . import basic, flag
+from lib import data
 
 BASIC = flag.String('basic', '', 'Test Basic Auth users')
 
@@ -53,7 +54,7 @@ class AWikiMaster:
     .users = users
 
     if BASIC.X:  # For Testing
-      .users = Eval.Eval(BASIC.X)
+      .users = data.Eval(BASIC.X)
 
   def Handler4(w, r, host, path):
     if path == '/favicon.ico':

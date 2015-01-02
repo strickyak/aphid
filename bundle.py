@@ -1,6 +1,7 @@
 from go import bufio, os, regexp, time
 from go import io/ioutil
 from go import path/filepath as F
+from go import crypto/md5
 from go import github.com/strickyak/redhed
 from . import sym, table, A
 
@@ -26,11 +27,13 @@ def LoadBundle(bname, topdir='.', suffix='0', keyid=None, key=None):
 
 class Bundle:
   def __init__(name, bundir, suffix, keyid=None, key=None):
+    say name, bundir, suffix, keyid, key
     .name = name
     .bundir = bundir
     .suffix = suffix
     if key:
       .key = redhed.NewKey(keyid, key)
+      say .key
     .table = table.Table(F.Join(.bundir, 'd.table'))
     .wikdir = F.Join(.bundir, 'd.wiki')
 
@@ -48,7 +51,7 @@ class Bundle:
         z.append(s[2:])
     say z
     return z
-    
+
   def List2(dirpath):
     say 'List2', dirpath
     dp = .dpath(dirpath)
@@ -64,7 +67,7 @@ class Bundle:
         yield s[2:], False
       else:
         A.Warn('Ignoring strange file: %q %q', dirpath, s)
-    
+
   def List4(dirpath):
     say 'List4', dirpath
     dp = .dpath(dirpath)
@@ -89,7 +92,7 @@ class Bundle:
         yield s[2:], False, int(mtime3), int(size3)
       else:
         A.Warn('Ignoring strange file: %q %q', dirpath, s)
-    
+
   def ListFiles(dirpath):
     say 'ListFiles', dirpath
     z = []
@@ -102,7 +105,7 @@ class Bundle:
       if s.startswith('f.'):
         z.append(s[2:])
     return z
-    
+
   def ListRevs(file_path):
     z = []
     fp = .fpath(file_path)
@@ -161,25 +164,30 @@ class Bundle:
       return ioutil.ReadFile(.nameOfFileToOpen(file_path))
 
   def WriteFile(file_path, s, mtime=-1):
-    say 'WriteFile', file_path, len(s)
+    bb = byt(s)
     mtime = mtime if mtime>0 else time.Now().Unix()
-    w = atomicFileCreator(.fpath(file_path), .suffix, mtime=mtime, size=len(s))
+    say 'WriteFile', file_path, len(bb), mtime
+    say 'WriteFile2', .name, .bundir, .suffix, .key
+    w = atomicFileCreator(.fpath(file_path), .suffix, mtime=mtime, size=len(bb))
     with defer w.Close():
       if .key:
-        ww = w
-        w = redhed.NewWriter(ww, .key, file_path, mtime)
+        csum = md5.Sum(bb)
+        say 'redhed.NewWriter', file_path, mtime, len(bb), csum
+        redw = redhed.NewWriter(w, .key, file_path, mtime, len(bb), csum)
+        say redw
+        writer = redw
+      else:
+        writer = w
 
       try:
-        if type(s) is str:
-          w.WriteString(s)  # Fully.
-        else:
-          w.Write(byt(s))  # Fully.
+        writer.Write(bb)  # Fully.
       except as ex:
-        w.Abort()
+        if .key:
+          redw.Abort()
         raise ex
 
-      if ww:
-        w.Close()
+      if .key:
+        redw.Close()
 
   def nameOfFileToOpen(file_path):
     fp = .fpath(file_path)
@@ -214,9 +222,6 @@ class atomicFileCreator:
   def Write(bb):
     say 'Write', len(bb)
     return .bw.Write(bb)  # bufio writes fully, or error.
-  def WriteByte(b):
-    say 'WriteByte', b
-    .bw.WriteByte(b)
   def WriteString(s):
     say 'WriteString', len(s)
     return .bw.WriteString(s)
@@ -244,7 +249,7 @@ class atomicFileCreator:
     os.Rename(.tmp, dest)
 
 native:
-  'func (self *C_atomicFileCreator) WriteAt(p []byte, off int64) (n int, err error) {' 
+  'func (self *C_atomicFileCreator) WriteAt(p []byte, off int64) (n int, err error) {'
   '  _ = off'
   '  bb := MkByt(p)'
   '  self.M_1_Write(bb)'

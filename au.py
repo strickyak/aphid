@@ -90,6 +90,7 @@ def Pull(args):
       if isDir:
         os.MkdirAll(jname, DPERM)
       else:
+        os.MkdirAll(filepath.Dir(jname), DPERM)
         say 'READING', BUND.X, name
         b = client.RReadFile(BUND.X, name)
         ioutil.WriteFile(jname, b, FPERM)

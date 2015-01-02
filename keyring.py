@@ -66,7 +66,7 @@ class Line:
       must type(.sym) == str
       must RE_HEX(.sym)
       must len(.sym)== sym.KEY_HEX_LEN
-      .o_sec = sym.DecodeHex(.sym)
+      .o_sym = sym.DecodeHex(.sym)
 
     return self
 

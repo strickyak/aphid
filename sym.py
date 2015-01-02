@@ -18,7 +18,7 @@ def EncodeHex(b):
   must type(b) == byt
   must len(b) == KEY_BYT_LEN
   z = mkbyt(KEY_HEX_LEN)
-  hex.Decode(z, b)
+  hex.Encode(z, b)
   return str(z)
 
 class Cipher:

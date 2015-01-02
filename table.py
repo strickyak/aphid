@@ -35,14 +35,13 @@ class Table:
     for ts, k, v in hold:
       # Look for ts of existing record with key k.
       # Remember that ts are strings, not numbers.
-      t = .d[k][0] if k in .d else ''
+      p = .d.Get(k)
+      t = p[0] if p else ''
       if ts >= t:
         if v:
-          .d[k] = (ts, v)
           .d.Set(k, (ts, v))
         else:
           .d.Remove(k)
-
 
 def ReadFileLines(filename):
   r = os.Open(filename)
