@@ -137,7 +137,7 @@ def main(args):
     must c == 32
     obj = dh.Forge(key_id, key_name, dh.GROUP)
     Ring[key_id] = Line() {
-        num:key_id, name:key_name, kind:'dh',
+        num:key_id, name:key_name, kind:'aes',
         pub:None, sec:None, sym:('%x'%str(bb)), base:None
     }
     Save(wfile, Ring)
@@ -165,7 +165,7 @@ def main(args):
     webkey = basekey ^ pwhash
     say webkey
 
-    line = Line(key_id, key_name, 'web')
+    line = Line(key_id, key_name, 'web-aes')
     line.b_sym = webkey
     line.sym = sym.EncodeHex(line.b_sym)
     line.base = key_base
