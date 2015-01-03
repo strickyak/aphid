@@ -30,6 +30,13 @@ def main(args):
     must key.b_sym
     bundle.LoadBundle(k, topdir=FLAG_BUNDLE_TOPDIR.X, keyid=v, key=key.b_sym)
 
+  for k, v in flag.Triples.get('wxbundle', {}).items():
+    key = keyring.Ring[v]
+    must key
+    must key.b_sym
+    # bundle.LoadBundle(k, topdir=FLAG_BUNDLE_TOPDIR.X, keyid=v, key=key.b_sym)
+    # TODO: Cannot load the bundle now.   Loads on demand, then unloads.
+
   # Remote Bundle:
   go rbundle.RBundleServer(FLAG_RBUNDLE_BIND.X, keyring.Ring).ListenAndServe()
 
