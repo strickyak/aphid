@@ -22,7 +22,7 @@ class Line:
     .sym = None
     .o_pub = None  # big.Int
     .o_sec = None  # DhSecret
-    .o_sym = None  # byt
+    .b_sym = None  # byt
     .base = None
 
   def __str__():
@@ -66,7 +66,7 @@ class Line:
       must type(.sym) == str
       must RE_HEX(.sym)
       must len(.sym)== sym.KEY_HEX_LEN
-      .o_sym = sym.DecodeHex(.sym)
+      .b_sym = sym.DecodeHex(.sym)
 
     return self
 
@@ -143,6 +143,9 @@ def main(args):
     Save(wfile, Ring)
 
   elif cmd == "mkweb":
+    # First use "mksym" to make the base key.
+    # Then use "mkweb" to make the derived web key.
+    # Do not publish the base key.
     key_id = args.pop(0)
     key_name = args.pop(0)
     key_base = args.pop(0)
@@ -153,20 +156,21 @@ def main(args):
     must not args
     Load(rfile, Ring)
     base = Find(key_base, Ring)
-    hash_pw = sha256.Sum256(pw)
-    bc = aes.NewCipher(hash_pw)
-    symkey, webkey = mkbyt(32), mkbyt(32)
-    say base.sym, symkey
-    hex.Decode(symkey, base.sym)
-    say (symkey, base.sym)
-    bc.Encrypt(webkey[:16], symkey[:16])
-    bc.Encrypt(webkey[16:], symkey[16:])
+    basekey = base.b_sym
+    say basekey
+
+    pwhash = sha256.Sum256(pw)
+    say pwhash
+
+    webkey = basekey ^ pwhash
     say webkey
+
     line = Line(key_id, key_name, 'web')
-    line.sym = mkbyt(64)
-    hex.Encode(line.sym, webkey)
+    line.b_sym = webkey
+    line.sym = sym.EncodeHex(line.b_sym)
     line.base = key_base
     say line
+
     Ring[key_id] = line
     Save(wfile, Ring)
 
