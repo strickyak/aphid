@@ -1,9 +1,10 @@
 set -x
 
 rye run amain.py \
-  --basic='{"abc": "xyzz"}' \
   ::bundle::one:: \
   ::xbundle::xyz::YAK \
+  ::wxbundle::lmnop::WLM \
+  ::xbundle::peeklmnop::BLM \
   \
   ::zone::aphid.cc::one/dns/aphid.cc \
   \
@@ -13,4 +14,8 @@ rye run amain.py \
   ::web::one.www.aphid.cc::one \
   ::wiki::wiki.xyz.aphid.cc::xyz \
   ::web::xyz.www.aphid.cc::xyz \
+  ::web::lmnop::lmnop \
+  ::web::peeklmnop::peeklmnop \
   ##
+
+#  --basic='{"abc": "xyzz"}' \

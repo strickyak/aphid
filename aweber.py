@@ -2,7 +2,7 @@ from go import bytes, html, os, regexp
 from go import net/http
 from go import path/filepath
 
-from . import bundle, flag
+from . import basic, bundle, flag
 from . import awiki
 
 BIND = flag.String('bind_addr', ':8080', 'Bind to this address to server web.')
@@ -39,49 +39,48 @@ def FileExists(filename):
   except:
     return False
 
-class WebDir:
-  def __init__(top):
-    .top = top
-
-  def Handle4(w, r, host, path):
-    filename = filepath.Join(.top, path)
-    try:
-      if DirExists(filename):
-        if path[-1] != '/':
-          http.Redirect(w, r, r.URL.Path + '/', http.StatusMovedPermanently)
-          return
-
-      http.ServeFile(w, r, filename)
-      return
-
-      fd = os.Open(filename)
-      with defer fd.Close():
-        st = fd.Stat()
-        if st.IsDir():
-          if path[-1] != '/':
-            # TODO -- needs to correct original path.
-            http.Redirect(w, r, path + '/', http.StatusMovedPermanently)
-          else:
-            index_path = filepath.Join(filename, 'index.html')
-            if FileExists(index_path):
-              say "SERVING INDEX", index_path
-              fd = os.Open(index_path)
-              with defer fd.Close():
-                http.ServeContent(w, r, index_path, st.ModTime(), fd)
-            else:
-              EmitDir(w, r, fd, '/', path)
-        else:
-          say "SERVING FILE", filename
-          http.ServeContent(w, r, filename, st.ModTime(), fd)
-
-    except as ex:
-      w.Header().Set('Content-Type', 'text/plain')
-      w.Write( 'Exception:\n%s\n' % ex)
+#class WebDir:
+#  def __init__(top):
+#    .top = top
+#
+#  def Handle4(w, r, host, path):
+#    filename = filepath.Join(.top, path)
+#    try:
+#      if DirExists(filename):
+#        if path[-1] != '/':
+#          http.Redirect(w, r, r.URL.Path + '/', http.StatusMovedPermanently)
+#          return
+#
+#      http.ServeFile(w, r, filename)
+#      return
+#
+#      fd = os.Open(filename)
+#      with defer fd.Close():
+#        st = fd.Stat()
+#        if st.IsDir():
+#          if path[-1] != '/':
+#            # TODO -- needs to correct original path.
+#            http.Redirect(w, r, path + '/', http.StatusMovedPermanently)
+#          else:
+#            index_path = filepath.Join(filename, 'index.html')
+#            if FileExists(index_path):
+#              say "SERVING INDEX", index_path
+#              fd = os.Open(index_path)
+#              with defer fd.Close():
+#                http.ServeContent(w, r, index_path, st.ModTime(), fd)
+#            else:
+#              EmitDir(w, r, fd, '/', path)
+#        else:
+#          say "SERVING FILE", filename
+#          http.ServeContent(w, r, filename, st.ModTime(), fd)
+#
+#    except as ex:
+#      w.Header().Set('Content-Type', 'text/plain')
+#      w.Write( 'Exception:\n%s\n' % ex)
 
 STRIP_WEB = regexp.MustCompile('^/web($|/.*$)').FindStringSubmatch
 def StripWeb(s):
   m = STRIP_WEB(s)
-  say s, m
   return m[1] if m else s
 
 class BundDir:
@@ -93,20 +92,34 @@ class BundDir:
     doDir = path.endswith('/')
     wpath = filepath.Join('/web', path)
     preLen = len('/web')
-    try:
-      if doDir:
-        dd = sorted(.b.ListDirs(wpath))
-        ff = sorted(.b.ListFiles(wpath))
-        names = ["%s/" % x for x in dd] + [x for x in ff]
-        EmitBundDir(w, r, None, path, names)
+    say host, path, doDir, wpath
 
+    if .b.wx:
+      user_pw = basic.GetBasicPw(r, w, .bund_name)
+      if user_pw:
+        user, pw = user_pw
       else:
-        isDir, modTime, size = .b.Stat3(wpath)
-        if isDir:
-          http.Redirect(w, r, path + '/', http.StatusMovedPermanently)
+        return  # We demanded Basic Authorization.
 
-        br = bytes.NewReader(.b.ReadFile(wpath))  # TODO, avoid loading in memory?
-        http.ServeContent(w, r, path, modTime, br)
+    try:
+      say 'Link', pw
+      .b.Link(pw)
+      with defer .b.Unlink():
+        if doDir:
+          dd = sorted(.b.ListDirs(wpath))
+          ff = sorted(.b.ListFiles(wpath))
+          names = ["%s/" % x for x in dd] + [x for x in ff]
+          say dd, ff, names
+          EmitBundDir(w, r, None, path, names)
+
+        else:
+          isDir, modTime, size = .b.Stat3(wpath)
+          say isDir, modTime, size
+          if isDir:
+            http.Redirect(w, r, path + '/', http.StatusMovedPermanently)
+
+          br = bytes.NewReader(.b.ReadFile(wpath))  # TODO, avoid loading in memory?
+          http.ServeContent(w, r, path, modTime, br)
 
     except as ex:
       w.Header().Set('Content-Type', 'text/plain')
@@ -154,12 +167,12 @@ def RoutingFunc(w, r):
     w.Header().Set('Content-Type', 'text/plain')
     w.Write('\n\nSorry, an error occurred in Aphid:\n\n%s\n' % err)
 
-def RegisterDirectories(argv):
-  for a in argv:
-    must DirExists(a)
-    base = filepath.Base(a)
-    must IS_DOMAIN(base)
-    HostHandlers[base] = WebDir(a).Handle4
+#def RegisterDirectories(argv):
+#  for a in argv:
+#    must DirExists(a)
+#    base = filepath.Base(a)
+#    must IS_DOMAIN(base)
+#    HostHandlers[base] = WebDir(a).Handle4
 
 def ProcessTriples():
   for name, d in flag.Triples.items():
@@ -170,8 +183,8 @@ def ProcessTriples():
         HostHandlers[k] = h
       elif name == 'wiki':
         HostHandlers[k] = awiki.AWikiMaster(v).Handler4
-      elif name == 'webdir':
-        HostHandlers[k] = WebDir(v).Handle4
+      #elif name == 'webdir':
+      #  HostHandlers[k] = WebDir(v).Handle4
       elif name == 'web':
         HostHandlers[k] = BundDir(v).Handle4
       else:
@@ -179,13 +192,13 @@ def ProcessTriples():
   
 HostHandlers = dict()
 
-def main(argv):
-  argv = flag.Munch(argv)
-  for k, v in flag.Triples.get('bundle', {}).items():
-    bundle.LoadBundle(k)
-
-  RegisterDirectories(argv)
-  ProcessTriples()
-
-  http.HandleFunc('/', RoutingFunc)
-  http.ListenAndServe(BIND.X , None)
+#def main(argv):
+#  argv = flag.Munch(argv)
+#  for k, v in flag.Triples.get('bundle', {}).items():
+#    bundle.LoadBundle(k)
+#
+#  RegisterDirectories(argv)
+#  ProcessTriples()
+#
+#  http.HandleFunc('/', RoutingFunc)
+#  http.ListenAndServe(BIND.X , None)

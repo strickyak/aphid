@@ -1,7 +1,7 @@
-from go import bufio, os, regexp, time
+from go import bufio, os, regexp, sync, time
 from go import io/ioutil
 from go import path/filepath as F
-from go import crypto/md5
+from go import crypto/md5, crypto/sha256
 from go import github.com/strickyak/redhed
 from . import sym, table, A
 
@@ -10,9 +10,9 @@ FILE_PERM = 0644
 
 Bundles = {}  # Map names to bundle.
 
-def RevFormat(fpath, tag, ms, suffix, mtime, size, key):
-  if key:
-    xname = redhed.EncryptFilename('%014d.%s.%d.%d' % (ms, suffix, mtime, size), key)
+def RevFormat(fpath, tag, ms, suffix, mtime, size, rhkey):
+  if rhkey:
+    xname = redhed.EncryptFilename('%014d.%s.%d.%d' % (ms, suffix, mtime, size), rhkey)
     return '%s/%s^%s' % (fpath, tag, xname)
   else:
     return '%s/%s.%014d.%s.%d.%d' % (fpath, tag, ms, suffix, mtime, size)
@@ -21,6 +21,56 @@ PARSE_REV_FILENAME = regexp.MustCompile('^r[.](\w+)[.](\w+)[.]([-0-9]+)[.]([-0-9
 
 # Extracts bundle name at [2] from path to bundle.
 PARSE_BUNDLE_PATH = regexp.MustCompile('(^|.*/)b[.]([A-Za-z0-9_]+)$').FindStringSubmatch
+
+class AttachedWebkeyBundle:
+  def __init__(bname, topdir='.', suffix='0', webkeyid=None, webkey=None):
+    must webkeyid
+    must webkey
+    must type(webkey) == byt
+    must len(webkey) == 32  # 256 bit.
+    .bname, .topdir, .sufix = bname, topdir, suffix
+    .webkeyid, .webkey = webkeyid, webkey
+    .links = 0
+    .mu = go_new(sync.Mutex)
+    .wx = True  # Does use encrypted webpw -- please Link(pw) it.
+    .bundir = F.Join(topdir, 'b.%s' % bname)
+
+
+  def SymKeyFromWebPw(pw):
+    # TODO -- extract from multi-pw
+    h = sha256.Sum256(pw.strip(' \t\n\r'))
+    must len(h) == 32 # 256 bits.
+    return h ^ .webkey  # In rye, xor of byt & byt is byt.
+
+  def Link(pw):
+    .mu.Lock()
+    with defer .mu.Unlock():
+      if .links:
+        .links += 1
+      else:
+        symkey = .SymKeyFromWebPw(pw)
+        .bund = Bundle(.bname, .bundir, .suffix, keyid=.keyid, key=symkey)
+
+  def Unlink():
+    .mu.Lock()
+    with defer .mu.Unlock():
+      .links -= 1
+      if not .links:
+        .bund = None
+
+  def Stat3(path):
+    must .links
+    return .bund.Stat3(path)
+  def List4(path):
+    must .links
+    return .bund.List4(path)
+  def ReadFile(path):
+    must .links
+    return .bund.ReadFile(path)
+  def WriteFile(path, data, mtime=-1):
+    must .links
+    return .bund.WriteFile(path, data, mtime)
+
 
 def LoadBundle(bname, topdir='.', suffix='0', keyid=None, key=None):
   if key:
@@ -36,10 +86,17 @@ class Bundle:
     .bundir = bundir
     .suffix = suffix
     if key:
-      .key = redhed.NewKey(keyid, key)
-      say .key
+      .rhkey = redhed.NewKey(keyid, key)
+      say .rhkey
     .table = table.Table(F.Join(.bundir, 'd.table'))
     .wikdir = F.Join(.bundir, 'd.wiki')
+    .wx = False  # Does not use encrypted webpw
+
+  # These are NOPs in a regular bundle.
+  def Link(pw):
+    pass
+  def Unlink():
+    pass
 
   def ListDirs(dirpath):
     say 'ListDirs', dirpath
@@ -84,7 +141,7 @@ class Bundle:
       if s.startswith('d.'):
         yield s[2:], True, -1, -1
       elif s.startswith('d^'):
-        yield redhed.DecryptFilename(s[2:], .key), True, -1, -1
+        yield redhed.DecryptFilename(s[2:], .rhkey), True, -1, -1
       elif s.startswith('f.'):
         fd2 = os.Open(F.Join(dp, s))
         vec2 = fd2.Readdir(-1)
@@ -97,13 +154,13 @@ class Bundle:
         _, name3, suffix3, mtime3, size3 = PARSE_REV_FILENAME(rev_name)
         yield s[2:], False, int(mtime3), int(size3)
       elif s.startswith('f^'):
-        fname2 = redhed.DecryptFilename(s[2:], .key)
+        fname2 = redhed.DecryptFilename(s[2:], .rhkey)
         fd2 = os.Open(F.Join(dp, s))
         vec2 = fd2.Readdir(-1)
         say fname2, fd2, vec2
 
         xrevs = [fi.Name() for fi in vec2 if fi.Name().startswith('r^')]
-        revs = ['r.' + redhed.DecryptFilename(x[2:], .key) for x in xrevs]
+        revs = ['r.' + redhed.DecryptFilename(x[2:], .rhkey) for x in xrevs]
 
         if not revs:
           continue
@@ -125,7 +182,7 @@ class Bundle:
       if s.startswith('f.'):
         z.append(s[2:])
       if s.startswith('f^'):
-        z.append(redhed.DecryptFilename(s[2:], .key))
+        z.append(redhed.DecryptFilename(s[2:], .rhkey))
     return z
 
   def ListRevs(file_path):
@@ -141,7 +198,7 @@ class Bundle:
       if s.startswith('r.'):
         z.append(s[2:])
       if s.startswith('r^'):
-        z.append(redhed.DecryptFilename(s[2:], .key))
+        z.append(redhed.DecryptFilename(s[2:], .rhkey))
     return z
 
   def Stat3(file_path):
@@ -154,40 +211,59 @@ class Bundle:
 
     fpath = .fpath(file_path)
     fd = os.Open(fpath)
-    names = [(fi.Name(), fi)
-             for fi in fd.Readdir(-1)
-             if fi.Name().startswith('r.')]
-    if not names:
-      raise 'No such file in bundle %s: %q' % (.name, file_path)
+    plain, filename = .nameOfFileToOpen(file_path)
+    say plain, filename
 
-    _, latest_fi = names[-1]
-    assert not latest_fi.IsDir()
-    return False, latest_fi.ModTime(), latest_fi.Size()
+    m = PARSE_REV_FILENAME(plain)
+    must m, (m, plain, filename)
+    _, ts, suffix, mtime, size = m
+    return False, time.Unix(int(mtime), 0), int(size)
+
+
+    #names = [(fi.Name(), fi)
+    #         for fi in fd.Readdir(-1)
+    #         if fi.Name().startswith('r.') or fi.Name().startswith('r^')]
+    #if not names:
+    #  raise 'No such file in bundle %s: %q' % (.name, file_path)
+    #
+    #if .rhkey:
+    #  raise 'TODO'
+    #else:
+    #  _, latest_fi = names[-1]
+    #  assert not latest_fi.IsDir()
+    #  return False, latest_fi.ModTime(), latest_fi.Size()
 
   def findOrConjure(xdir, s, prefix):
     say xdir, s, prefix
-    fd = os.Open(xdir)
-    for fi in fd.Readdir(-1):
-      name = fi.Name()
-      if len(name) > 15 and name.startswith(prefix):
-        plainname = redhed.DecryptFilename(name[2:], .key)
-        say s, name, plainname
-        if plainname == s:
-          return name
-    z = redhed.EncryptFilename(s, .key)
+    try:
+      fd = os.Open(xdir)
+    except:
+      pass
+    if fd:
+      for fi in fd.Readdir(-1):
+        name = fi.Name()
+        if len(name) > 15 and name.startswith(prefix):
+          plainname = redhed.DecryptFilename(name[2:], .rhkey)
+          say s, name, plainname
+          if plainname == s:
+            return name
+    z = redhed.EncryptFilename(s, .rhkey)
     say s, z
-    return prefix + z
+    return '%s%s' % (prefix, z)
 
   def dpath(dirpath):
     say dirpath
     vec = [str(s) for s in dirpath.split('/') if s]
+    say vec
 
-    if .key:
-      xdir = .bundir
+    if .rhkey:
+      xdir = '.'
+      say xdir
       for s in vec:
-        xpart = .findOrConjure(xdir, s, 'd^')
+        say s
+        xpart = .findOrConjure(F.Join(.bundir, xdir), s, 'd^')
         xdir = F.Join(xdir, xpart)
-      return xdir
+      return F.Join(.bundir, xdir)
     else:
       return F.Join(.bundir, *['d.%s' % s for s in vec])
 
@@ -198,8 +274,8 @@ class Bundle:
     fname = vec.pop()
     dp = .dpath('/'.join(vec))
     say file_path, dp
-    if .key:
-      xdir = .bundir
+    if .rhkey:
+      xdir = dp
       xpart = .findOrConjure(xdir, s, 'f^')
       xfile = F.Join(xdir, xpart)
       say file_path, xfile
@@ -211,15 +287,15 @@ class Bundle:
 
   def ReadFile(file_path):
     say file_path
-    if .key:
-      xname = .nameOfFileToOpen(file_path)
+    if .rhkey:
+      plain, xname = .nameOfFileToOpen(file_path)
       say xname
       fd = os.Open(xname)
       with defer fd.Close():
-        r = redhed.NewReader(fd, .key)
+        r = redhed.NewReader(fd, .rhkey)
         return ioutil.ReadAll(r)
     else:
-      name = .nameOfFileToOpen(file_path)
+      plain, name = .nameOfFileToOpen(file_path)
       say name
       return ioutil.ReadFile(name)
 
@@ -227,13 +303,13 @@ class Bundle:
     bb = byt(s)
     mtime = mtime if mtime>0 else time.Now().Unix()
     say 'WriteFile', file_path, len(bb), mtime
-    say 'WriteFile2', .name, .bundir, .suffix, .key
-    w = atomicFileCreator(.fpath(file_path), .suffix, mtime=mtime, size=len(bb), key=.key)
+    say 'WriteFile2', .name, .bundir, .suffix, .rhkey
+    w = atomicFileCreator(.fpath(file_path), .suffix, mtime=mtime, size=len(bb), rhkey=.rhkey)
     with defer w.Close():
-      if .key:
+      if .rhkey:
         csum = md5.Sum(bb)
         say 'redhed.NewWriter', file_path, mtime, len(bb), csum
-        redw = redhed.NewWriter(w, .key, file_path, mtime, len(bb), csum)
+        redw = redhed.NewWriter(w, .rhkey, file_path, mtime, len(bb), csum)
         say redw
         writer = redw
       else:
@@ -242,43 +318,49 @@ class Bundle:
       try:
         writer.Write(bb)  # Fully.
       except as ex:
-        if .key:
+        if .rhkey:
           redw.Abort()
         raise ex
 
-      if .key:
+      if .rhkey:
         redw.Close()
 
   def nameOfFileToOpen(file_path):
     say file_path
     fp = .fpath(file_path)
     say fp
-    if .key:
+    if .rhkey:
       glob = F.Glob(F.Join(fp, 'r^*'))
+      say glob
       baseglob = [F.Base(x) for x in glob]
-      gg = sorted([('r.' + redhed.DecryptFilename(x[2:], .key), x) for x in baseglob])
+      say baseglob
+      gg = sorted([('r.' + redhed.DecryptFilename(x[2:], .rhkey), x) for x in baseglob])
+      say gg
     else:
       gg = sorted([str(f) for f in F.Glob(F.Join(fp, 'r.*'))])
     say gg
     if not gg:
       raise 'no such file: bundle=%s path=%s' % (.name, file_path)
-    if .key:
+    if .rhkey:
       z = F.Join(fp, gg[-1][1])  # raw r^* filename is the second in the tuple
+      plain = gg[-1][0]
     else:
       z = gg[-1]  # The latest one is last, in sorted order.
+      plain = z
     say file_path, z
-    return z
+    return plain, z
 
   def Open(file_path):
-    return os.Open(.nameOfFileToOpen(file_path))
+    plain, filename = .nameOfFileToOpen(file_path)
+    return os.Open(filename)
 
 class atomicFileCreator:
-  def __init__(fpath, suffix, mtime, size, key):
+  def __init__(fpath, suffix, mtime, size, rhkey):
     .fpath = fpath
     .suffix = suffix
     .mtime = mtime
     .size = size
-    .key = key
+    .rhkey = rhkey
 
     ms = NowMillis()
     if not .mtime:
@@ -315,7 +397,7 @@ class atomicFileCreator:
     .fd.Close()
 
     ms = NowMillis()
-    dest = RevFormat(.fpath, 'r', ms, .suffix, .mtime, .size, .key)
+    dest = RevFormat(.fpath, 'r', ms, .suffix, .mtime, .size, .rhkey)
 
     say 'os.Rename', .tmp, dest
     os.Rename(.tmp, dest)

@@ -34,8 +34,8 @@ def main(args):
     key = keyring.Ring[v]
     must key
     must key.b_sym
-    # bundle.LoadBundle(k, topdir=FLAG_BUNDLE_TOPDIR.X, keyid=v, key=key.b_sym)
-    # TODO: Cannot load the bundle now.   Loads on demand, then unloads.
+    bundle.Bundles[k] = bundle.AttachedWebkeyBundle(
+        k, topdir=FLAG_BUNDLE_TOPDIR.X, webkeyid=v, webkey=key.b_sym)
 
   # Remote Bundle:
   go rbundle.RBundleServer(FLAG_RBUNDLE_BIND.X, keyring.Ring).ListenAndServe()
