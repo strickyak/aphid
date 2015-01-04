@@ -95,7 +95,7 @@ class BundDir:
     say host, path, doDir, wpath
 
     if .b.wx:
-      user_pw = basic.GetBasicPw(r, w, .bund_name)
+      user_pw = basic.GetBasicPw(w, r, .bund_name)
       if user_pw:
         user, pw = user_pw
       else:

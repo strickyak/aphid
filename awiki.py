@@ -65,6 +65,11 @@ class AWikiMaster:
       say user
       if not user:
         return  # Already requested basic auth.
+    if .bund.wx:
+      wxstuff = basic.GetBasicPw(w, r, 'WebKey-%s' % .bund.bname)
+      if not wxstuff:
+        return  # Already requested basic auth.
+      wxuser, wxpw = wxstuff
 
     # Our rule is never end in '/' (unless it is exactly path '/').
     say path
@@ -80,7 +85,12 @@ class AWikiMaster:
 
     if wp.File:
       wp.Verb = 'file'
-    VERBS[wp.Verb](w, r, self, wp)
+    fn = VERBS.get(wp.Verb)
+    if not fn:
+      raise 'No such verb: %q' % wp.Verb
+    .bund.Link(wxpw)
+    with defer .bund.Unlink():
+      fn(w, r, self, wp)
 
 def EmitHtml(w, d, t):
   w.Header().Set('Content-Type', 'text/html')

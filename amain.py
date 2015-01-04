@@ -28,14 +28,15 @@ def main(args):
     key = keyring.Ring[v]
     must key
     must key.b_sym
-    bundle.LoadBundle(k, topdir=FLAG_BUNDLE_TOPDIR.X, keyid=v, key=key.b_sym)
+    bundle.LoadBundle(k, topdir=FLAG_BUNDLE_TOPDIR.X, suffix='0', keyid=v, key=key.b_sym)
 
   for k, v in flag.Triples.get('wxbundle', {}).items():
     key = keyring.Ring[v]
     must key
     must key.b_sym
+    must key.base
     bundle.Bundles[k] = bundle.AttachedWebkeyBundle(
-        k, topdir=FLAG_BUNDLE_TOPDIR.X, webkeyid=v, webkey=key.b_sym)
+        k, topdir=FLAG_BUNDLE_TOPDIR.X, suffix='0', webkeyid=v, webkey=key.b_sym, basekey=key.base)
 
   # Remote Bundle:
   go rbundle.RBundleServer(FLAG_RBUNDLE_BIND.X, keyring.Ring).ListenAndServe()

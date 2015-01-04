@@ -16,6 +16,8 @@ rye run amain.py \
   ::web::xyz.www.aphid.cc::xyz \
   ::web::lmnop::lmnop \
   ::web::peeklmnop::peeklmnop \
+  ::wiki::lmnop.wiki::lmnop \
+  ::wiki::peeklmnop.wiki::peeklmnop \
   ##
 
 #  --basic='{"abc": "xyzz"}' \

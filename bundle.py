@@ -23,13 +23,13 @@ PARSE_REV_FILENAME = regexp.MustCompile('^r[.](\w+)[.](\w+)[.]([-0-9]+)[.]([-0-9
 PARSE_BUNDLE_PATH = regexp.MustCompile('(^|.*/)b[.]([A-Za-z0-9_]+)$').FindStringSubmatch
 
 class AttachedWebkeyBundle:
-  def __init__(bname, topdir='.', suffix='0', webkeyid=None, webkey=None):
+  def __init__(bname, topdir='.', suffix, webkeyid, webkey, basekey):
     must webkeyid
     must webkey
     must type(webkey) == byt
     must len(webkey) == 32  # 256 bit.
-    .bname, .topdir, .sufix = bname, topdir, suffix
-    .webkeyid, .webkey = webkeyid, webkey
+    .bname, .topdir, .suffix = bname, topdir, suffix
+    .webkeyid, .webkey, .basekey = webkeyid, webkey, basekey
     .links = 0
     .mu = go_new(sync.Mutex)
     .wx = True  # Does use encrypted webpw -- please Link(pw) it.
@@ -45,11 +45,10 @@ class AttachedWebkeyBundle:
   def Link(pw):
     .mu.Lock()
     with defer .mu.Unlock():
-      if .links:
-        .links += 1
-      else:
+      if .links == 0:
         symkey = .SymKeyFromWebPw(pw)
-        .bund = Bundle(.bname, .bundir, .suffix, keyid=.keyid, key=symkey)
+        .bund = Bundle(.bname, .bundir, .suffix, keyid=.basekey, key=symkey)
+      .links += 1
 
   def Unlink():
     .mu.Lock()
@@ -71,6 +70,11 @@ class AttachedWebkeyBundle:
     must .links
     return .bund.WriteFile(path, data, mtime)
 
+  def ListDirs(dirpath):
+    return [name for name, isDir, _, _ in .List4(dirpath) if isDir]
+  def ListFiles(dirpath):
+    return [name for name, isDir, _, _ in .List4(dirpath) if not isDir]
+
 
 def LoadBundle(bname, topdir='.', suffix='0', keyid=None, key=None):
   if key:
@@ -80,9 +84,9 @@ def LoadBundle(bname, topdir='.', suffix='0', keyid=None, key=None):
   Bundles[bname] = Bundle(bname, bundir, suffix, keyid=keyid, key=key)
 
 class Bundle:
-  def __init__(name, bundir, suffix, keyid=None, key=None):
-    say name, bundir, suffix, keyid, key
-    .name = name
+  def __init__(bname, bundir, suffix, keyid=None, key=None):
+    say bname, bundir, suffix, keyid, key
+    .bname = bname
     .bundir = bundir
     .suffix = suffix
     if key:
@@ -113,27 +117,14 @@ class Bundle:
     say z
     return z
 
-  def List2(dirpath):
-    say 'List2', dirpath
-    dp = .dpath(dirpath)
-    fd = os.Open(dp)
-    vec = fd.Readdir(-1)
-    say vec
-    for info in vec:
-      say info
-      s = info.Name()
-      if s.startswith('d.'):
-        yield s[2:], True
-      elif s.startswith('f.'):
-        yield s[2:], False
-      else:
-        A.Warn('Ignoring strange file: %q %q', dirpath, s)
-
   def List4(dirpath):
     say 'List4', dirpath
     dp = .dpath(dirpath)
-    fd = os.Open(dp)
-    vec = fd.Readdir(-1)
+    try:
+      fd = os.Open(dp)
+      vec = fd.Readdir(-1)
+    except:
+      return  # from Generator.
     say vec
     for info in vec:
       say info
@@ -224,7 +215,7 @@ class Bundle:
     #         for fi in fd.Readdir(-1)
     #         if fi.Name().startswith('r.') or fi.Name().startswith('r^')]
     #if not names:
-    #  raise 'No such file in bundle %s: %q' % (.name, file_path)
+    #  raise 'No such file in bundle %s: %q' % (.bname, file_path)
     #
     #if .rhkey:
     #  raise 'TODO'
@@ -303,7 +294,7 @@ class Bundle:
     bb = byt(s)
     mtime = mtime if mtime>0 else time.Now().Unix()
     say 'WriteFile', file_path, len(bb), mtime
-    say 'WriteFile2', .name, .bundir, .suffix, .rhkey
+    say 'WriteFile2', .bname, .bundir, .suffix, .rhkey
     w = atomicFileCreator(.fpath(file_path), .suffix, mtime=mtime, size=len(bb), rhkey=.rhkey)
     with defer w.Close():
       if .rhkey:
@@ -340,7 +331,7 @@ class Bundle:
       gg = sorted([str(f) for f in F.Glob(F.Join(fp, 'r.*'))])
     say gg
     if not gg:
-      raise 'no such file: bundle=%s path=%s' % (.name, file_path)
+      raise 'no such file: bundle=%s path=%s' % (.bname, file_path)
     if .rhkey:
       z = F.Join(fp, gg[-1][1])  # raw r^* filename is the second in the tuple
       plain = gg[-1][0]
