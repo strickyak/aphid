@@ -32,3 +32,13 @@ must 'purple' == t.Get('color')
 must 'lime' == t.Get('flavor')
 must 'XL' == t.Get('size')
 must t.Get('bogus') == None
+
+t.Set('color', 'pink')
+t.Set('flavor', 'lychee')
+
+t2 = table.Table(D)
+must 'purple' == t.Get('color')
+must 'lime' == t.Get('flavor')
+must 'XL' == t.Get('size')
+must t.Get('bogus') == None
+

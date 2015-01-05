@@ -85,27 +85,3 @@ def ReadFileLines(filename):
     while sc.Scan():
       yield sc.Text()
     sc.Err() # Raise error, if any.
-
-class LineFileWriter:
-  def __init__(filename):
-    .fd = os.Create(filename)
-    .w = bufio.NewWriter(.fd)
-  def Printf(*args):
-    fmt.Fprintf(.w, *args)
-  def Flush():
-    .w.Flush()
-  def Close():
-    .w.Flush()
-    .fd.Close()
-  #def WriteString(s):
-  #  .w.WriteString(s)
-  #  .w.WriteByte('\n')
-
-#def WriteFileLines(filename, it):
-#  fd = os.Create(filename)
-#  with defer fd.Close():
-#    bw = bufio.NewWriter(fd)
-#    with defer bw.Flush():
-#      for line in it:
-#        bw.WriteString(line)
-#        bw.WriteByte('\n')
