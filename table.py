@@ -11,7 +11,7 @@ class Table:
     .loadDir()
 
   def Stamp():
-    return '%d.%s' % (time.Now().Unix() // 1000000, .suffix)
+    return '%d.%s' % (time.Now().UnixNano() // 1000000, .suffix)
 
   def PrepareToWrite():
     if not .w:
@@ -40,10 +40,10 @@ class Table:
     ts = .Stamp()
     .sk.Set(k, (ts, v))
     if v is None:
-      print >>.w, '-%s\t%s\n' % (ts, k)
+      print >>.w, '-%s\t%s' % (ts, k)
     else:
-      print >>.w, '+%s\t%s\t%s\n' % (ts, k, v)
-    print >>.w, ';\n'
+      print >>.w, '+%s\t%s\t%s' % (ts, k, v)
+    print >>.w, ';'
     .w.Flush()
 
   def loadDir():
