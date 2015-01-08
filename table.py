@@ -54,14 +54,16 @@ class Table:
     pending = []
     for line in ReadFileLines(filename):
       if line.startswith(';'):
-        # Semicolon lines commit the pending records.
+        # Commit the pending records.
         .addem(pending)
         pending = []
       elif line.startswith('+'):
+        # Make an Insert record.
         vec = line.split('\t')
         must len(vec) == 3
         pending.append(vec)
       elif line.startswith('-'):
+        # Make an Drop record.
         vec = line.split('\t')
         must len(vec) == 2
         vec.append(None)  # Add None as third thing.

@@ -2,14 +2,14 @@ from go import os
 from go import path/filepath as F
 from . import table
 
-D ='./__test__skiplist__'
+D ='/tmp/_aphid_test_skiplist_'
 
 try:
   os.RemoveAll(D)
 except:
   pass
 
-os.Mkdir(D, 0700)
+os.Mkdir(D, 0777)
 
 fd = os.Create(F.Join(D, 't.001'))
 print >>fd, '''
@@ -41,4 +41,4 @@ must 'pink' == t.Get('color')
 must 'lychee' == t.Get('flavor')
 must 'XL' == t.Get('size')
 must t.Get('bogus') == None
-
+pass
