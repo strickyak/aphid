@@ -18,11 +18,12 @@ def Unsubscribe(sub):
 def Publish(thing):
   Mu.Lock()
   with defer Mu.Unlock():
-    d = Subs[thing.key1]
-    for sub in d.values():
-      if thing.origin != sub.origin:
-        if sub.re2.FindString(thing.key2):
-           go sub.fn(thing)
+    d = Subs.get(thing.key1)
+    if d:
+      for sub in d.values():
+        if thing.origin != sub.origin:
+          if sub.re2.FindString(thing.key2):
+             go sub.fn(thing)
 
 class Sub:
   def __init__(origin, key1, re2, fn):
@@ -37,6 +38,7 @@ class Sub:
 
 class Thing:
   def __init__(origin, key1, key2, props):
+    say 'CONSTRUCT THING', origin, key1, key2, props
     .origin = origin
     .key1 = key1
     .key2 = key2
