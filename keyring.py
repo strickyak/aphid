@@ -104,76 +104,77 @@ def main(args):
     cmd = args.pop(0)
 
   say cmd, args
-  if cmd == "cp":
-    rfile = args.pop(0)
-    wfile = args.pop(0)
-    must not args
-    Load(rfile, Ring)
-    Save(wfile, Ring)
+  switch cmd:
+    case "cp":
+      rfile = args.pop(0)
+      wfile = args.pop(0)
+      must not args
+      Load(rfile, Ring)
+      Save(wfile, Ring)
 
-  elif cmd == "mkdh":
-    key_id = args.pop(0)
-    key_name = args.pop(0)
-    rfile = args.pop(0)
-    wfile = args.pop(0)
-    must not args
-    Load(rfile, Ring)
-    obj = dh.Forge(key_id, key_name, dh.GROUP)
-    Ring[key_id] = Line() {
-        num:key_id, name:key_name, kind:'dh',
-        pub:dh.String(obj.pub), sec:dh.String(obj.sec), sym:None, base:None
-    }
-    Save(wfile, Ring)
+    case "mkdh":
+      key_id = args.pop(0)
+      key_name = args.pop(0)
+      rfile = args.pop(0)
+      wfile = args.pop(0)
+      must not args
+      Load(rfile, Ring)
+      obj = dh.Forge(key_id, key_name, dh.GROUP)
+      Ring[key_id] = Line() {
+          num:key_id, name:key_name, kind:'dh',
+          pub:dh.String(obj.pub), sec:dh.String(obj.sec), sym:None, base:None
+      }
+      Save(wfile, Ring)
 
-  elif cmd == "mksym":
-    key_id = args.pop(0)
-    key_name = args.pop(0)
-    rfile = args.pop(0)
-    wfile = args.pop(0)
-    must not args
-    Load(rfile, Ring)
-    bb = mkbyt(32)
-    c = rand.Read(bb)
-    must c == 32
-    obj = dh.Forge(key_id, key_name, dh.GROUP)
-    Ring[key_id] = Line() {
-        num:key_id, name:key_name, kind:'aes',
-        pub:None, sec:None, sym:('%x'%str(bb)), base:None
-    }
-    Save(wfile, Ring)
+    case "mksym":
+      key_id = args.pop(0)
+      key_name = args.pop(0)
+      rfile = args.pop(0)
+      wfile = args.pop(0)
+      must not args
+      Load(rfile, Ring)
+      bb = mkbyt(32)
+      c = rand.Read(bb)
+      must c == 32
+      obj = dh.Forge(key_id, key_name, dh.GROUP)
+      Ring[key_id] = Line() {
+          num:key_id, name:key_name, kind:'aes',
+          pub:None, sec:None, sym:('%x'%str(bb)), base:None
+      }
+      Save(wfile, Ring)
 
-  elif cmd == "mkweb":
-    # First use "mksym" to make the base key.
-    # Then use "mkweb" to make the derived web key.
-    # Do not publish the base key.
-    key_id = args.pop(0)
-    key_name = args.pop(0)
-    key_base = args.pop(0)
-    pw = args.pop(0)
-    rfile = args.pop(0)
-    wfile = args.pop(0)
+    case "mkweb":
+      # First use "mksym" to make the base key.
+      # Then use "mkweb" to make the derived web key.
+      # Do not publish the base key.
+      key_id = args.pop(0)
+      key_name = args.pop(0)
+      key_base = args.pop(0)
+      pw = args.pop(0)
+      rfile = args.pop(0)
+      wfile = args.pop(0)
 
-    must not args
-    Load(rfile, Ring)
-    base = Find(key_base, Ring)
-    basekey = base.b_sym
-    say basekey
+      must not args
+      Load(rfile, Ring)
+      base = Find(key_base, Ring)
+      basekey = base.b_sym
+      say basekey
 
-    pwhash = sha256.Sum256(pw)
-    say pwhash
+      pwhash = sha256.Sum256(pw)
+      say pwhash
 
-    webkey = basekey ^ pwhash
-    say webkey
+      webkey = basekey ^ pwhash
+      say webkey
 
-    line = Line(key_id, key_name, 'web-aes')
-    line.b_sym = webkey
-    line.sym = sym.EncodeHex(line.b_sym)
-    line.base = key_base
-    say line
+      line = Line(key_id, key_name, 'web-aes')
+      line.b_sym = webkey
+      line.sym = sym.EncodeHex(line.b_sym)
+      line.base = key_base
+      say line
 
-    Ring[key_id] = line
-    Save(wfile, Ring)
+      Ring[key_id] = line
+      Save(wfile, Ring)
 
-  else:
-    raise 'Unknown command:', cmd
+    default:
+      raise 'Unknown command:', cmd
 
