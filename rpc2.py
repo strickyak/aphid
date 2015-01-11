@@ -90,7 +90,7 @@ class ServerConn:
   def WriteActor():
     while True:
       #say 'get'
-      tup = .resultQ.Get()
+      tup = .resultQ.Take()
       #say 'got', tup
       if tup is None:
         break
@@ -175,7 +175,7 @@ class Client:
 
   def WriteActor():
     while True:
-      req = .inQ.Get()
+      req = .inQ.Take()
       if req is None:
         break
 
@@ -218,7 +218,7 @@ class Promise:
     .chan = chan
 
   def Wait():
-    result, err = .chan.Get()
+    result, err = .chan.Take()
     say 'RETURNING', AtMost(80, result), err
     if err:
       raise err

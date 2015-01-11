@@ -22,7 +22,7 @@ def Start():
     if id != ME.X:
       node = Node(id, where)
       go node.Watchdog()
-      Others[where] = node
+      Others[id] = node
 
 class Node:
   def __init__(id, where):
@@ -45,9 +45,9 @@ class Node:
             break
 
     # Shutdown this Node Connection, and start another.
-    node = Node(.id, .where)
-    go node.Watchdog()
-    Others[.where] = node
+    newnode = Node(.id, .where)
+    go newnode.Watchdog()
+    Others[.id] = newnode
 
     try:
       .client.Close()

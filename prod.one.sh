@@ -12,5 +12,7 @@ cd /opt/aphid
   ::bundle::one::./b.one \
   ::zone::aphid.cc::one/dns/aphid.cc \
   ::wiki::localhost::one \
+  ::wiki::wiki::one \
+  ::wiki::web::one \
   ::web::127.0.0.1::one \
   ##

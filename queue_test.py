@@ -19,7 +19,7 @@ def Count(n):
 go Count(N)
 z = []
 while True:
-  x = ch.Get()
+  x = ch.Take()
   if x is None:   # On None.
     break
   z.append(x.a)
