@@ -3,7 +3,7 @@ from go import io/ioutil
 from go import path/filepath as F
 from go import crypto/md5, crypto/sha256
 from go import github.com/strickyak/redhed
-from . import sym, table, A
+from . import  A, pubsub, sym, table
 
 DIR_PERM = 0755
 FILE_PERM = 0644
@@ -210,20 +210,6 @@ class Bundle:
     _, ts, suffix, mtime, size = m
     return False, time.Unix(int(mtime), 0), int(size)
 
-
-    #names = [(fi.Name(), fi)
-    #         for fi in fd.Readdir(-1)
-    #         if fi.Name().startswith('r.') or fi.Name().startswith('r^')]
-    #if not names:
-    #  raise 'No such file in bundle %s: %q' % (.bname, file_path)
-    #
-    #if .rhkey:
-    #  raise 'TODO'
-    #else:
-    #  _, latest_fi = names[-1]
-    #  assert not latest_fi.IsDir()
-    #  return False, latest_fi.ModTime(), latest_fi.Size()
-
   def findOrConjure(xdir, s, prefix):
     say xdir, s, prefix
     try:
@@ -290,13 +276,14 @@ class Bundle:
       say name
       return ioutil.ReadFile(name)
 
-  def WriteFile(file_path, s, mtime=-1):
+  def WriteFile(file_path, s, mtime=-1, slave=None):
     bb = byt(s)
     mtime = mtime if mtime>0 else time.Now().Unix()
     say 'WriteFile', file_path, len(bb), mtime
     say 'WriteFile2', .bname, .bundir, .suffix, .rhkey
     w = atomicFileCreator(.fpath(file_path), .suffix, mtime=mtime, size=len(bb), rhkey=.rhkey)
-    with defer w.Close():
+
+    try:
       if .rhkey:
         csum = md5.Sum(bb)
         say 'redhed.NewWriter', file_path, mtime, len(bb), csum
@@ -315,6 +302,14 @@ class Bundle:
 
       if .rhkey:
         redw.Close()
+    except as ex:
+      w.Abort()
+      raise ex
+    rev = w.Close()
+
+    if not slave:
+      thing = pubsub.Thing('0', 'rev', .bname, dict(path=file_path, rev=rev))
+      pubsub.Publish(thing)
 
   def nameOfFileToOpen(file_path):
     say file_path
@@ -388,10 +383,11 @@ class atomicFileCreator:
     .fd.Close()
 
     ms = NowMillis()
-    dest = RevFormat(.fpath, 'r', ms, .suffix, .mtime, .size, .rhkey)
+    .dest = RevFormat(.fpath, 'r', ms, .suffix, .mtime, .size, .rhkey)
 
-    say 'os.Rename', .tmp, dest
-    os.Rename(.tmp, dest)
+    say 'os.Rename', .tmp, .dest
+    os.Rename(.tmp, .dest)
+    return F.Base(.dest)
 
 native:
   'func (self *C_atomicFileCreator) WriteAt(p []byte, off int64) (n int, err error) {'
