@@ -6,7 +6,6 @@
 # mango/mango -buskey=YAK TRES tcp://127.0.0.1:12003 tcp://127.0.0.1:12001 tcp://127.0.0.1:12002
 
 from go import github.com/gdamore/mangos/protocol/bus
-from go import github.com/gdamore/mangos/transport/ipc
 from go import github.com/gdamore/mangos/transport/tcp
 from go import time
 from . import flag, keyring, sym
@@ -78,7 +77,6 @@ class Bus:
     .cipher = sym.Cipher(key)
 
     .sock = bus.NewSocket()
-    .sock.AddTransport(ipc.NewTransport())
     .sock.AddTransport(tcp.NewTransport())
     .sock.Listen(my_url)
     for u in their_urls:
@@ -88,23 +86,17 @@ class Bus:
       while True:
         msg = .sock.Recv()
         try:
-          x, serial = .cipher.Open(msg)
+          opened, serial = .cipher.Open(msg)
           if DeDupObj.Check(serial):
-            .handler(x, serial)
+            .handler(opened, serial)
         except as ex:
           say 'CANNOT DECRYPT', ex, msg
     go ReadLoop()
 
   def Send(msg):
     serial = "%s/%d" % (.me, time.Now().UnixNano())
-    x = .cipher.Seal(msg, serial)
-    .sock.Send(x)
-    # Simulate replay attacks with this:
-    ### go .TestDelayedSend(x)
-
-  #def TestDelayedSend(x):
-  #  time.Sleep(1.5 * PERIOD)
-  #  .sock.Send(x)
+    sealed = .cipher.Seal(msg, serial)
+    .sock.Send(sealed)
 
 def DemoHandler(msg, serial):
   say '@@@@@@@@@@@@@@@@@@@@@ DEMO HANDLE', serial, msg
