@@ -1,14 +1,23 @@
 package aphid
 
-import "github.com/microcosm-cc/bluemonday"
-import "github.com/russross/blackfriday"
+import (
+  // External requirements.
+  _ "github.com/microcosm-cc/bluemonday"
+  _ "github.com/russross/blackfriday"
+  _ "github.com/gdamore/mangos"
+)
+
+import (
+  // Internal requirements.
+  _ "github.com/strickyak/rye"
+)
 
 import (
 	"io"
 )
 
-var _ = bluemonday.UGCPolicy
-var _ = blackfriday.MarkdownCommon
+// var _ = bluemonday.UGCPolicy
+// var _ = blackfriday.MarkdownCommon
 
 // net/http.ServerContent needs a ReadSeeker.  This is ours.
 
