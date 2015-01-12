@@ -8,15 +8,15 @@ import (
 
 func JoinChirpList(vec []string) string {
 	var buf bytes.Buffer
-  buf.WriteByte('{')
-  for i, s := range vec {
-    if i > 0 {
-      buf.WriteByte(' ')
-    }
-    buf.WriteString(ToChirpListElement(s))
-  }
-  buf.WriteByte('}')
-  return buf.String()
+	buf.WriteByte('{')
+	for i, s := range vec {
+		if i > 0 {
+			buf.WriteByte(' ')
+		}
+		buf.WriteString(ToChirpListElement(s))
+	}
+	buf.WriteByte('}')
+	return buf.String()
 }
 
 func ToChirpListElement(s string) string {
@@ -143,18 +143,17 @@ func consumeBackslashEscaped(s string, i int) (byte, int) {
 	return byte(a*64 + b*8 + c), i + 4
 }
 
-
 func octalEscape(s string) string {
 	var buf bytes.Buffer
-  n := len(s)
+	n := len(s)
 	for i := 0; i < n; i++ { // Iterate bytes in s.
-    var b byte = s[i]
+		var b byte = s[i]
 		if needsOctalEscape(b) {
 			// buf.WriteString(Sprintf("\\%03o", b))
 			buf.WriteByte('\\')
-			buf.WriteByte('0' + ((b>>6)&3))
-			buf.WriteByte('0' + ((b>>3)&7))
-			buf.WriteByte('0' + ((b>>0)&7))
+			buf.WriteByte('0' + ((b >> 6) & 3))
+			buf.WriteByte('0' + ((b >> 3) & 7))
+			buf.WriteByte('0' + ((b >> 0) & 7))
 		} else {
 			buf.WriteByte(b)
 		}
@@ -163,6 +162,5 @@ func octalEscape(s string) string {
 }
 
 func needsOctalEscape(b byte) bool {
-  return b<' ' || b>'~' || b=='{' || b=='}' || b=='\\'
+	return b < ' ' || b > '~' || b == '{' || b == '}' || b == '\\'
 }
-
