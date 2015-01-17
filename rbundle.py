@@ -1,7 +1,7 @@
 from go import os, time
 from go import path/filepath
 
-from . import A, bundle, flag, keyring, rpc2
+from . import A, bundle, flag, keyring, pubsub, rpc2
 
 KEYNAME = byt('default')
 KEY = byt('ABCDEFGHabcdefgh')
@@ -9,6 +9,7 @@ KEY = byt('ABCDEFGHabcdefgh')
 class RBundleClient(rpc2.Client):
   def __init__(hostport, ring, clientId, serverId):
     super(hostport, ring, clientId, serverId)
+    .me = flag.Flags['me'].X
 
   def Ping():
     return .Call("Ping", []).Wait()
@@ -22,8 +23,12 @@ class RBundleClient(rpc2.Client):
   def RReadFile(bund, path):
     return .Call("RReadFile", [bund, path]).Wait()
 
-  def RWriteFile(bund, path, data, mtime=-1):
-    return .Call("RWriteFile", [bund, path, data, mtime]).Wait()
+  def RWriteFile(bund, path, data, mtime=-1, rev=None, slave=None):
+    return .Call("RWriteFile", [bund, path, data, mtime, rev, slave]).Wait()
+
+  def RPublish(thing):
+    must thing.origin is None  # Should not be set yet.
+    return .Call("RPublish", .me, thing.key1, thing.key2, thing.props)
 
 def Ping():
   return time.Now().UnixNano()
@@ -40,9 +45,17 @@ def RReadFile(bund, path):
   say bund, path
   return bundle.Bundles[bund].ReadFile(path)
 
-def RWriteFile(bund, path, data, mtime):
-  say bund, path, mtime, len(data)
-  return bundle.Bundles[bund].WriteFile(path, data, mtime)
+def RWriteFile(bund, path, data, mtime, rev=None, slave=None):
+  say bund, path, mtime, len(data), rev, slave
+  return bundle.Bundles[bund].WriteFile(path, data, mtime, rev=rev, slave=slave)
+
+def RPublish(origin, key1, key2, props):
+  say origin, key1, key2, props
+  must origin
+  must key1
+  thing = pubsub.Thing(origin=origin, key1=key1, key2=key2, props=props)
+  pubsub.Publish(thing)
+
 
 class RBundleServer(rpc2.Server):
   def __init__(hostport, ring):

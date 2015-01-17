@@ -70,6 +70,7 @@ class String:
     .dflt = dflt
     .X = str(dflt)
     .doc = doc
+    must name not in Flags
     Flags[name] = self
 
   def Value():
@@ -84,6 +85,7 @@ class Int:
     .dflt = dflt
     .X = int(dflt)
     .doc = doc
+    must name not in Flags
     Flags[name] = self
 
   def Value():
@@ -98,6 +100,7 @@ class Bool:
     .dflt = dflt
     .X = bool(dflt)
     .doc = doc
+    must name not in Flags
     Flags[name] = self
 
   def Value():

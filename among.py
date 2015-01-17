@@ -1,8 +1,8 @@
 from go import time
-from . import flag, keyring, rbundle
+from . import A, bundle, flag, keyring, pubsub, rbundle
 
-ALL = flag.String('among_all', '', 'List of all nodes')
-ME = flag.String('among_me', '', 'My id')
+ALL = flag.String('all', '', 'List of all nodes')
+ME = flag.String('me', '', 'My id')
 
 WATCHDOG_PERIOD = 2
 
@@ -54,7 +54,7 @@ class Node:
     except as ex:
       say 'Watchdog Shutdown Exception:', ex
 
-  def PingAndUpdate(): 
+  def PingAndUpdate():
     try:
       then = time.Now().UnixNano()
       say .id, .where, then
@@ -69,6 +69,35 @@ class Node:
 def BestEffortCallAllOthers(proc, args):
   for name, cli in Others:
     go cli.Call(proc, args)
+
+def WriteFileRevSyncronizerFunc(thing):
+  if thing.origin is None:
+    # Originated locally, so send it to remotes.
+    BestEffortCallAllOthers('RPublish', thing)
+    return
+
+  # Originated from elsewhere.
+  b = bundle.Bundles.get(thing.key1)
+  if not b:
+    A.Err('Bundle %q NOT FOUND for WriteFileRevSyncronizerFunc, thing=%v', thing.key1, thing)
+    return
+
+  p = thing.props
+  ppath, psize, psum, prev, pmtime = p['path'], p['size'], p['csum'], p['rev'], p['mtime']
+  revs = b.ListRevs(ppath)
+  if prev in revs:
+    return  # Already got it.
+
+  remote = Others.get(thing.origin)
+  if not remote:
+    A.Err('No connection to Origin: %q', thing.origin)
+
+  data = remote.ReadFileRev(ppath, rev=prev)
+  b.WriteFile(ppath, data, mtime=pmtime, rev=prev, slave=thing)
+
+def StartSyncronizer():
+  sub = pubsub.Sub(key1='WriteFileRev', re2=None, fn=WriteFileRevSyncronizerFunc)
+  pubsub.Subscribe(sub)
 
 def main(args):
   args = flag.Munch(args)

@@ -10,6 +10,9 @@ FILE_PERM = 0644
 
 Bundles = {}  # Map names to bundle.
 
+def NowMillis():
+    return time.Now().UnixNano() // 1000000
+
 def RevFormat(fpath, tag, ms, suffix, mtime, size, rhkey):
   if rhkey:
     xname = redhed.EncryptFilename('%014d.%s.%d.%d' % (ms, suffix, mtime, size), rhkey)
@@ -66,9 +69,6 @@ class AttachedWebkeyBundle:
   def ReadFile(path):
     must .links
     return .bund.ReadFile(path)
-  def WriteFile(path, data, mtime=-1):
-    must .links
-    return .bund.WriteFile(path, data, mtime)
 
   def ListDirs(dirpath):
     return [name for name, isDir, _, _ in .List4(dirpath) if isDir]
@@ -276,12 +276,12 @@ class Bundle:
       say name
       return ioutil.ReadFile(name)
 
-  def WriteFile(file_path, s, mtime=-1, slave=None):
+  def WriteFile(file_path, s, mtime=-1, rev=None, slave=None):
     bb = byt(s)
     mtime = mtime if mtime>0 else time.Now().Unix()
-    say 'WriteFile', file_path, len(bb), mtime
+    say 'WriteFile', file_path, len(bb), mtime, rev
     say 'WriteFile2', .bname, .bundir, .suffix, .rhkey
-    w = atomicFileCreator(.fpath(file_path), .suffix, mtime=mtime, size=len(bb), rhkey=.rhkey)
+    w = atomicFileCreator(.fpath(file_path), .suffix, mtime=mtime, size=len(bb), rev=rev, rhkey=.rhkey)
 
     try:
       if .rhkey:
@@ -308,7 +308,8 @@ class Bundle:
     rev = w.Close()
 
     if not slave:
-      thing = pubsub.Thing('0', 'rev', .bname, dict(path=file_path, rev=rev))
+      thing = pubsub.Thing(origin=None, key1='WriteFileRev', key2=.bname, props=dict(
+          path=file_path, rev=rev, mtime=mtime, size=len(bb), csum=csum))
       pubsub.Publish(thing)
 
   def nameOfFileToOpen(file_path):
@@ -341,12 +342,13 @@ class Bundle:
     return os.Open(filename)
 
 class atomicFileCreator:
-  def __init__(fpath, suffix, mtime, size, rhkey):
+  def __init__(fpath, suffix, mtime, size, rev, rhkey):
     .fpath = fpath
     .suffix = suffix
     .mtime = mtime
     .size = size
     .rhkey = rhkey
+    .rev = rev
 
     ms = NowMillis()
     if not .mtime:
@@ -382,8 +384,11 @@ class atomicFileCreator:
     .bw.Flush()
     .fd.Close()
 
-    ms = NowMillis()
-    .dest = RevFormat(.fpath, 'r', ms, .suffix, .mtime, .size, .rhkey)
+    if .rev:
+      .dest = '%s/%s' % (.fpath, .rev)
+    else:
+      ms = NowMillis()
+      .dest = RevFormat(.fpath, 'r', ms, .suffix, .mtime, .size, .rhkey)
 
     say 'os.Rename', .tmp, .dest
     os.Rename(.tmp, .dest)
@@ -402,8 +407,5 @@ native:
   '  self.M_1_Write(bb)'
   '  return  len(p), nil'
   '}'
-
-def NowMillis():
-    return time.Now().UnixNano() // 1000000
 
 pass

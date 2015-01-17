@@ -1,6 +1,7 @@
 from go import net/http
 
 from . import A, bundle, flag
+from . import among
 from . import aweber
 from . import azoner
 from . import keyring
@@ -40,6 +41,8 @@ def main(args):
 
   # Remote Bundle:
   go rbundle.RBundleServer(FLAG_RBUNDLE_BIND.X, keyring.Ring).ListenAndServe()
+
+  among.StartSyncronizer()
 
   # DNS Zones:
   zonedict = {}

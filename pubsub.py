@@ -21,15 +21,13 @@ def Publish(thing):
     d = Subs.get(thing.key1)
     if d:
       for sub in d.values():
-        if thing.origin != sub.origin:
-          if sub.re2.FindString(thing.key2):
-             go sub.fn(thing)
+        if not sub.re2 or sub.re2.FindString(thing.key2):
+           go sub.fn(thing)
 
 class Sub:
-  def __init__(origin, key1, re2, fn):
-    .origin = origin
+  def __init__(key1, re2, fn):
     .key1 = key1
-    .re2 = regexp.MustCompile(re2)
+    .re2 = regexp.MustCompile(re2) if re2 else None
     .fn = fn
     .str = repr(self)
 
