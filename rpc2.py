@@ -219,7 +219,7 @@ class Promise:
 
   def Wait():
     result, err = .chan.Take()
-    say 'RETURNING', AtMost(80, result), err
+    say 'RETURNING', 'RESULT', AtMost(80, result), 'ERROR', AtMost(80, err)
     if err:
-      raise err
+      raise 'PromiseWaitError', err
     return result
