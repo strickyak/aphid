@@ -1,6 +1,6 @@
 from go import bufio, fmt, os, time
 from go import path/filepath as F
-from . import skiplist
+from . import A, skiplist
 
 class Table:
   # Construct with dpath where the t.* files are, and they will be loaded.
@@ -11,7 +11,7 @@ class Table:
     .loadDir()
 
   def Stamp():
-    return '%d.%s' % (time.Now().UnixNano() // 1000000, .suffix)
+    return '%d.%s' % (A.NowMillis(), .suffix)
 
   def PrepareToWrite():
     if not .w:
