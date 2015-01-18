@@ -1,3 +1,13 @@
+# CLIENT HINTS (Starting with a local 'rep' directory to replicate:
+# rye build au.py
+# au/au --bund=rep --dir=. --server=localhost:7001  push
+# diff -r  /tmp/node.16/b.rep/d.uno/d.dos/ /tmp/node.17/b.rep/d.uno/d.dos/
+#
+# rm -rf /tmp/rep/ 
+# au/au --bund=rep --dir=/tmp/  --server=localhost:7001 pull 
+# diff -r rep /tmp/rep/
+
+
 set -vex
 rye build amain.py
 rm -f /tmp/amain /tmp/test.ring
