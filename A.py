@@ -1,5 +1,16 @@
-from go import fmt
-from go import os
+from go import fmt, os, time
+
+def NowSecs():
+  return time.Now().Unix()
+
+def NowMillis():
+  return time.Now().UnixNano() // 1000000
+
+def NowNanos():
+  return time.Now().UnixNano()
+
+def Sleep(secs):
+  time.Sleep(secs * time.Second)
 
 def Fatal(s):
   fmt.Fprintf(os.Stderr, '\n@0 %s\n', s)
