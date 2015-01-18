@@ -8,6 +8,7 @@ from . import  A, pubsub, sym, table
 DIR_PERM = 0755
 FILE_PERM = 0644
 
+# TODO: Get rid of this global.
 Bundles = {}  # Map names to bundle.
 
 def NowMillis():
@@ -66,22 +67,15 @@ class AttachedWebkeyBundle:
   def List4(path):
     must .links
     return .bund.List4(path)
-  def ReadFile(path):
+  def ReadFile(path, rev=None):
     must .links
-    return .bund.ReadFile(path)
+    return .bund.ReadFile(path, rev)
 
   def ListDirs(dirpath):
     return [name for name, isDir, _, _ in .List4(dirpath) if isDir]
   def ListFiles(dirpath):
     return [name for name, isDir, _, _ in .List4(dirpath) if not isDir]
 
-
-def LoadBundle(bname, topdir='.', suffix='0', keyid=None, key=None):
-  if key:
-    must type(key) == byt
-    must len(key) == sym.KEY_BYT_LEN
-  bundir = F.Join(topdir, 'b.%s' % bname)
-  Bundles[bname] = Bundle(bname, bundir, suffix, keyid=keyid, key=key)
 
 class Bundle:
   def __init__(bname, bundir, suffix, keyid=None, key=None):
@@ -90,6 +84,8 @@ class Bundle:
     .bundir = bundir
     .suffix = suffix
     if key:
+      must type(key) == byt
+      must len(key) == sym.KEY_BYT_LEN
       .rhkey = redhed.NewKey(keyid, key)
       say .rhkey
     .table = table.Table(F.Join(.bundir, 'd.table'))
@@ -180,7 +176,7 @@ class Bundle:
     z = []
     fp = .fpath(file_path)
     try:
-      fd = os.Open(F.Join(.bundir, fp))
+      fd = os.Open(fp)
     except:
       return z
     vec = fd.Readdir(-1)
@@ -262,19 +258,23 @@ class Bundle:
       say file_path, z
       return z
 
-  def ReadFile(file_path):
-    say file_path
+  def ReadFile(file_path, rev=None):
+    say file_path, rev
     if .rhkey:
-      plain, xname = .nameOfFileToOpen(file_path)
+      plain, xname = .nameOfFileToOpen(file_path, rev)
       say xname
       fd = os.Open(xname)
       with defer fd.Close():
         r = redhed.NewReader(fd, .rhkey)
-        return ioutil.ReadAll(r)
+        z = ioutil.ReadAll(r)
+        say len(z), z[:80]
+        return z
     else:
-      plain, name = .nameOfFileToOpen(file_path)
+      plain, name = .nameOfFileToOpen(file_path, rev)
       say name
-      return ioutil.ReadFile(name)
+      z = ioutil.ReadFile(name)
+      say len(z), z[:80]
+      return z
 
   def WriteFile(file_path, s, mtime=-1, rev=None, slave=None):
     bb = byt(s)
@@ -312,10 +312,13 @@ class Bundle:
           path=file_path, rev=rev, mtime=mtime, size=len(bb), csum=csum))
       pubsub.Publish(thing)
 
-  def nameOfFileToOpen(file_path):
+  def nameOfFileToOpen(file_path, rev=None):
     say file_path
     fp = .fpath(file_path)
     say fp
+    if rev:
+      # TODO -- we need plain vs. z, in case of .rhkey.
+      return F.Join(fp, rev), F.Join(fp, rev)
     if .rhkey:
       glob = F.Glob(F.Join(fp, 'r^*'))
       say glob
@@ -336,10 +339,6 @@ class Bundle:
       plain = z
     say file_path, z
     return plain, z
-
-  def Open(file_path):
-    plain, filename = .nameOfFileToOpen(file_path)
-    return os.Open(filename)
 
 class atomicFileCreator:
   def __init__(fpath, suffix, mtime, size, rev, rhkey):
