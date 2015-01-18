@@ -1,53 +1,116 @@
-from go import time
-from . import A, bundle, flag, keyring, pubsub, rbundle
+from go import regexp, time
+from . import A, bundle, pubsub, rbundle
 
-ALL = flag.String('all', '', 'List of all nodes')
-ME = flag.String('me', '', 'My id')
+WATCHDOG_PERIOD = 10
 
-WATCHDOG_PERIOD = 2
+class Among:
+  def __init__(my_id, all_ids_map, ring):
+    must type(all_ids_map) == dict
+    must my_id in all_ids_map
+    .my_id = my_id
+    .all_ids_map = all_ids_map
+    .ring = ring
+    .conn_map = {}
 
-def Now():
-  return time.Now().Unix()
+  def Start():
+    for peer_id, peer_loc in .all_ids_map.items():
+      if peer_id != .my_id:
+        go .Connect(peer_id, peer_loc)
 
-def Sleep(secs):
-  time.Sleep(secs * time.Second)
+  def Connect(peer_id, peer_loc):
+    while True:
+      try:
+        conn = Conn(self, peer_id, peer_loc)
+        .conn_map[peer_id] = conn
+        go conn.Watchdog()
+        return
+      except:
+        pass
+      A.Sleep(WATCHDOG_PERIOD / 4)
 
-Others = {}
+  def BestEffortCallAllOthers(proc_name, arg_list):
+    say proc_name, arg_list
+    for name, conn in .conn_map.items():
+      say name, conn
+      go conn.client.Call(proc_name, arg_list)
 
-def Start():
-  say ALL.X, ALL.X.split(',')
-  for w in ALL.X.split(','):
-    say w
-    id, where = w.split('=')
-    if id != ME.X:
-      node = Node(id, where)
-      go node.Watchdog()
-      Others[id] = node
+  def WriteFileRevSyncronizerFunc(thing):
+    say thing
+    assert thing.key1 == 'WriteFileRev'
+    if thing.origin is None:
+      # Originated locally, so send it to remotes.
+      .BestEffortCallAllOthers(proc_name='RPublish', arg_list=[
+          .my_id, thing.key1, thing.key2, thing.props])
+      return
 
-class Node:
-  def __init__(id, where):
-    say "NEW NODE", id, where
-    .id = id
-    .where = where
-    .lasttime = Now()
+    # Originated from elsewhere.
+    say thing.key2
+    b = bundle.Bundles.get(thing.key2)
+    if not b:
+      A.Err('Bundle %q NOT FOUND for WriteFileRevSyncronizerFunc, thing=%v' % (thing.key2, thing))
+      return
 
-    hostport, ring, clientId, serverId = .where, keyring.Ring, ME.X, .id
+    p = thing.props
+    say p
+    ppath, psize, psum, prev, pmtime = p['path'], p['size'], p['csum'], p['rev'], p['mtime']
+    say ppath, psize, psum, prev, pmtime
+    say ppath
+    revs = []
+    try:
+      revs = b.ListRevs(ppath)
+    except:
+      pass
+    if prev in revs:
+      return  # Already got it.
+
+    remote = .conn_map.get(thing.origin)
+    if not remote:
+      A.Err('No connection to Origin: %q', thing.origin)
+
+    try:
+      say ppath
+
+      say '@@@@ RReadFile', b.bname, ppath, prev
+      data = remote.client.RReadFile(b.bname, ppath, rev=prev)
+      say '@@@@ RReadFile', len(data)
+
+      say '@@@@ WriteFile', ppath, len(data), pmtime, prev
+      b.WriteFile(ppath, data, mtime=pmtime, rev=prev, slave=thing)
+      say '@@@@ WriteFile', ppath, len(data)
+
+    except as ex:
+      say '@@@@@@@@@ EXCEPT:', ex
+      raise 'Exception In WriteFileRevSyncronizerFunc', ex
+
+  def StartSyncronizer():
+    sub = pubsub.Sub(key1='WriteFileRev', re2=None, fn=.WriteFileRevSyncronizerFunc)
+    pubsub.Subscribe(sub)
+
+class Conn:
+  def __init__(among, peer_id, peer_where):
+    say "NEW CONN", peer_id, peer_where
+    .among = among
+    .peer_id = peer_id
+    .peer_where = peer_where
+    .lasttime = A.NowSecs()
+
+    hostport, ring, clientId, serverId = .peer_where, among.ring, .among.my_id, .peer_id
     .client = rbundle.RBundleClient(hostport, ring, clientId, serverId)
 
   def Watchdog():
     # Stay in this loop until watchdog fails to ping.
     while True:
-      Sleep(WATCHDOG_PERIOD / 2.0)
+      A.Sleep(WATCHDOG_PERIOD / 2.0)
       say 'go .PingAndUpdate()'
       go .PingAndUpdate()
-      Sleep(WATCHDOG_PERIOD / 2.0)
-      if .lasttime < Now() - WATCHDOG_PERIOD:
+      A.Sleep(WATCHDOG_PERIOD / 2.0)
+      if .lasttime < A.NowSecs() - WATCHDOG_PERIOD:
             break
 
-    # Shutdown this Node Connection, and start another.
-    newnode = Node(.id, .where)
-    go newnode.Watchdog()
-    Others[.id] = newnode
+    # Shutdown this Connection, and start another.
+    new_conn = Conn(.among, .peer_id, .peer_where)
+    go new_conn.Watchdog()
+    .among.conn_map[.peer_id] = new_conn
 
     try:
       .client.Close()
@@ -56,51 +119,14 @@ class Node:
 
   def PingAndUpdate():
     try:
-      then = time.Now().UnixNano()
-      say .id, .where, then
+      then = A.NowNanos()
+      say .peer_id, .peer_where, then
       t = .client.Ping()
-      now = time.Now().UnixNano()
-      say .id, .where, then, t, now, (now-t), (now-then)
+      now = A.NowNanos()
+      say .peer_id, .peer_where, then, t, now, (now-t), (now-then)
       say float(now-t) / float(1.0e6), float(now-then) / float(1.0e6)
-      .lasttime = Now()
+      .lasttime = A.NowSecs()
     except as ex:
       say 'EXCEPTION', ex
 
-def BestEffortCallAllOthers(proc, args):
-  for name, cli in Others:
-    go cli.Call(proc, args)
-
-def WriteFileRevSyncronizerFunc(thing):
-  if thing.origin is None:
-    # Originated locally, so send it to remotes.
-    BestEffortCallAllOthers('RPublish', thing)
-    return
-
-  # Originated from elsewhere.
-  b = bundle.Bundles.get(thing.key1)
-  if not b:
-    A.Err('Bundle %q NOT FOUND for WriteFileRevSyncronizerFunc, thing=%v', thing.key1, thing)
-    return
-
-  p = thing.props
-  ppath, psize, psum, prev, pmtime = p['path'], p['size'], p['csum'], p['rev'], p['mtime']
-  revs = b.ListRevs(ppath)
-  if prev in revs:
-    return  # Already got it.
-
-  remote = Others.get(thing.origin)
-  if not remote:
-    A.Err('No connection to Origin: %q', thing.origin)
-
-  data = remote.ReadFileRev(ppath, rev=prev)
-  b.WriteFile(ppath, data, mtime=pmtime, rev=prev, slave=thing)
-
-def StartSyncronizer():
-  sub = pubsub.Sub(key1='WriteFileRev', re2=None, fn=WriteFileRevSyncronizerFunc)
-  pubsub.Subscribe(sub)
-
-def main(args):
-  args = flag.Munch(args)
-  keyring.Load(rbundle.RING.X, keyring.Ring)
-  Start()
-  Sleep(3600 * 24 * 365 * 10)  # 10 years is a long time.
+pass

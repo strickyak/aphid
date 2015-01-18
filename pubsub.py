@@ -1,4 +1,5 @@
 from go import regexp, sync
+from . import A
 
 Subs = {}
 Mu = go_new(sync.Mutex)
@@ -16,13 +17,17 @@ def Unsubscribe(sub):
     del Subs[sub.key1][str(sub)]
 
 def Publish(thing):
+  say thing
   Mu.Lock()
   with defer Mu.Unlock():
     d = Subs.get(thing.key1)
     if d:
+      say d
       for sub in d.values():
         if not sub.re2 or sub.re2.FindString(thing.key2):
-           go sub.fn(thing)
+          say sub
+          go sub.fn(thing)
+          # A.Sleep(1)  # TODO: remove.
 
 class Sub:
   def __init__(key1, re2, fn):

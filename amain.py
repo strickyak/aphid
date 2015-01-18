@@ -1,4 +1,5 @@
 from go import net/http
+from go import path/filepath as F
 
 from . import A, bundle, flag
 from . import among
@@ -12,6 +13,8 @@ FLAG_RBUNDLE_BIND = flag.String('a_rbundle_bind', ':8081', 'bind remote bundle r
 FLAG_DNS_BIND = flag.String('a_dns_bind', ':8053', 'bind udp for dns')
 FLAG_HTTP_BIND = flag.String('a_http_bind', ':8080', 'bind HTTP')
 FLAG_RING = flag.String('a_keyring', 'test.ring', 'Test Keyring')
+FLAG_ALL = flag.String('a_all', '', 'List of all connections to make')
+FLAG_ME = flag.String('a_me', '', 'My id')
 
 def main(args):
   args = flag.Munch(args)
@@ -20,29 +23,34 @@ def main(args):
   # Load files.
   keyring.Load(FLAG_RING.X, keyring.Ring)
 
-  # TODO -- triples for bundles, with config.
-  #bundle.LoadBundles(topdir=FLAG_BUNDLE_TOPDIR.X)
-  for k, v in flag.Triples.get('bundle', {}).items():
-    bundle.LoadBundle(k, topdir=FLAG_BUNDLE_TOPDIR.X)
+  for bname, v in flag.Triples.get('bundle', {}).items():
+    bundir = F.Join(FLAG_BUNDLE_TOPDIR.X, 'b.%s' % bname)
+    bundle.Bundles[bname] = bundle.Bundle(bname, bundir=bundir, suffix='0')
 
-  for k, v in flag.Triples.get('xbundle', {}).items():
+  for bname, v in flag.Triples.get('xbundle', {}).items():
     key = keyring.Ring[v]
     must key
     must key.b_sym
-    bundle.LoadBundle(k, topdir=FLAG_BUNDLE_TOPDIR.X, suffix='0', keyid=v, key=key.b_sym)
+    bundir = F.Join(FLAG_BUNDLE_TOPDIR.X, 'b.%s' % bname)
+    bundle.Bundles[bname] = bundle.Bundle(bname, bundir=bundir, suffix='0', keyid=v, key=key.b_sym)
 
-  for k, v in flag.Triples.get('wxbundle', {}).items():
+  for bname, v in flag.Triples.get('wxbundle', {}).items():
     key = keyring.Ring[v]
     must key
     must key.b_sym
     must key.base
-    bundle.Bundles[k] = bundle.AttachedWebkeyBundle(
-        k, topdir=FLAG_BUNDLE_TOPDIR.X, suffix='0', webkeyid=v, webkey=key.b_sym, basekey=key.base)
+    bundle.Bundles[bname] = bundle.AttachedWebkeyBundle(
+        bname, topdir=FLAG_BUNDLE_TOPDIR.X, suffix='0',
+        webkeyid=v, webkey=key.b_sym, basekey=key.base)
 
   # Remote Bundle:
   go rbundle.RBundleServer(FLAG_RBUNDLE_BIND.X, keyring.Ring).ListenAndServe()
 
-  among.StartSyncronizer()
+  # Synchronize changes among nodes.
+  all_ids_map = A.ParseCommaEqualsDict(FLAG_ALL.X)
+  am = among.Among(FLAG_ME.X, all_ids_map, keyring.Ring)
+  am.Start()
+  am.StartSyncronizer()
 
   # DNS Zones:
   zonedict = {}

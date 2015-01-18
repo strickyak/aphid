@@ -1,5 +1,15 @@
 from go import fmt, os, time
 
+def ParseCommaEqualsDict(s):
+  d = {}
+  for kv in s.split(','):
+    tmp = kv.strip(' \t')
+    if not tmp:
+      continue
+    k, v = tmp.split('=', 1)
+    d[k] = v
+  return d
+
 def NowSecs():
   return time.Now().Unix()
 
