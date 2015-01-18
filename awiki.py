@@ -1,7 +1,7 @@
 from go import bufio, bytes, fmt, regexp, time
 from go import html/template, net/http, io/ioutil
 from go import github.com/strickyak/aphid
-from . import atemplate, bundle, markdown
+from . import A, atemplate, bundle, markdown
 from . import basic, flag
 from lib import data
 
@@ -101,7 +101,7 @@ def VerbFile(w, r, m, wp):
   say t
   buf = aphid.NewReadSeekerHack(t)
   say buf
-  modTime = time.Now()
+  modTime = A.NowSecs()
   http.ServeContent(w, r, r.URL.Path, modTime, buf)
 
 def VerbDemo(w, r, m, wp):
