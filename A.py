@@ -20,7 +20,7 @@ def NowNanos():
   return time.Now().UnixNano()
 
 def Sleep(secs):
-  time.Sleep(secs * time.Second)
+  time.Sleep(int(secs*1000000.0) * time.Microsecond)
 
 def Fatal(s):
   fmt.Fprintf(os.Stderr, '\n@0 %s\n', s)
