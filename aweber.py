@@ -84,9 +84,12 @@ def StripWeb(s):
   return m[1] if m else s
 
 class BundDir:
-  def __init__(bund_name):
+  def __init__(bund_name, bund=None):
     .bund_name = bund_name
-    .b = bundle.Bundles[bund_name]
+    if bund:
+      .b = bund
+    else:
+      .b = bundle.Bundles[bund_name]  # TODO: kill.
 
   def Handle4(w, r, host, path):
     doDir = path.endswith('/')
@@ -156,6 +159,7 @@ def RoutingFunc(w, r):
 
     # Lookup and call the host handler.
     fn = HostHandlers.get(host)
+    say HostHandlers
     say host, path, fn
     if not fn:
       raise 'Unknown host: %q; path: %q' % (host, path)
