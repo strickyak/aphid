@@ -48,9 +48,12 @@ class WikiParams:
     return self
 
 class AWikiMaster:
-  def __init__(bname, users=None):
+  def __init__(bname, bund=None, users=None):
     .bname = bname
-    .bund = bundle.Bundles[.bname]
+    if bund:
+      .bund = bund
+    else:
+      .bund = bundle.Bundles[.bname]
     .users = users
 
     if BASIC.X:  # For Testing
