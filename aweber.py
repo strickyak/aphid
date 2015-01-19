@@ -3,13 +3,9 @@ from go import net/http
 from go import path/filepath
 
 from . import basic, bundle, flag
-from . import awiki
+from . import awiki, util
 
 BIND = flag.String('bind_addr', ':8080', 'Bind to this address to server web.')
-
-IS_EVIL_PATH = regexp.MustCompile('(^|[/])[.]').FindString
-MATCH_HOST_IN_PATH = regexp.MustCompile('/@([-A-Za-z0-9.]+)@($|/.*$)').FindStringSubmatch
-IS_DOMAIN = regexp.MustCompile('^[-a-z0-9.]+$').FindString
 
 def EmitDir(w, r, fd, prefix, path):
   names = fd.Readdirnames(-1)
@@ -84,13 +80,17 @@ def StripWeb(s):
   return m[1] if m else s
 
 class BundDir:
-  def __init__(bund_name, bund=None):
+  def __init__(aphid, bund_name, bund=None):
+    .aphid = aphid
     .bund_name = bund_name
     if bund:
       .b = bund
     else:
       .b = bundle.Bundles[bund_name]  # TODO: kill.
 
+  def Handle2(w, r):
+    host, path = util.HostAndPath(r)
+    return .handle4(w, r, host, path)
   def Handle4(w, r, host, path):
     doDir = path.endswith('/')
     wpath = filepath.Join('/web', path)
@@ -128,73 +128,24 @@ class BundDir:
       w.Header().Set('Content-Type', 'text/plain')
       w.Write( 'Exception:\n%s\n' % ex)
 
-def RoutingFunc(w, r):
-  path = r.URL.Path
-  host = r.Host
-  say host, path
-  try:
-    # Subvert "." files and ".." directories
-    if IS_EVIL_PATH(path):
-      raise 'Bad Path: %q' % path
 
-    # Perhaps extract an overriding Host from the path.
-    m = MATCH_HOST_IN_PATH(path)
-    if m:
-      _, host2, path2 = m
-      say host2, path2
-      if not path2:  # Require a trailing '/' after the "/@@host":
-        http.Redirect(w, r, '/@%s@/' % host2, http.StatusMovedPermanently)
-        return
-      host, path = host2, path2
-      say host2, path2
-
-    # Normalize the host, without post, to lowercase, using 'default' if it is missing (for HTTP/1.0).
-    if not host:
-      host = 'default'
-    host = host.split(':')[0].lower()
-
-    # Special "www." removal.
-    if host.startswith('www.'):
-      host = host[4:]
-
-    # Lookup and call the host handler.
-    fn = HostHandlers.get(host)
-    say HostHandlers
-    say host, path, fn
-    if not fn:
-      raise 'Unknown host: %q; path: %q' % (host, path)
-
-    # Call the handler
-    fn(w, r, host, path)
-
-  except as err:
-    w.Header().Set('Content-Type', 'text/plain')
-    w.Write('\n\nSorry, an error occurred in Aphid:\n\n%s\n' % err)
-
-#def RegisterDirectories(argv):
-#  for a in argv:
-#    must DirExists(a)
-#    base = filepath.Base(a)
-#    must IS_DOMAIN(base)
-#    HostHandlers[base] = WebDir(a).Handle4
-
-def ProcessTriples():
-  for name, d in flag.Triples.items():
-    for k, v in d.items():
-      if name == 'alias':
-        h = HostHandlers.get(v)
-        must h, 'Host %q not handled, in alias %q' % (v, k)
-        HostHandlers[k] = h
-      elif name == 'wiki':
-        HostHandlers[k] = awiki.AWikiMaster(v).Handler4
-      #elif name == 'webdir':
-      #  HostHandlers[k] = WebDir(v).Handle4
-      elif name == 'web':
-        HostHandlers[k] = BundDir(v).Handle4
-      else:
-        pass
+#def ProcessTriples():
+#  for name, d in flag.Triples.items():
+#    for k, v in d.items():
+#      if name == 'alias':
+#        h = HostHandlers.get(v)
+#        must h, 'Host %q not handled, in alias %q' % (v, k)
+#        HostHandlers[k] = h
+#      elif name == 'wiki':
+#        HostHandlers[k] = awiki.AWikiMaster(v).Handle4
+#      #elif name == 'webdir':
+#      #  HostHandlers[k] = WebDir(v).Handle4
+#      elif name == 'web':
+#        HostHandlers[k] = BundDir(v).Handle4
+#      else:
+#        pass
   
-HostHandlers = dict()
+# HostHandlers = dict()
 
 #def main(argv):
 #  argv = flag.Munch(argv)

@@ -1,7 +1,7 @@
 from go import bufio, bytes, fmt, regexp, time
 from go import html/template, net/http, io/ioutil
-from go import github.com/strickyak/aphid
-from . import A, atemplate, bundle, markdown
+from go import github.com/strickyak/aphid as Native
+from . import A, atemplate, bundle, markdown, util
 from . import basic, flag
 from lib import data
 
@@ -48,7 +48,8 @@ class WikiParams:
     return self
 
 class AWikiMaster:
-  def __init__(bname, bund=None, users=None):
+  def __init__(aphid, bname, bund=None, users=None):
+    .aphid = aphid
     .bname = bname
     if bund:
       .bund = bund
@@ -59,7 +60,10 @@ class AWikiMaster:
     if BASIC.X:  # For Testing
       .users = data.Eval(BASIC.X)
 
-  def Handler4(w, r, host, path):
+  def Handle2(w, r):
+    host, path = util.HostAndPath(r)
+    return .Handle4(w, r, host, path)
+  def Handle4(w, r, host, path):
     if path == '/favicon.ico':
       return
 
@@ -102,7 +106,7 @@ def EmitHtml(w, d, t):
 def VerbFile(w, r, m, wp):
   t = m.bund.ReadFile('/wiki/%s/%s' % (wp.Subject, wp.File))
   say t
-  buf = aphid.NewReadSeekerHack(t)
+  buf = Native.NewReadSeekerHack(t)
   say buf
   modTime = A.NowSecs()
   http.ServeContent(w, r, r.URL.Path, modTime, buf)

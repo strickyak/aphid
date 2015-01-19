@@ -6,7 +6,7 @@ from . import azoner
 from . import keyring
 from . import rbundle
 
-from go import net/http
+from go import net/http, time
 from go import path/filepath as F
 from go import github.com/strickyak/jsonnet_cgo as VM
 from lib import data
@@ -17,9 +17,10 @@ def EvalFile(filename):
   with defer vm.Destroy():
     return data.Eval(vm.EvaluateFile(filename))
 
-class Conf:
-  def __init__(filename):
+class Aphid:
+  def __init__(filename, quit):
     .filename = filename    
+    .quit = quit
     .x = EvalFile(filename)
     .x_me = .x['me']
     .x_confname = .x['confname']
@@ -75,24 +76,46 @@ class Conf:
     go azoner.Serve(.zones, '%s:%d' % (.f_ip, .p_dns))
 
   def StartWebHandlers():
-    .handlers = {}
+    # Mux and Server.
+    .mux = http.NewServeMux()
+    .server = go_new(http.Server) {
+      Addr: '%s:%d' % (.f_ip, .p_http),
+      Handler: .mux,
+      ReadTimeout:    10 * time.Second,
+      WriteTimeout:   10 * time.Second,
+    }
+    # Add webs.
     for wname, wx in .x_webs.items():
       bname = wx['bundle']
       bund = .bundles[bname]
-      .handlers[wname] = aweber.BundDir(bname, bund=bund).Handle4
+      obj = aweber.BundDir(self, bname, bund=bund)
+      .mux.HandleFunc('%s/' % wname, obj.Handle2)
+      .mux.HandleFunc('/@%s/' % wname, obj.Handle2)
+      .mux.HandleFunc('/@%s@/' % wname, obj.Handle2)
+    # Add wikis.
     for wname, wx in .x_wikis.items():
       bname = wx['bundle']
       bund = .bundles[bname]
-      .handlers[wname] = awiki.AWikiMaster(bname, bund=bund).Handler4
-    aweber.HostHandlers = .handlers # TODO. grrr.
+      obj = awiki.AWikiMaster(self, bname, bund=bund)
+      .mux.HandleFunc('%s/' % wname, obj.Handle2)
+      .mux.HandleFunc('/@%s/' % wname, obj.Handle2)
+      .mux.HandleFunc('/@%s@/' % wname, obj.Handle2)
+    # Misc
+    .mux.HandleFunc('/@@quit', lambda w, r: .quit.Put(1))
+    # Go Serve.
+    say 'SERVING', .server
+    go .server.ListenAndServe()
 
 def main(args):
   args = flag.Munch(args)
-  filename, = args
+  quit = rye_chan(1)
 
-  conf = Conf(filename)
-  conf.StartAll()
+  for filename in args:
+    a = Aphid(filename, quit)
+    say 'STARTING', filename
+    a.StartAll()
+    A.Sleep(0.1)
 
-  http.HandleFunc('/favicon.ico', lambda w, r: None)
-  http.HandleFunc('/', aweber.RoutingFunc)
-  http.ListenAndServe('%s:%d' % (conf.f_ip, conf.p_http) , None)
+  say 'WAITING'
+  quit.Take()
+  say 'QUITTING'
