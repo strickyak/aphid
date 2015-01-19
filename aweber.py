@@ -83,10 +83,8 @@ class BundDir:
   def __init__(aphid, bund_name, bund=None):
     .aphid = aphid
     .bund_name = bund_name
-    if bund:
-      .b = bund
-    else:
-      .b = bundle.Bundles[bund_name]  # TODO: kill.
+    must bund
+    .bund = bund
 
   def Handle2(w, r):
     host, path = util.HostAndPath(r)
@@ -97,7 +95,7 @@ class BundDir:
     preLen = len('/web')
     say host, path, doDir, wpath
 
-    if .b.wx:
+    if .bund.wx:
       user_pw = basic.GetBasicPw(w, r, .bund_name)
       if user_pw:
         user, pw = user_pw
@@ -106,22 +104,22 @@ class BundDir:
 
     try:
       say 'Link', pw
-      .b.Link(pw)
-      with defer .b.Unlink():
+      .bund.Link(pw)
+      with defer .bund.Unlink():
         if doDir:
-          dd = sorted(.b.ListDirs(wpath))
-          ff = sorted(.b.ListFiles(wpath))
+          dd = sorted(.bund.ListDirs(wpath))
+          ff = sorted(.bund.ListFiles(wpath))
           names = ["%s/" % x for x in dd] + [x for x in ff]
           say dd, ff, names
           EmitBundDir(w, r, None, path, names)
 
         else:
-          isDir, modTime, size = .b.Stat3(wpath)
+          isDir, modTime, size = .bund.Stat3(wpath)
           say isDir, modTime, size
           if isDir:
             http.Redirect(w, r, path + '/', http.StatusMovedPermanently)
 
-          br = bytes.NewReader(.b.ReadFile(wpath))  # TODO, avoid loading in memory?
+          br = bytes.NewReader(.bund.ReadFile(wpath))  # TODO, avoid loading in memory?
           http.ServeContent(w, r, path, modTime, br)
 
     except as ex:

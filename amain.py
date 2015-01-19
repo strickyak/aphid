@@ -25,14 +25,14 @@ def main(args):
 
   for bname, v in flag.Triples.get('bundle', {}).items():
     bundir = F.Join(FLAG_BUNDLE_TOPDIR.X, 'b.%s' % bname)
-    bundle.Bundles[bname] = bundle.Bundle(bname, bundir=bundir, suffix='0')
+    bundle.Bundles[bname] = bundle.Bundle(None, bname, bundir=bundir, suffix='0')
 
   for bname, v in flag.Triples.get('xbundle', {}).items():
     key = keyring.Ring[v]
     must key
     must key.b_sym
     bundir = F.Join(FLAG_BUNDLE_TOPDIR.X, 'b.%s' % bname)
-    bundle.Bundles[bname] = bundle.Bundle(bname, bundir=bundir, suffix='0', keyid=v, key=key.b_sym)
+    bundle.Bundles[bname] = bundle.Bundle(None, bname, bundir=bundir, suffix='0', keyid=v, key=key.b_sym)
 
   for bname, v in flag.Triples.get('wxbundle', {}).items():
     key = keyring.Ring[v]

@@ -233,21 +233,4 @@ def FindSOA(d, name):
         if rr.typ == dns.SOA:
           return rr
 
-def SlurpTriples(d):
-  "SlurpTriples of kind 'zone', maps origin zone to bund/filepath, with in&out dict d."
-  bdict = {}
-  for origin, filespec in sorted(flag.Triples.get('zone', {}).items()):
-    bundname, file_path = filespec.split('/', 1)
-    bund = bundle.Bundles.get(bundname)
-    must bund, bundname
-
-    say origin, file_path
-    body = bund.ReadFile(file_path)
-    ParseBody(d, body, origin)
-
-def main(args):
-  args = flag.Munch(args)
-  must not args
-  d = {}
-  SlurpTriples(d)
-  Serve(d, ':8053')
+pass

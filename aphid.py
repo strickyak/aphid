@@ -1,10 +1,6 @@
-from . import A, bundle, flag
-from . import among
-from . import aweber
-from . import awiki
-from . import azoner
-from . import keyring
-from . import rbundle
+from . import A, flag
+from . import among, aweber, awiki, azoner
+from . import bundle, keyring, pubsub, rbundle
 
 from go import net/http, time
 from go import path/filepath as F
@@ -34,12 +30,15 @@ class Aphid:
     .x_zones = .x['zones']
     .x_webs = .x['webs']
     .x_wikis = .x['wikis']
+    .x_peers = .x['peers']
+    .bus = pubsub.Bus(self)
 
   def StartAll():
     .StartKeyring()
     .StartBundles()
     .StartZones()
     .StartWebHandlers()
+    .StartAmong()
 
   def StartKeyring():
     .ring = {}
@@ -51,19 +50,19 @@ class Aphid:
       bundir = F.Join(.f_topdir, 'b.%s' % bname)
       switch bx['kind']:
         case 'plain':
-          .bundles[bname] = bundle.Bundle(bname, bundir, suffix='0')
+          .bundles[bname] = bundle.Bundle(self, bname, bundir, suffix='0')
         case 'sym':
           keyid = bx['key']
           key = .ring[keyid]
-          .bundles[bname] = bundle.Bundle(bname, bundir, suffix='0', keyid=keyid, key=key.b_sym)
+          .bundles[bname] = bundle.Bundle(self, bname, bundir, suffix='0', keyid=keyid, key=key.b_sym)
         case 'websym':
           keyid = bx['key']
           key = .ring[keyid]
           .bundles[bname] = bundle.AttachedWebkeyBundle(
-              bname, topdir=.f_topdir, suffix='0',
+              self, bname, topdir=.f_topdir, suffix='0',
               webkeyid=keyid, webkey=key.b_sym, basekey=key.base)
 
-    go rbundle.RBundleServer('%s:%d' % (.f_ip, .p_rpc), .ring).ListenAndServe()
+    go rbundle.RBundleServer(self, '%s:%d' % (.f_ip, .p_rpc), .ring).ListenAndServe()
 
   def StartZones():
     .zones = {}
@@ -105,6 +104,11 @@ class Aphid:
     # Go Serve.
     say 'SERVING', .server
     go .server.ListenAndServe()
+
+  def StartAmong():
+    am = among.Among(self, .x_me, .x_peers)
+    am.Start()
+    am.StartSyncronizer()
 
 def main(args):
   args = flag.Munch(args)

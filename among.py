@@ -4,12 +4,14 @@ from . import A, bundle, pubsub, rbundle
 WATCHDOG_PERIOD = 10
 
 class Among:
-  def __init__(my_id, all_ids_map, ring):
+  def __init__(aphid, my_id, all_ids_map):
+    .aphid = aphid
+    .ring = .aphid.ring
+    .bus = .aphid.bus
     must type(all_ids_map) == dict
     must my_id in all_ids_map
     .my_id = my_id
     .all_ids_map = all_ids_map
-    .ring = ring
     .conn_map = {}
 
   def Start():
@@ -45,7 +47,7 @@ class Among:
 
     # Originated from elsewhere.
     say thing.key2
-    b = bundle.Bundles.get(thing.key2)
+    b = .aphid.bundles.get(thing.key2)
     if not b:
       A.Err('Bundle %q NOT FOUND for WriteFileRevSyncronizerFunc, thing=%v' % (thing.key2, thing))
       return
@@ -84,7 +86,7 @@ class Among:
 
   def StartSyncronizer():
     sub = pubsub.Sub(key1='WriteFileRev', re2=None, fn=.WriteFileRevSyncronizerFunc)
-    pubsub.Subscribe(sub)
+    .bus.Subscribe(sub)
 
 class Conn:
   def __init__(among, peer_id, peer_where):

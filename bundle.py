@@ -9,7 +9,7 @@ DIR_PERM = 0755
 FILE_PERM = 0644
 
 # TODO: Get rid of this global.
-Bundles = {}  # Map names to bundle.
+###Bundles = {}  # Map names to bundle.
 
 def NowMillis():
     return time.Now().UnixNano() // 1000000
@@ -27,7 +27,8 @@ PARSE_REV_FILENAME = regexp.MustCompile('^r[.](\w+)[.](\w+)[.]([-0-9]+)[.]([-0-9
 PARSE_BUNDLE_PATH = regexp.MustCompile('(^|.*/)b[.]([A-Za-z0-9_]+)$').FindStringSubmatch
 
 class AttachedWebkeyBundle:
-  def __init__(bname, topdir='.', suffix, webkeyid, webkey, basekey):
+  def __init__(aphid, bname, topdir='.', suffix, webkeyid, webkey, basekey):
+    .aphid = aphid
     must webkeyid
     must webkey
     must type(webkey) == byt
@@ -51,7 +52,7 @@ class AttachedWebkeyBundle:
     with defer .mu.Unlock():
       if .links == 0:
         symkey = .SymKeyFromWebPw(pw)
-        .bund = Bundle(.bname, .bundir, .suffix, keyid=.basekey, key=symkey)
+        .bund = Bundle(.aphid, .bname, .bundir, .suffix, keyid=.basekey, key=symkey)
       .links += 1
 
   def Unlink():
@@ -78,7 +79,9 @@ class AttachedWebkeyBundle:
 
 
 class Bundle:
-  def __init__(bname, bundir, suffix, keyid=None, key=None):
+  def __init__(aphid, bname, bundir, suffix, keyid=None, key=None):
+    .aphid = aphid
+    .bus = aphid.bus
     say bname, bundir, suffix, keyid, key
     .bname = bname
     .bundir = bundir
@@ -310,7 +313,7 @@ class Bundle:
     if not slave:
       thing = pubsub.Thing(origin=None, key1='WriteFileRev', key2=.bname, props=dict(
           path=file_path, rev=rev, mtime=mtime, size=len(bb), csum=csum))
-      pubsub.Publish(thing)
+      .bus.Publish(thing)
 
   def nameOfFileToOpen(file_path, rev=None):
     say file_path

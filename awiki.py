@@ -51,10 +51,8 @@ class AWikiMaster:
   def __init__(aphid, bname, bund=None, users=None):
     .aphid = aphid
     .bname = bname
-    if bund:
-      .bund = bund
-    else:
-      .bund = bundle.Bundles[.bname]
+    must bund
+    .bund = bund
     .users = users
 
     if BASIC.X:  # For Testing
