@@ -1,5 +1,5 @@
-# $ LD_LIBRARY_PATH=/usr/local/lib/ rye run Sonnet.py -c=1
-# $ LD_LIBRARY_PATH=/usr/local/lib/ rye run Sonnet.py --f=demo.jsonnet.conf 
+# $ LD_LIBRARY_PATH=/usr/local/lib/ rye run sonnet.py -c=1
+# $ LD_LIBRARY_PATH=/usr/local/lib/ rye run sonnet.py --f=demo.jsonnet.conf 
 
 from go import github.com/strickyak/jsonnet_cgo as J
 from . import flag
@@ -24,5 +24,5 @@ def main(args):
   elif F.X:
     print RunFile(F.X)
   else:
-    print >>sys.stderr, 'Usage:  Sonnet ( -c=COMMAND | -f=FILENAME )'
+    print >>sys.stderr, 'Usage:  sonnet ( -c=COMMAND | -f=FILENAME )'
     sys.exit(2)

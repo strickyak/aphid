@@ -1,6 +1,6 @@
-# $ LD_LIBRARY_PATH=/usr/local/lib/ rye run Sonnet_test.py 
+# $ LD_LIBRARY_PATH=/usr/local/lib/ rye run sonnet_test.py 
 
-from . import Sonnet
+from . import sonnet
 from lib import data
 
 SNIPPET = '''
@@ -36,7 +36,7 @@ local Dbg = { cFlags: super.cFlags + ["-g"] };
 
 EXPECT = {"targets": [{"files": ["a.c", "b.c"], "out": "a.out", "cFlags": [], "cmd": "gcc  a.c b.c -o a.out", "compiler": "gcc"}, {"cFlags": [], "cmd": "clang  test.c -o test", "compiler": "clang", "files": ["test.c"], "out": "test"}, {"out": "test2", "cFlags": ["-O3", "-DNDEBUG"], "cmd": "clang -O3 -DNDEBUG test2.c -o test2", "compiler": "clang", "files": ["test2.c"]}, {"cFlags": ["-O3", "-DNDEBUG", "-g"], "cmd": "gcc -O3 -DNDEBUG -g foo.c bar.c -o baz", "compiler": "gcc", "files": ["foo.c", "bar.c"], "out": "baz"}]}
 
-s = Sonnet.RunFile('demo.jsonnet.conf')
+s = sonnet.RunFile('demo.jsonnet.conf')
 p = data.Eval(s)
 must EXPECT == p
 print '---------------------------'
@@ -44,4 +44,4 @@ print s
 print '---------------------------'
 print p
 print '---------------------------'
-print 'OKAY Sonnet_test'
+print 'OKAY sonnet_test'
