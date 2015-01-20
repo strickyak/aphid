@@ -2,7 +2,7 @@ all: clean _build _queue_test _rpc _rpc2_test _laph_test _dns_ask _sym _fu_find_
 
 _build:
 	python ../rye/rye.py build au.py
-	python ../rye/rye.py build amain.py
+	python ../rye/rye.py build aphid.py
 
 _queue_test:
 	python ../rye/rye.py run queue_test.py
