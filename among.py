@@ -1,7 +1,8 @@
-from go import regexp, time
+from go import math/rand, regexp, time
 from . import A, bundle, pubsub, rbundle
 
 WATCHDOG_PERIOD = 10
+MAX_BACKOFF = 120
 
 class Among:
   def __init__(aphid, my_id, all_ids_map):
@@ -20,6 +21,7 @@ class Among:
         go .Connect(peer_id, peer_loc)
 
   def Connect(peer_id, peer_loc):
+    backoff = 1
     while True:
       try:
         conn = Conn(self, peer_id, peer_loc)
@@ -28,7 +30,9 @@ class Among:
         return
       except:
         pass
-      A.Sleep(WATCHDOG_PERIOD / 4)
+      A.Sleep(backoff)
+      backoff = min(backoff, MAX_BACKOFF/2.0)
+      backoff *= rand.Float64() + 1.0
 
   def BestEffortCallAllOthers(proc_name, arg_list):
     say proc_name, arg_list
