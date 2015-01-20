@@ -1,6 +1,5 @@
 from go import bufio, bytes, fmt, regexp, time
 from go import html/template, net/http, io/ioutil
-from go import github.com/strickyak/aphid as Native
 from . import A, atemplate, bundle, markdown, util
 from . import basic, flag
 from lib import data
@@ -102,12 +101,8 @@ def EmitHtml(w, d, t):
   t.Execute(w, d)
 
 def VerbFile(w, r, m, wp):
-  t = m.bund.ReadFile('/wiki/%s/%s' % (wp.Subject, wp.File))
-  say t
-  buf = Native.NewReadSeekerHack(t)
-  say buf
-  modTime = A.NowSecs()
-  http.ServeContent(w, r, r.URL.Path, modTime, buf)
+  rs, nanos, size = m.bund.NewReadSeekerTimeSize('/wiki/%s/%s' % (wp.Subject, wp.File))
+  http.ServeContent(w, r, r.URL.Path, time.Unix(0, nanos), rs)
 
 def VerbDemo(w, r, m, wp):
   try:
