@@ -11,6 +11,12 @@ FILE_PERM = 0644
 # TODO: Get rid of this global.
 ###Bundles = {}  # Map names to bundle.
 
+def TRY(fn):
+  try:
+    fn()
+  except:
+    pass
+
 def NowMillis():
     return time.Now().UnixNano() // 1000000
 
@@ -261,16 +267,35 @@ class Bundle:
       say file_path, z
       return z
 
+  def NewReadSeekerTimeSize(file_path, rev=None):
+    say file_path, rev
+    if .rhkey:
+      plain, xname = .nameOfFileToOpen(file_path, rev)
+      say xname
+      fd = os.Open(xname)
+      rs = redhed.NewReader(fd, .rhkey)
+      mtime, size, _ = rs.TimeSizeHash()
+      return rs, mtime, size
+      # TODO -- how will we Close?
+    else:
+      plain, name = .nameOfFileToOpen(file_path, rev)
+      say name
+      words = name.split('/')[-1].split('.')
+      mtime, size = int(words[2]), int(words[3])
+      say mtime, size, words, name
+      return os.Open(name), mtime, size
+
   def ReadFile(file_path, rev=None):
     say file_path, rev
     if .rhkey:
       plain, xname = .nameOfFileToOpen(file_path, rev)
       say xname
       fd = os.Open(xname)
-      with defer fd.Close():
+      with defer TRY(lambda: fd.Close()):
         r = redhed.NewReader(fd, .rhkey)
         z = ioutil.ReadAll(r)
         say len(z), z[:80]
+        TRY(lambda: r.Close())
         return z
     else:
       plain, name = .nameOfFileToOpen(file_path, rev)
