@@ -77,14 +77,14 @@ class AttachedWebkeyBundle:
   def ReadFile(path, rev=None):
     must .links
     return .bund.ReadFile(path, rev)
-  def WriteFile(file_path, s, mtime=-1, rev=None, slave=None):
+  def WriteFile(path, data, mtime=-1, rev=None, slave=None):
     must .links
-    return .bund.WriteFile(file_path, s, mtime, rev, slave)
+    return .bund.WriteFile(path, data, mtime, rev, slave)
 
-  def ListDirs(dirpath):
-    return [name for name, isDir, _, _ in .List4(dirpath) if isDir]
-  def ListFiles(dirpath):
-    return [name for name, isDir, _, _ in .List4(dirpath) if not isDir]
+  def ListDirs(path):
+    return [name for name, isDir, _, _ in .List4(path) if isDir]
+  def ListFiles(path):
+    return [name for name, isDir, _, _ in .List4(path) if not isDir]
 
 
 class Bundle:
@@ -110,10 +110,10 @@ class Bundle:
   def Unlink():
     pass
 
-  def ListDirs(dirpath):
-    say 'ListDirs', dirpath
+  def ListDirs(path):
+    say 'ListDirs', path
     z = []
-    dp = .dpath(dirpath)
+    dp = .dpath(path)
     fd = os.Open(dp)
     vec = fd.Readdir(-1)
     say vec
@@ -125,9 +125,9 @@ class Bundle:
     say z
     return z
 
-  def List4(dirpath):
-    say 'List4', dirpath
-    dp = .dpath(dirpath)
+  def List4(path):
+    say 'List4', path
+    dp = .dpath(path)
     try:
       fd = os.Open(dp)
       vec = fd.Readdir(-1)
@@ -167,12 +167,12 @@ class Bundle:
         _, name3, suffix3, mtime3, size3 = PARSE_REV_FILENAME(rev_name)
         yield fname2, False, int(mtime3), int(size3)
       else:
-        A.Warn('Ignoring strange file: %q %q', dirpath, s)
+        A.Warn('Ignoring strange file: %q %q', path, s)
 
-  def ListFiles(dirpath):
-    say 'ListFiles', dirpath
+  def ListFiles(path):
+    say 'ListFiles', path
     z = []
-    dp = .dpath(dirpath)
+    dp = .dpath(path)
     fd = os.Open(dp)
     vec = fd.Readdir(-1)
     for info in vec:
@@ -184,9 +184,9 @@ class Bundle:
         z.append(redhed.DecryptFilename(s[2:], .rhkey))
     return z
 
-  def ListRevs(file_path):
+  def ListRevs(path):
     z = []
-    fp = .fpath(file_path)
+    fp = .fpath(path)
     try:
       fd = os.Open(fp)
     except:
@@ -200,17 +200,17 @@ class Bundle:
         z.append(redhed.DecryptFilename(s[2:], .rhkey))
     return z
 
-  def Stat3(file_path):
-    dpath = .dpath(file_path)
+  def Stat3(path):
+    dpath = .dpath(path)
     try:
       st = os.Stat(dpath)
       return True, -1, -1
     except:
       pass
 
-    fpath = .fpath(file_path)
+    fpath = .fpath(path)
     fd = os.Open(fpath)
-    plain, filename = .nameOfFileToOpen(file_path)
+    plain, filename = .nameOfFileToOpen(path)
     say plain, filename
 
     m = PARSE_REV_FILENAME(plain)
@@ -236,9 +236,9 @@ class Bundle:
     say s, z
     return '%s%s' % (prefix, z)
 
-  def dpath(dirpath):
-    say dirpath
-    vec = [str(s) for s in dirpath.split('/') if s]
+  def dpath(path):
+    say path
+    vec = [str(s) for s in path.split('/') if s]
     say vec
 
     if .rhkey:
@@ -252,28 +252,28 @@ class Bundle:
     else:
       return F.Join(.bundir, *['d.%s' % s for s in vec])
 
-  def fpath(file_path):
-    say file_path
-    vec = [str(s) for s in file_path.split('/') if s]
+  def fpath(path):
+    say path
+    vec = [str(s) for s in path.split('/') if s]
 
     fname = vec.pop()
     dp = .dpath('/'.join(vec))
-    say file_path, dp
+    say path, dp
     if .rhkey:
       xdir = dp
       xpart = .findOrConjure(xdir, s, 'f^')
       xfile = F.Join(xdir, xpart)
-      say file_path, xfile
+      say path, xfile
       return xfile
     else:
       z = F.Join(dp, 'f.%s' % fname)
-      say file_path, z
+      say path, z
       return z
 
-  def NewReadSeekerTimeSize(file_path, rev=None):
-    say file_path, rev
+  def NewReadSeekerTimeSize(path, rev=None):
+    say path, rev
     if .rhkey:
-      plain, xname = .nameOfFileToOpen(file_path, rev)
+      plain, xname = .nameOfFileToOpen(path, rev)
       say xname
       fd = os.Open(xname)
       rs = redhed.NewReader(fd, .rhkey)
@@ -281,17 +281,17 @@ class Bundle:
       return rs, mtime, size
       # TODO -- how will we Close?
     else:
-      plain, name = .nameOfFileToOpen(file_path, rev)
+      plain, name = .nameOfFileToOpen(path, rev)
       say name
       words = name.split('/')[-1].split('.')
       mtime, size = int(words[2]), int(words[3])
       say mtime, size, words, name
       return os.Open(name), mtime, size
 
-  def ReadFile(file_path, rev=None):
-    say file_path, rev
+  def ReadFile(path, rev=None):
+    say path, rev
     if .rhkey:
-      plain, xname = .nameOfFileToOpen(file_path, rev)
+      plain, xname = .nameOfFileToOpen(path, rev)
       say xname
       fd = os.Open(xname)
       with defer TRY(lambda: fd.Close()):
@@ -301,24 +301,24 @@ class Bundle:
         TRY(lambda: r.Close())
         return z
     else:
-      plain, name = .nameOfFileToOpen(file_path, rev)
+      plain, name = .nameOfFileToOpen(path, rev)
       say name
       z = ioutil.ReadFile(name)
       say len(z), z[:80]
       return z
 
-  def WriteFile(file_path, s, mtime=-1, rev=None, slave=None):
-    bb = byt(s)
+  def WriteFile(path, data, mtime=-1, rev=None, slave=None):
+    bb = byt(data)
     mtime = mtime if mtime>0 else time.Now().Unix()
-    say 'WriteFile', file_path, len(bb), mtime, rev
+    say 'WriteFile', path, len(bb), mtime, rev
     say 'WriteFile2', .bname, .bundir, .suffix, .rhkey
-    w = atomicFileCreator(.fpath(file_path), .suffix, mtime=mtime, size=len(bb), rev=rev, rhkey=.rhkey)
+    w = atomicFileCreator(.fpath(path), .suffix, mtime=mtime, size=len(bb), rev=rev, rhkey=.rhkey)
 
     try:
       if .rhkey:
         csum = md5.Sum(bb)
-        say 'redhed.NewWriter', file_path, mtime, len(bb), csum
-        redw = redhed.NewWriter(w, .rhkey, file_path, mtime, len(bb), csum)
+        say 'redhed.NewWriter', path, mtime, len(bb), csum
+        redw = redhed.NewWriter(w, .rhkey, path, mtime, len(bb), csum)
         say redw
         writer = redw
       else:
@@ -340,12 +340,12 @@ class Bundle:
 
     if not slave:
       thing = pubsub.Thing(origin=None, key1='WriteFileRev', key2=.bname, props=dict(
-          path=file_path, rev=rev, mtime=mtime, size=len(bb), csum=csum))
+          path=path, rev=rev, mtime=mtime, size=len(bb), csum=csum))
       .bus.Publish(thing)
 
-  def nameOfFileToOpen(file_path, rev=None):
-    say file_path
-    fp = .fpath(file_path)
+  def nameOfFileToOpen(path, rev=None):
+    say path
+    fp = .fpath(path)
     say fp
     if rev:
       # TODO -- we need plain vs. z, in case of .rhkey.
@@ -361,14 +361,14 @@ class Bundle:
       gg = sorted([str(f) for f in F.Glob(F.Join(fp, 'r.*'))])
     say gg
     if not gg:
-      raise 'no such file: bundle=%s path=%s' % (.bname, file_path)
+      raise 'no such file: bundle=%s path=%s' % (.bname, path)
     if .rhkey:
       z = F.Join(fp, gg[-1][1])  # raw r^* filename is the second in the tuple
       plain = gg[-1][0]
     else:
       z = gg[-1]  # The latest one is last, in sorted order.
       plain = z
-    say file_path, z
+    say path, z
     return plain, z
 
 class atomicFileCreator:

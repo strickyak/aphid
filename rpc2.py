@@ -20,13 +20,14 @@ def AtMost(n, s):
   s = str(s)
   return s if len(s) < n else s[:n] + '...'
 
-def ArgsSummary(args):
-  return str([AtMost(80, repr(x)) for x in args])
+def ArgsSummary(args, kw):
+  return str([AtMost(80, repr(x)) for x in args] + [(k, AtMost(80, repr(v))) for k, v in kw.items()])
 
 class Request:
-  def __init__(proc, args):
+  def __init__(proc, args, kw):
     .proc = proc
     .args = args
+    .kw = kw
     .serial = None
     .replyQ = rye_chan(1)
 
@@ -114,26 +115,22 @@ class ServerConn:
         if toBreak:
           break
         pay, ser = .sealer.Open(dark)
-        serial, proc, args = rye_unpickle(pay)
+        serial, proc, args, kw = rye_unpickle(pay)
         must ser == serial
-        #say proc, args
-        go .Execute(serial, proc, args)
+        go .Execute(serial, proc, args, kw)
 
-  def Execute(serial, proc, args):
-    say 'EXECUTE', proc, ArgsSummary(args)
+  def Execute(serial, proc, args, kw):
+    say 'EXECUTE', proc, ArgsSummary(args, kw)
     result, err = None, None
     try:
       fn = .server.procs.get(proc)
       if not fn:
         raise 'rpc function not registered in Server', proc
-      #say fn
-      result = fn(*args)
-      #say result
+      result = fn(*args, **kw)
     except as ex:
       say ex
       err = ex
     .resultQ.Put( (serial, result, err) )
-    #say "put", ( (serial, result, err) )
 
 
 def MutualKey(ring, clientId, serverId):
@@ -183,7 +180,7 @@ class Client:
       req.serial = Serial()
       .requests[req.serial] = req
 
-      pay = rye_pickle( (req.serial, req.proc, req.args) )
+      pay = rye_pickle( (req.serial, req.proc, req.args, req.kw) )
       dark = .sealer.Seal(pay, req.serial)
       WriteChunk(.conn, dark)
 
@@ -200,9 +197,9 @@ class Client:
       .requests[serial].replyQ.Put( (result, err) )
 
 
-  def Call(proc, args):
-    say 'CALLING', proc, ArgsSummary(args)
-    req = Request(proc, args)
+  def Call(proc, *args, **kw):
+    say 'CALLING', proc, ArgsSummary(args, kw)
+    req = Request(proc, args, kw)
     .inQ.Put(req)
     return Promise(req.replyQ)
 

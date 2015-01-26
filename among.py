@@ -34,19 +34,18 @@ class Among:
       backoff = min(backoff, MAX_BACKOFF/2.0)
       backoff *= rand.Float64() + 1.0
 
-  def BestEffortCallAllOthers(proc_name, arg_list):
-    say proc_name, arg_list
+  def BestEffortCallAllOthers(proc_name, *args, **kw):
+    say proc_name, args, kw
     for name, conn in .conn_map.items():
       say name, conn
-      go conn.client.Call(proc_name, arg_list)
+      go conn.client.Call(proc_name, *args, **kw)
 
   def WriteFileRevSyncronizerFunc(thing):
     say thing
     assert thing.key1 == 'WriteFileRev'
     if thing.origin is None:
       # Originated locally, so send it to remotes.
-      .BestEffortCallAllOthers(proc_name='RPublish', arg_list=[
-          .my_id, thing.key1, thing.key2, thing.props])
+      .BestEffortCallAllOthers('RPublish', .my_id, thing.key1, thing.key2, thing.props)
       return
 
     # Originated from elsewhere.
