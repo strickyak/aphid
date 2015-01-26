@@ -18,7 +18,7 @@ def Serial():
 
 def AtMost(n, s):
   s = str(s)
-  return s if len(s) < n else s[:n]
+  return s if len(s) < n else s[:n] + '...'
 
 def ArgsSummary(args):
   return str([AtMost(80, repr(x)) for x in args])
@@ -47,7 +47,7 @@ def ReadChunk(r):
   io.ReadFull(r, head)
   must head[0] == CHUNK_MAGIC
   n = (head[1]<<24) | (head[2]<<16) | (head[3]<<8) | head[4]
-  must n < (2 << 20)  # 2 Meg Max
+  must n < (100 << 20)  # 100 Meg Max
   pay = mkbyt(n)
   #say 'read full', n
   io.ReadFull(r, pay)
