@@ -1,7 +1,7 @@
 from go import math/rand, regexp, time
 from . import A, bundle, pubsub, rbundle
 
-WATCHDOG_PERIOD = 10
+WATCHDOG_PERIOD = 300
 MAX_BACKOFF = 120
 
 class Among:
