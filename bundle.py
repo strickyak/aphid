@@ -77,6 +77,9 @@ class AttachedWebkeyBundle:
   def ReadFile(path, rev=None):
     must .links
     return .bund.ReadFile(path, rev)
+  def WriteFile(file_path, s, mtime=-1, rev=None, slave=None):
+    must .links
+    return .bund.WriteFile(file_path, s, mtime, rev, slave)
 
   def ListDirs(dirpath):
     return [name for name, isDir, _, _ in .List4(dirpath) if isDir]
