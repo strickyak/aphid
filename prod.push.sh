@@ -5,12 +5,16 @@ do
   test -n "$x"
   H="$x.yak.net"
 
-  ssh root@$H "killall amain || echo None"
+  : ssh -n root@$H "killall amain || echo None"
+  ssh -n root@$H "killall aphid || echo None"
 
-  ssh root@$H "mkdir -p /opt/aphid"
-  scp prod.one.sh root@$H:/opt/aphid/
-  rsync -av amain/amain root@$H:/opt/aphid/amain
-  rsync -av b.one/ root@$H:/opt/aphid/b.one/
+  ssh -n root@$H "mkdir -p /opt/aphid"
+  # rsync -ave "ssh -C" aphid/aphid root@$H:/opt/aphid/
+  # rsync -ave "ssh -C" --bwlimit=1000 aphid/aphid root@$H:/opt/aphid/
+  scp -C *.pem *.conf prod.two.sh prod.ring root@$H:/opt/aphid/
+  rsync -ave "ssh -C" aphid/aphid root@$H:/opt/aphid/
 
-  ssh -n root@$H "nohup sh /opt/aphid/prod.one.sh </dev/null >/tmp/prod.one.log 2>&1 & sleep 1"
+  # rsync -av b.one/ root@$H:/opt/aphid/b.one/
+
+  ssh -n root@$H "nohup sh /opt/aphid/prod.two.sh </dev/null >/tmp/prod.two.log 2>&1 & sleep 1"
 done

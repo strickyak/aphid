@@ -1,15 +1,3 @@
-# TODO: NXDOMAIN vs No Answer
-
-# NOT SUPPORTED: BOTH "quotes" and (parens) on same line.
-# We handle quotes first, then get continuation lines.
-# So if quotes are on a continuation line, we will not see it.
-# This simplfies the case of parens and semicolons in the quotes,
-# which we do handle.
-
-# Demo:
-# p rye run azoner.py -- -port=9991 yak/zhuk.com  | ../rye/errfilt/errfilt
-
-
 from go import path/filepath
 from go import strings
 from go import regexp
@@ -19,8 +7,6 @@ from . import bundle
 from . import dns
 from . import flag
 from . import hexdump
-
-DNS_SELF = flag.String('self_ip', '127.0.0.1', '$SELF IP Address as a dotted quad.')
 
 UDPMAX = 512  # Should be enough bytes for normal DNS packets.
 
@@ -46,7 +32,7 @@ def DropTrailingDot(s):
     return s[:-1]
   return s
 
-def ParseBody(d, body, origin):
+def ParseBody(d, body, origin, self_ip):
   ttl = dns.TTL
   current = origin  # Default if no domain in column 1.
   lines = strings.Split(body, '\n')
@@ -123,7 +109,7 @@ def ParseBody(d, body, origin):
 
     # Replace @ with origin, and $SELF with our self_ip address.
     words = [(origin if w == '@' else w) for w in words]
-    words = [(DNS_SELF.X if w == '$SELF' else w) for w in words]
+    words = [(self_ip if w == '$SELF' else w) for w in words]
 
     # Special commands, $ORIGIN and $TTL.
     if words[0] == '$ORIGIN':

@@ -25,6 +25,7 @@ class Aphid:
     .f_topdir = .x['flags']['topdir']
     .p_dns = .x['ports']['dns']
     .p_http = .x['ports']['http']
+    .p_https = .x['ports']['https']
     .p_rpc = .x['ports']['rpc']
     .x_bundles = .x['bundles']
     .x_zones = .x['zones']
@@ -70,19 +71,13 @@ class Aphid:
       bund = .bundles[zx['bundle']]
       body = bund.ReadFile(zx['zonefile'])
       must body
-      azoner.ParseBody(.zones, body, zname)
+      azoner.ParseBody(.zones, body, zname, .f_ip)
 
     go azoner.Serve(.zones, '%s:%d' % (.f_ip, .p_dns))
 
   def StartWebHandlers():
     # Mux and Server.
     .mux = http.NewServeMux()
-    .server = go_new(http.Server) {
-      Addr: '%s:%d' % (.f_ip, .p_http),
-      Handler: .mux,
-      ReadTimeout:    10 * time.Second,
-      WriteTimeout:   10 * time.Second,
-    }
     # Add webs.
     for wname, wx in .x_webs.items():
       bname = wx['bundle']
@@ -103,10 +98,26 @@ class Aphid:
     .mux.HandleFunc('/@@quit', lambda w, r: .quit.Put(1))
     # Go Serve.
     say 'SERVING', .server
+    .server = go_new(http.Server) {
+      Addr: '%s:%d' % (.f_ip, .p_http),
+      Handler: .mux,
+      ReadTimeout:    10 * time.Second,
+      WriteTimeout:   10 * time.Second,
+    }
     go .server.ListenAndServe()
+    if .p_https:
+      .tlsserver = go_new(http.Server) {
+        Addr: '%s:%d' % (.f_ip, .p_https),
+        Handler: .mux,
+        ReadTimeout:    10 * time.Second,
+        WriteTimeout:   10 * time.Second,
+      }
+      go .tlsserver.ListenAndServeTLS("cacert.pem", "privkey.pem")
 
   def StartAmong():
-    am = among.Among(self, .x_me, .x_peers)
+    peer_map = dict([(k, '%s:%d' % (v['host'], v['port'])) for k, v in .x_peers.items()])
+    say peer_map
+    am = among.Among(self, .x_me, peer_map)
     am.Start()
     am.StartSyncronizer()
 

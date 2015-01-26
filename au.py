@@ -69,9 +69,11 @@ def NewPush(args):
 def Push(args):
   fnord = J(DIR.X, BUND.X, 'FNORD')  # Build prefix plus word 'FNORD'.
   prefix_len = len(fnord) - 5  # Without the 'FNORD'.
+  say fnord, prefix_len
 
   def fn(path, info, err):
     if err is None and not info.IsDir():
+      say path, fnord, prefix_len
       short_path = path[prefix_len:]
       mtime = info.ModTime().Unix()
       say 'WRITING', path, short_path
