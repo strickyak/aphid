@@ -88,7 +88,7 @@ class BundDir:
 
   def Handle2(w, r):
     host, path = util.HostAndPath(r)
-    return .handle4(w, r, host, path)
+    return .Handle4(w, r, host, path)
   def Handle4(w, r, host, path):
     doDir = path.endswith('/')
     wpath = filepath.Join('/web', path)
