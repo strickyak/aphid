@@ -312,7 +312,7 @@ class Bundle:
     mtime = mtime if mtime>0 else time.Now().Unix()
     say 'WriteFile', path, len(bb), mtime, rev
     say 'WriteFile2', .bname, .bundir, .suffix, .rhkey
-    w = atomicFileCreator(.fpath(path), .suffix, mtime=mtime, size=len(bb), rev=rev, rhkey=.rhkey)
+    w = atomicFileRevCreator(.fpath(path), .suffix, mtime=mtime, size=len(bb), rev=rev, rhkey=.rhkey)
 
     try:
       if .rhkey:
@@ -372,20 +372,14 @@ class Bundle:
     return plain, z
 
 class atomicFileCreator:
-  def __init__(fpath, suffix, mtime, size, rev, rhkey):
-    .fpath = fpath
-    .suffix = suffix
-    .mtime = mtime
-    .size = size
-    .rhkey = rhkey
-    .rev = rev
+  def __init__(dest):
+    .dest = dest
+    d = F.Dir(.dest)
+    b = F.Base(.dest)
 
-    ms = NowMillis()
-    if not .mtime:
-      .mtime = ms // 1000
-    .tmp = RevFormat(.fpath, 'tmp', ms, .suffix, .mtime, .size, None)
+    .tmp = F.Join(d, 'tmp.' + b)
     say 'os.Create', .tmp
-    os.MkdirAll(.fpath, DIR_PERM)
+    os.MkdirAll(d, DIR_PERM)
     .fd = os.Create(.tmp)
     .bw = bufio.NewWriter(.fd)
 
@@ -414,15 +408,30 @@ class atomicFileCreator:
     .bw.Flush()
     .fd.Close()
 
-    if .rev:
-      .dest = '%s/%s' % (.fpath, .rev)
-    else:
-      ms = NowMillis()
-      .dest = RevFormat(.fpath, 'r', ms, .suffix, .mtime, .size, .rhkey)
-
     say 'os.Rename', .tmp, .dest
     os.Rename(.tmp, .dest)
     return F.Base(.dest)
+
+class atomicFileRevCreator(atomicFileCreator):
+  def __init__(fpath, suffix, mtime, size, rev, rhkey):
+    .fpath = fpath
+    .suffix = suffix
+    .mtime = mtime
+    .size = size
+    .rhkey = rhkey
+    .rev = rev
+
+    ms = NowMillis()
+    if not .mtime:
+      .mtime = ms // 1000
+
+    if .rev:
+      dest = '%s/%s' % (.fpath, .rev)
+    else:
+      ms = NowMillis()
+      dest = RevFormat(.fpath, 'r', ms, .suffix, .mtime, .size, .rhkey)
+
+    super.__init__(dest)
 
 native:
   'func (self *C_atomicFileCreator) WriteAt(p []byte, off int64) (n int, err error) {'
