@@ -11,23 +11,29 @@ class RBundleClient(rpc2.Client):
     super(hostport, ring, clientId, serverId)
     .me = clientId
 
-  def Ping():
-    return .Call("Ping").Wait()
+  def RPing():
+    return .Call("XPing").Wait()
 
   def RStat3(bund, path):
-    return .Call("RStat3", bund=bund, path=path).Wait()
+    return .Call("XStat3", bund=bund, path=path).Wait()
 
   def RList4(bund, path):
-    return .Call("RList4", bund=bund, path=path).Wait()
+    return .Call("XList4", bund=bund, path=path).Wait()
 
   def RReadFile(bund, path, rev=None):
-    return .Call("RReadFile", bund=bund, path=path, rev=rev).Wait()
+    return .Call("XReadFile", bund=bund, path=path, rev=rev).Wait()
+
+  def RReadRawFile(bund, rawpath):
+    return .Call("XReadRawFile", bund=bund, rawpath=rawpath).Wait()
 
   def RWriteFile(bund, path, data, mtime=-1, rev=None, slave=None):
-    return .Call("RWriteFile", bund, path, data, mtime, rev, slave).Wait()
+    return .Call("XWriteFile", bund, path, data, mtime, rev, slave).Wait()
+
+  def RWriteRawFile(bund, rawpath, data):
+    return .Call("XWriteRawFile", bund, rawpath=rawpath, data=data).Wait()
 
   def RPublish(origin, key1, key2, props):
-    return .Call("RPublish", origin=origin, key1=key1, key2=key2, props=props)
+    return .Call("XPublish", origin=origin, key1=key1, key2=key2, props=props)
 
 
 class RBundleServer(rpc2.Server):
@@ -36,33 +42,43 @@ class RBundleServer(rpc2.Server):
     .aphid = aphid
     .bus = aphid.bus
     .bundles = aphid.bundles
-    .Register('Ping', .Ping)
-    .Register('RStat3', .RStat3)
-    .Register('RList4', .RList4)
-    .Register('RReadFile', .RReadFile)
-    .Register('RWriteFile', .RWriteFile)
-    .Register('RPublish', .RPublish)
+    .Register('XPing', .SPing)
+    .Register('XStat3', .SStat3)
+    .Register('XList4', .SList4)
+    .Register('XReadFile', .SReadFile)
+    .Register('XReadRawFile', .SReadRawFile)
+    .Register('XWriteFile', .SWriteFile)
+    .Register('XWriteRawFile', .SWriteRawFile)
+    .Register('XPublish', .SPublish)
 
-  def Ping():
+  def SPing():
     return A.NowNanos()
 
-  def RStat3(bund, path):
+  def SStat3(bund, path):
     say bund, path
     return .bundles[bund].Stat3(path=path)
 
-  def RList4(bund, path):
+  def SList4(bund, path):
     say bund, path
     return list(.bundles[bund].List4(path=path))
 
-  def RReadFile(bund, path, rev):
+  def SReadFile(bund, path, rev):
     say bund, path, rev
     return .bundles[bund].ReadFile(path=path, rev=rev)
 
-  def RWriteFile(bund, path, data, mtime, rev=None, slave=None):
+  def SReadRawFile(bund, rawpath):
+    say bund, rawpath
+    return .bundles[bund].ReadRawFile(rawpath=rawpath)
+
+  def SWriteFile(bund, path, data, mtime, rev=None, slave=None):
     say bund, path, mtime, len(data), rev, slave
     return .bundles[bund].WriteFile(path=path, data=data, mtime=mtime, rev=rev, slave=slave)
 
-  def RPublish(origin, key1, key2, props):
+  def SWriteRawFile(bund, rawpath, data):
+    say bund, rawpath, len(data)
+    return .bundles[bund].WriteRawFile(rawpath=rawpath, data=data)
+
+  def SPublish(origin, key1, key2, props):
     say origin, key1, key2, props
     must origin
     must key1

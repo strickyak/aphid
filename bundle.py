@@ -307,6 +307,25 @@ class Bundle:
       say len(z), z[:80]
       return z
 
+  def ReadRawFile(rawpath):
+    fullpath = F.Join(.bundir, rawpath)
+    say rawpath, fullpath
+    z = ioutil.ReadFile(fullpath)
+    say len(z), z[:80]
+    return z
+
+  def WriteRawFile(rawpath, data):
+    must type(data) == byt
+    say rawpath, len(data)
+    fullpath = F.Join(.bundir, rawpath)
+    w = atomicFileCreator(fullpath)
+    try:
+      w.Write(data)  # Fully.
+      w.Close()
+    except as ex:
+      w.Abort()
+      raise ex
+
   def WriteFile(path, data, mtime=-1, rev=None, slave=None):
     bb = byt(data)
     mtime = mtime if mtime>0 else time.Now().Unix()

@@ -104,6 +104,16 @@ def Cat(args):
     b = client.RReadFile(BUND.X, name)
     io.Copy(os.Stdout, bytes.NewReader(b))
 
+def RawCat(args):
+  for rawpath in args:
+    b = client.RReadRawFile(BUND.X, rawpath=rawpath)
+    io.Copy(os.Stdout, bytes.NewReader(b))
+
+def RawWrite(args):
+  must len(args) == 2
+  rawpath, data = args
+  client.RWriteRawFile(BUND.X, rawpath=rawpath, data=byt(data))
+
 def Find(args):
   if not args:
     args = ['/']
@@ -126,6 +136,8 @@ def FindFiles1(path):
 Ensemble = {
     'find': Find,
     'cat': Cat,
+    'rawcat': RawCat,
+    'rawwrite': RawWrite,
     'pull': Pull,
     'push': Push,
     'newpull': NewPull,
