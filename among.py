@@ -40,55 +40,41 @@ class Among:
       say name, conn
       go conn.client.Call(proc_name, *args, **kw)
 
-  def WriteFileRevSyncronizerFunc(thing):
+  def WriteRawFileSyncronizerFunc(thing):
     say thing
-    assert thing.key1 == 'WriteFileRev'
+    assert thing.key1 == 'WriteRawFile'
     if thing.origin is None:
       # Originated locally, so send it to remotes.
-      .BestEffortCallAllOthers('RPublish', .my_id, thing.key1, thing.key2, thing.props)
+      .BestEffortCallAllOthers('XPublish', .my_id, thing.key1, thing.key2, thing.props)
       return
 
     # Originated from elsewhere.
     say thing.key2
     b = .aphid.bundles.get(thing.key2)
     if not b:
-      A.Err('Bundle %q NOT FOUND for WriteFileRevSyncronizerFunc, thing=%v' % (thing.key2, thing))
+      A.Err('Bundle %q NOT FOUND for WriteRawFileSyncronizerFunc, thing=%v' % (thing.key2, thing))
       return
 
     p = thing.props
     say p
-    ppath, psize, psum, prev, pmtime = p['path'], p['size'], p['csum'], p['rev'], p['mtime']
-    say ppath, psize, psum, prev, pmtime
-    say ppath
-    revs = []
-    try:
-      revs = b.ListRevs(ppath)
-    except:
-      pass
-    if prev in revs:
-      return  # Already got it.
+    rawpath = p['rawpath']
+    say rawpath
 
     remote = .conn_map.get(thing.origin)
     if not remote:
       A.Err('No connection to Origin: %q', thing.origin)
 
     try:
-      say ppath
-
-      say '@@@@ RReadFile', b.bname, ppath, prev
-      data = remote.client.RReadFile(b.bname, ppath, rev=prev)
-      say '@@@@ RReadFile', len(data)
-
-      say '@@@@ WriteFile', ppath, len(data), pmtime, prev
-      b.WriteFile(ppath, data, mtime=pmtime, rev=prev, slave=thing)
-      say '@@@@ WriteFile', ppath, len(data)
+      data = remote.client.RReadRawFile(b.bname, rawpath)
+      say rawpath, len(data)
+      b.WriteRawFile(rawpath, data)
 
     except as ex:
       say '@@@@@@@@@ EXCEPT:', ex
-      raise 'Exception In WriteFileRevSyncronizerFunc', ex
+      raise 'Exception In WriteRawFileSyncronizerFunc', ex
 
   def StartSyncronizer():
-    sub = pubsub.Sub(key1='WriteFileRev', re2=None, fn=.WriteFileRevSyncronizerFunc)
+    sub = pubsub.Sub(key1='WriteRawFile', re2=None, fn=.WriteRawFileSyncronizerFunc)
     .bus.Subscribe(sub)
 
 class Conn:
@@ -126,7 +112,7 @@ class Conn:
     try:
       then = A.NowNanos()
       say .peer_id, .peer_where, then
-      t = .client.Ping()
+      t = .client.RPing()
       now = A.NowNanos()
       say .peer_id, .peer_where, then, t, now, (now-t), (now-then)
       say float(now-t) / float(1.0e6), float(now-then) / float(1.0e6)

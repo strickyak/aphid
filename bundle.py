@@ -11,6 +11,10 @@ FILE_PERM = 0644
 # TODO: Get rid of this global.
 ###Bundles = {}  # Map names to bundle.
 
+def TailGlob(pattern):
+  for x in F.Glob(pattern):
+    yield F.Base(x)
+
 def TRY(fn):
   try:
     fn()
@@ -114,7 +118,7 @@ class Bundle:
     say 'ListDirs', path
     z = []
     dp = .dpath(path)
-    fd = os.Open(dp)
+    fd = os.Open(.bpath(dp))
     vec = fd.Readdir(-1)
     say vec
     for info in vec:
@@ -129,7 +133,7 @@ class Bundle:
     say 'List4', path
     dp = .dpath(path)
     try:
-      fd = os.Open(dp)
+      fd = os.Open(.bpath(dp))
       vec = fd.Readdir(-1)
     except:
       return  # from Generator.
@@ -142,7 +146,7 @@ class Bundle:
       elif s.startswith('d^'):
         yield redhed.DecryptFilename(s[2:], .rhkey), True, -1, -1
       elif s.startswith('f.'):
-        fd2 = os.Open(F.Join(dp, s))
+        fd2 = os.Open(.bpath(F.Join(dp, s)))
         vec2 = fd2.Readdir(-1)
         revs = [fi.Name()
                  for fi in vec2
@@ -154,7 +158,7 @@ class Bundle:
         yield s[2:], False, int(mtime3), int(size3)
       elif s.startswith('f^'):
         fname2 = redhed.DecryptFilename(s[2:], .rhkey)
-        fd2 = os.Open(F.Join(dp, s))
+        fd2 = os.Open(.bpath(F.Join(dp, s)))
         vec2 = fd2.Readdir(-1)
         say fname2, fd2, vec2
 
@@ -173,7 +177,7 @@ class Bundle:
     say 'ListFiles', path
     z = []
     dp = .dpath(path)
-    fd = os.Open(dp)
+    fd = os.Open(.bpath(dp))
     vec = fd.Readdir(-1)
     for info in vec:
       say info, info.Name()
@@ -188,7 +192,7 @@ class Bundle:
     z = []
     fp = .fpath(path)
     try:
-      fd = os.Open(fp)
+      fd = os.Open(.bpath(fp))
     except:
       return z
     vec = fd.Readdir(-1)
@@ -203,25 +207,25 @@ class Bundle:
   def Stat3(path):
     dpath = .dpath(path)
     try:
-      st = os.Stat(dpath)
+      st = os.Stat(.bpath(dpath))
       return True, -1, -1
     except:
       pass
 
     fpath = .fpath(path)
-    fd = os.Open(fpath)
-    plain, filename = .nameOfFileToOpen(path)
-    say plain, filename
+    fd = os.Open(.bpath(fpath))
+    rev, filename = .nameOfFileToOpen(path)
+    say rev, filename
 
-    m = PARSE_REV_FILENAME(plain)
-    must m, (m, plain, filename)
+    m = PARSE_REV_FILENAME(rev)
+    must m, (m, rev, filename)
     _, ts, suffix, mtime, size = m
     return False, time.Unix(int(mtime), 0), int(size)
 
   def findOrConjure(xdir, s, prefix):
     say xdir, s, prefix
     try:
-      fd = os.Open(xdir)
+      fd = os.Open(.bpath(xdir))
     except:
       pass
     if fd:
@@ -236,6 +240,9 @@ class Bundle:
     say s, z
     return '%s%s' % (prefix, z)
 
+  def bpath(path):
+    return F.Join(.bundir, path)
+
   def dpath(path):
     say path
     vec = [str(s) for s in path.split('/') if s]
@@ -246,11 +253,11 @@ class Bundle:
       say xdir
       for s in vec:
         say s
-        xpart = .findOrConjure(F.Join(.bundir, xdir), s, 'd^')
+        xpart = .findOrConjure(xdir, s, 'd^')
         xdir = F.Join(xdir, xpart)
-      return F.Join(.bundir, xdir)
+      return xdir
     else:
-      return F.Join(.bundir, *['d.%s' % s for s in vec])
+      return F.Join('.', *['d.%s' % s for s in vec])
 
   def fpath(path):
     say path
@@ -273,27 +280,27 @@ class Bundle:
   def NewReadSeekerTimeSize(path, rev=None):
     say path, rev
     if .rhkey:
-      plain, xname = .nameOfFileToOpen(path, rev)
+      rev, xname = .nameOfFileToOpen(path, rev)
       say xname
-      fd = os.Open(xname)
+      fd = os.Open(.bpath(xname))
       rs = redhed.NewReader(fd, .rhkey)
       mtime, size, _ = rs.TimeSizeHash()
       return rs, mtime, size
       # TODO -- how will we Close?
     else:
-      plain, name = .nameOfFileToOpen(path, rev)
+      rev, name = .nameOfFileToOpen(path, rev)
       say name
       words = name.split('/')[-1].split('.')
       mtime, size = int(words[2]), int(words[3])
       say mtime, size, words, name
-      return os.Open(name), mtime, size
+      return os.Open(.bpath(name)), mtime, size
 
   def ReadFile(path, rev=None):
     say path, rev
     if .rhkey:
-      plain, xname = .nameOfFileToOpen(path, rev)
+      rev, xname = .nameOfFileToOpen(path, rev)
       say xname
-      fd = os.Open(xname)
+      fd = os.Open(.bpath(xname))
       with defer TRY(lambda: fd.Close()):
         r = redhed.NewReader(fd, .rhkey)
         z = ioutil.ReadAll(r)
@@ -301,9 +308,9 @@ class Bundle:
         TRY(lambda: r.Close())
         return z
     else:
-      plain, name = .nameOfFileToOpen(path, rev)
+      rev, name = .nameOfFileToOpen(path, rev)
       say name
-      z = ioutil.ReadFile(name)
+      z = ioutil.ReadFile(.bpath(name))
       say len(z), z[:80]
       return z
 
@@ -317,8 +324,7 @@ class Bundle:
   def WriteRawFile(rawpath, data):
     must type(data) == byt
     say rawpath, len(data)
-    fullpath = F.Join(.bundir, rawpath)
-    w = atomicFileCreator(fullpath)
+    w = atomicFileCreator(self, rawpath)
     try:
       w.Write(data)  # Fully.
       w.Close()
@@ -331,7 +337,7 @@ class Bundle:
     mtime = mtime if mtime>0 else time.Now().Unix()
     say 'WriteFile', path, len(bb), mtime, rev
     say 'WriteFile2', .bname, .bundir, .suffix, .rhkey
-    w = atomicFileRevCreator(.fpath(path), .suffix, mtime=mtime, size=len(bb), rev=rev, rhkey=.rhkey)
+    w = atomicFileRevCreator(self, .fpath(path), .suffix, mtime=mtime, size=len(bb), rev=rev, rhkey=.rhkey)
 
     try:
       if .rhkey:
@@ -355,51 +361,52 @@ class Bundle:
     except as ex:
       w.Abort()
       raise ex
-    rev = w.Close()
+    rawpath = w.Close()
 
     if not slave:
-      thing = pubsub.Thing(origin=None, key1='WriteFileRev', key2=.bname, props=dict(
-          path=path, rev=rev, mtime=mtime, size=len(bb), csum=csum))
-      .bus.Publish(thing)
+      t = pubsub.Thing(origin=None, key1='WriteRawFile', key2=.bname, props=dict(rawpath=rawpath))
+      .bus.Publish(t)
 
   def nameOfFileToOpen(path, rev=None):
+    """Returns rev, raw"""
     say path
     fp = .fpath(path)
     say fp
     if rev:
       # TODO -- we need plain vs. z, in case of .rhkey.
-      return F.Join(fp, rev), F.Join(fp, rev)
+      return F.Join(fp, rev), .bpath(F.Join(fp, rev))
     if .rhkey:
-      glob = F.Glob(F.Join(fp, 'r^*'))
-      say glob
-      baseglob = [F.Base(x) for x in glob]
+      baseglob = TailGlob(F.Join(fp, 'r^*'))
       say baseglob
-      gg = sorted([('r.' + redhed.DecryptFilename(x[2:], .rhkey), x) for x in baseglob])
-      say gg
+      pairs = sorted([('r.' + redhed.DecryptFilename(x[2:], .rhkey), x) for x in baseglob])
+      say pairs
     else:
-      gg = sorted([str(f) for f in F.Glob(F.Join(fp, 'r.*'))])
-    say gg
-    if not gg:
+      tails = sorted([str(f) for f in TailGlob(F.Join(.bpath(fp), 'r.*'))])
+      raws = [F.Join(fp, g) for g in tails]
+    say raws
+    if not raws:
       raise 'no such file: bundle=%s path=%s' % (.bname, path)
     if .rhkey:
-      z = F.Join(fp, gg[-1][1])  # raw r^* filename is the second in the tuple
-      plain = gg[-1][0]
+      raw = F.Join(.bpath(fp), raws[-1][1])  # raw r^* filename is the second in the tuple
+      rev = pairs[-1][0]
     else:
-      z = gg[-1]  # The latest one is last, in sorted order.
-      plain = z
-    say path, z
-    return plain, z
+      rev = tails[-1]
+      raw = raws[-1]  # The latest one is last, in sorted order.
+    say path, rev, raw
+    return rev, raw
 
 class atomicFileCreator:
-  def __init__(dest):
+  def __init__(bund, dest):
+    say bund, dest
+    .bund = bund
     .dest = dest
     d = F.Dir(.dest)
     b = F.Base(.dest)
 
     .tmp = F.Join(d, 'tmp.' + b)
     say 'os.Create', .tmp
-    os.MkdirAll(d, DIR_PERM)
-    .fd = os.Create(.tmp)
+    os.MkdirAll(.bund.bpath(d), DIR_PERM)
+    .fd = os.Create(.bund.bpath(.tmp))
     .bw = bufio.NewWriter(.fd)
 
   def Flush():
@@ -418,7 +425,7 @@ class atomicFileCreator:
     except:
       pass
     say 'Abort: os.Remove', .tmp
-    os.Remove(.tmp)
+    os.Remove(.bund.bpath(.tmp))
     .bw = None
     .fd = None
 
@@ -427,12 +434,13 @@ class atomicFileCreator:
     .bw.Flush()
     .fd.Close()
 
-    say 'os.Rename', .tmp, .dest
-    os.Rename(.tmp, .dest)
-    return F.Base(.dest)
+    say 'os.Rename', .tmp, .dest, 'RELATIVE TO', .bund.bpath('.')
+    os.Rename(.bund.bpath(.tmp), .bund.bpath(.dest))
+    return .dest
 
 class atomicFileRevCreator(atomicFileCreator):
-  def __init__(fpath, suffix, mtime, size, rev, rhkey):
+  def __init__(bund, fpath, suffix, mtime, size, rev, rhkey):
+    .bund = bund
     .fpath = fpath
     .suffix = suffix
     .mtime = mtime
@@ -450,7 +458,7 @@ class atomicFileRevCreator(atomicFileCreator):
       ms = NowMillis()
       dest = RevFormat(.fpath, 'r', ms, .suffix, .mtime, .size, .rhkey)
 
-    super.__init__(dest)
+    super.__init__(bund, dest)
 
 native:
   'func (self *C_atomicFileCreator) WriteAt(p []byte, off int64) (n int, err error) {'
