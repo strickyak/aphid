@@ -8,16 +8,29 @@ from go import github.com/strickyak/jsonnet_cgo as VM
 from lib import data
 import sys
 
-def EvalFile(filename):
+VmImports = {}
+def EvalFileOrSnippet(filename, snippet=None, imports=None):
   vm = VM.Make()
   with defer vm.Destroy():
-    return data.Eval(vm.EvaluateFile(filename))
+    if snippet:
+      VmImports[filename] = snippet
+      vm.ImportCallback(lambda rel, name: VmImports.get(name, 'UKNOWN IMPORT: %q' % name))
+      say filename
+      say snippet
+      js = vm.EvaluateSnippet(filename, snippet)
+      say js
+      return data.Eval(js)
+    else:
+      js = vm.EvaluateFile(filename)
+      say js
+      return data.Eval(js)
 
 class Aphid:
-  def __init__(filename, quit):
-    .filename = filename    
+  def __init__(quit, filename, snippet=None, imports=None):
     .quit = quit
-    .x = EvalFile(filename)
+    .filename = filename    
+    .snippet = snippet    
+    .x = EvalFileOrSnippet(filename=filename, snippet=snippet, imports=imports)
     .x_me = .x['me']
     .x_confname = .x['confname']
     .f_ip = .x['flags']['ip']
@@ -121,15 +134,18 @@ class Aphid:
     am.Start()
     am.StartSyncronizer()
 
-def main(args):
-  args = flag.Munch(args)
-  quit = rye_chan(1)
-
-  for filename in args:
-    a = Aphid(filename, quit)
+def LaunchConfigFiles(quit, filenames):
+  for filename in filenames:
+    say 'CREATING', filename
+    a = Aphid(quit, filename)
     say 'STARTING', filename
     a.StartAll()
     A.Sleep(0.1)
+
+def main(args):
+  args = flag.Munch(args)
+  quit = rye_chan(1)
+  LaunchConfigFiles(quit=quit, filenames=args)
 
   say 'WAITING'
   quit.Take()
