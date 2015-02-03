@@ -14,7 +14,7 @@ def EvalFileOrSnippet(filename, snippet=None, imports=None):
   with defer vm.Destroy():
     if snippet:
       VmImports[filename] = snippet
-      vm.ImportCallback(lambda rel, name: VmImports.get(name, 'UKNOWN IMPORT: %q' % name))
+      vm.ImportCallback(lambda rel, name: VmImports.get(name, 'ERROR UKNOWN_IMPORT: %q' % name))
       say filename
       say snippet
       js = vm.EvaluateSnippet(filename, snippet)

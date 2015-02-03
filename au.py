@@ -13,10 +13,13 @@ def BigLocalDir(_):
   prefix_len = len(fnord) - 5  # Without the 'FNORD'.
 
   def fn(path, info, err):
+    say path, info, err, info.IsDir() if info else None
     if err is None and not info.IsDir():
       short_path = path[prefix_len:]
       z[short_path] = (info.ModTime().Unix(), info.Size())
+      say short_path
 
+  say 'filepath.Walk(', J(DIR.X, BUND.X),' fn)'
   filepath.Walk(J(DIR.X, BUND.X), fn)
   for k, v in sorted(z.items()):
     print k, v, '[%s]local' % J(DIR.X, BUND.X)
@@ -152,7 +155,8 @@ SERVER = flag.String('server', 'localhost:8081', 'Location of bundle server')
 YES    = flag.Bool('y', False, 'Really sync.')
 CID    = flag.String('cid', '91', 'Client DH ID.')
 SID    = flag.String('sid', '92', 'Server DH ID.')
-RING    = flag.String('ring', 'test.ring', 'Keyring File.')
+RING   = flag.String('ring', 'test.ring', 'Keyring File.')
+EXIT   = flag.Int('exit', 1, 'Exit at end of main()')
 
 def main(args):
   global client
@@ -172,4 +176,6 @@ def main(args):
     os.Exit(11)
 
   f(args)
-  A.Exit(0)
+  say EXIT.X
+  if EXIT.X:
+    A.Exit(0)
