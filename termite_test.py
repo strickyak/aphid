@@ -20,8 +20,7 @@ TERMITE1 = '''{
   },
 
   ports: {
-    // base::  7000 + ($.me * 100),
-    base::  $.peers[""+$.me].port - $.ports.rpcoff,
+    base::  $.peers[""+$.me].port - self.rpcoff,
 
     dnsoff::   53,
     httpoff::  80,
@@ -118,6 +117,19 @@ def CopyFilesDirToDir(dest, src):
     w.Close()
     r.Close()
 
+def Cmp(file1, file2):
+  say file1
+  say file2
+  x1 = ioutil.ReadFile(file1)
+  x2 = ioutil.ReadFile(file2)
+  must x1 == x2
+
+def Glob1(*names):
+  vec = FP.Glob(FP.Join('.', *names))
+  say names, vec
+  must len(vec) == 1
+  return vec[0]
+
 def LoadTermite3():
   for cmd in ['BigLocalDir', 'BigRemoteDir', 'push', 'BigLocalDir', 'BigRemoteDir']:
     say '@@@@@@@@@@@@@@@@@@@@@@@@@', cmd
@@ -149,4 +161,18 @@ def main(_):
   t1.StartAll()
   A.Sleep(1)
   t2.StartAll()
+  A.Sleep(6)
+
+  os.MkdirAll('__termite_local/termite0/web/frog', 0777)
+  ioutil.WriteFile(
+      '__termite_local/termite0/web/frog/index.html',
+      'Hello Aphid!\n',
+      0666)
+  LoadTermite3()
   A.Sleep(1)
+  Cmp(Glob1('__termite__termite13/b.termite0/d.web/d.frog/f.index.html/r.*.13'),
+      Glob1('__termite_local/termite0/web/frog/index.html'))
+  Cmp(Glob1('__termite__termite13/b.termite0/d.web/d.frog/f.index.html/r.*.13'),
+      Glob1('__termite__termite11/b.termite0/d.web/d.frog/f.index.html/r.*.13'))
+  Cmp(Glob1('__termite__termite13/b.termite0/d.web/d.frog/f.index.html/r.*.13'),
+      Glob1('__termite__termite12/b.termite0/d.web/d.frog/f.index.html/r.*.13'))
