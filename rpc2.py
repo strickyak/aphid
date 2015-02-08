@@ -61,6 +61,11 @@ class Server:
     .ring = ring
     .procs = {}
 
+  def __str__():
+    return 'Server{%v}' % .hostport
+  def __repr__():
+    return .__str__()
+
   def Register(proc, fn):
     .procs[proc] = fn
 
@@ -74,6 +79,11 @@ class ServerConn:
   def __init__(server, conn):
     .server = server
     .conn = conn
+
+  def __str__():
+    return 'ServerConn{%q %v}' % (.server, .conn)
+  def __repr__():
+    return .__str__()
 
   def Handshake():
     msg = ReadChunk(.conn)
@@ -162,6 +172,11 @@ class Client:
     .Handshake()
     go .ReadActor()
     go .WriteActor()
+
+  def __str__():
+    return 'Client{%v %v %v}' % (.hostport, .clientId, .serverId)
+  def __repr__():
+    return .__str__()
 
   def Handshake():
     c, s = int(.clientId), int(.serverId)
