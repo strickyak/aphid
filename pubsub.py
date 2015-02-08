@@ -37,9 +37,11 @@ class Sub:
     .key1 = key1
     .re2 = regexp.MustCompile(re2) if re2 else None
     .fn = fn
-    .str = repr(self)
+    .str = 'Sub{%q %q}' % (.key1, .re2)
 
   def __str__():
+    return .str
+  def __repr__():
     return .str
 
 class Thing:
@@ -49,5 +51,11 @@ class Thing:
     .key1 = key1
     .key2 = key2
     .props = props
+    .str = 'Thing{%q %q %q %v}' % (.origin, .key1, .key2, .props)
+
+  def __str__():
+    return .str
+  def __repr__():
+    return .str
 
 pass  
