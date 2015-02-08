@@ -14,20 +14,20 @@ class RBundleClient(rpc2.Client):
   def RPing():
     return .Call("XPing").Wait()
 
-  def RStat3(bund, path):
-    return .Call("XStat3", bund=bund, path=path).Wait()
+  def RStat3(bund, path, pw=None):
+    return .Call("XStat3", bund=bund, path=path, pw=pw).Wait()
 
-  def RList4(bund, path):
-    return .Call("XList4", bund=bund, path=path).Wait()
+  def RList4(bund, path, pw=None):
+    return .Call("XList4", bund=bund, path=path, pw=pw).Wait()
 
-  def RReadFile(bund, path, rev=None):
-    return .Call("XReadFile", bund=bund, path=path, rev=rev).Wait()
+  def RReadFile(bund, path, rev=None, pw=None):
+    return .Call("XReadFile", bund=bund, path=path, rev=rev, pw=pw).Wait()
 
   def RReadRawFile(bund, rawpath):
     return .Call("XReadRawFile", bund=bund, rawpath=rawpath).Wait()
 
-  def RWriteFile(bund, path, data, mtime=-1, rev=None, slave=None):
-    return .Call("XWriteFile", bund, path, data, mtime, rev, slave).Wait()
+  def RWriteFile(bund, path, data, mtime=-1, rev=None, slave=None, pw=None):
+    return .Call("XWriteFile", bund, path, data, mtime, rev, slave, pw=pw).Wait()
 
   def RWriteRawFile(bund, rawpath, data):
     return .Call("XWriteRawFile", bund, rawpath=rawpath, data=data).Wait()
@@ -54,25 +54,25 @@ class RBundleServer(rpc2.Server):
   def SPing():
     return A.NowNanos()
 
-  def SStat3(bund, path):
+  def SStat3(bund, path, pw=None):
     say bund, path
-    return .bundles[bund].Stat3(path=path)
+    return .bundles[bund].Stat3(path=path, pw=pw)
 
-  def SList4(bund, path):
+  def SList4(bund, path, pw=None):
     say bund, path
-    return list(.bundles[bund].List4(path=path))
+    return list(.bundles[bund].List4(path=path, pw=pw))
 
-  def SReadFile(bund, path, rev):
+  def SReadFile(bund, path, rev, pw=None):
     say bund, path, rev
-    return .bundles[bund].ReadFile(path=path, rev=rev)
+    return .bundles[bund].ReadFile(path=path, rev=rev, pw=pw)
 
   def SReadRawFile(bund, rawpath):
     say bund, rawpath
     return .bundles[bund].ReadRawFile(rawpath=rawpath)
 
-  def SWriteFile(bund, path, data, mtime, rev=None, slave=None):
+  def SWriteFile(bund, path, data, mtime, rev=None, slave=None, pw=None):
     say bund, path, mtime, len(data), rev, slave
-    return .bundles[bund].WriteFile(path=path, data=data, mtime=mtime, rev=rev, slave=slave)
+    return .bundles[bund].WriteFile(path=path, data=data, mtime=mtime, rev=rev, slave=slave, pw=pw)
 
   def SWriteRawFile(bund, rawpath, data):
     say bund, rawpath, len(data)

@@ -50,6 +50,10 @@ class AttachedWebkeyBundle:
     .wx = True  # Does use encrypted webpw -- please Link(pw) it.
     .bundir = F.Join(topdir, 'b.%s' % bname)
 
+  def __str__():
+    return 'AttachedWebkeyBundle{%s}' % .bname
+  def __repr__():
+    return 'AttachedWebkeyBundle{%s}' % .bname
 
   def SymKeyFromWebPw(pw):
     # TODO -- extract from multi-pw
@@ -65,6 +69,9 @@ class AttachedWebkeyBundle:
         .bund = Bundle(.aphid, .bname, .bundir, .suffix, keyid=.basekey, key=symkey)
       .links += 1
 
+  def UnlinkIfPw(pw):
+    if pw:
+      .Unlink()
   def Unlink():
     .mu.Lock()
     with defer .mu.Unlock():
@@ -72,24 +79,44 @@ class AttachedWebkeyBundle:
       if not .links:
         .bund = None
 
-  def Stat3(path):
+  def Stat3(path, pw=None):
+    if pw:
+      .Link(pw)
     must .links
-    return .bund.Stat3(path)
-  def List4(path):
+    with defer .UnlinkIfPw(pw):
+      return .bund.Stat3(path)
+  def List4(path, pw=None):
+    if pw:
+      .Link(pw)
     must .links
-    return .bund.List4(path)
-  def ReadFile(path, rev=None):
+    with defer .UnlinkIfPw(pw):
+      return .bund.List4(path)
+  def ReadFile(path, rev=None, pw=None):
+    if pw:
+      .Link(pw)
     must .links
-    return .bund.ReadFile(path, rev)
-  def WriteFile(path, data, mtime=-1, rev=None, slave=None):
+    with defer .UnlinkIfPw(pw):
+      return .bund.ReadFile(path, rev)
+  def WriteFile(path, data, mtime=-1, rev=None, slave=None, pw=None):
+    if pw:
+      .Link(pw)
     must .links
-    return .bund.WriteFile(path, data, mtime, rev, slave)
+    with defer .UnlinkIfPw(pw):
+      return .bund.WriteFile(path, data, mtime, rev, slave)
 
   def ListDirs(path):
     return [name for name, isDir, _, _ in .List4(path) if isDir]
   def ListFiles(path):
     return [name for name, isDir, _, _ in .List4(path) if not isDir]
 
+  def ReadRawFile(rawpath):
+    dont_use_key = None
+    b = Bundle(.aphid, .bname, .bundir, .suffix, keyid=dont_use_key, key=dont_use_key)
+    return b.ReadRawFile(rawpath)
+  def WriteRawFile(rawpath, data):
+    dont_use_key = None
+    b = Bundle(.aphid, .bname, .bundir, .suffix, keyid=dont_use_key, key=dont_use_key)
+    return b.WriteRawFile(rawpath, data)
 
 class Bundle:
   def __init__(aphid, bname, bundir, suffix, keyid=None, key=None):
@@ -107,6 +134,11 @@ class Bundle:
     .table = table.Table(F.Join(.bundir, 'd.table'))
     .wikdir = F.Join(.bundir, 'd.wiki')
     .wx = False  # Does not use encrypted webpw
+
+  def __str__():
+    return 'Bundle{%s}' % .bname
+  def __repr__():
+    return 'Bundle{%s}' % .bname
 
   # These are NOPs in a regular bundle.
   def Link(pw):
@@ -129,7 +161,7 @@ class Bundle:
     say z
     return z
 
-  def List4(path):
+  def List4(path, pw=None):
     say 'List4', path
     dp = .dpath(path)
     try:
@@ -204,7 +236,7 @@ class Bundle:
         z.append(redhed.DecryptFilename(s[2:], .rhkey))
     return z
 
-  def Stat3(path):
+  def Stat3(path, pw=None):
     dpath = .dpath(path)
     try:
       st = os.Stat(.bpath(dpath))
@@ -295,7 +327,7 @@ class Bundle:
       say mtime, size, words, name
       return os.Open(.bpath(name)), mtime, size
 
-  def ReadFile(path, rev=None):
+  def ReadFile(path, rev=None, pw=None):
     say path, rev
     if .rhkey:
       rev, xname = .nameOfFileToOpen(path, rev)
@@ -332,7 +364,7 @@ class Bundle:
       w.Abort()
       raise ex
 
-  def WriteFile(path, data, mtime=-1, rev=None, slave=None):
+  def WriteFile(path, data, mtime=-1, rev=None, slave=None, pw=None):
     bb = byt(data)
     mtime = mtime if mtime>0 else time.Now().Unix()
     say 'WriteFile', path, len(bb), mtime, rev

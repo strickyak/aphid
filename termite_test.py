@@ -1,6 +1,6 @@
 from go import os, io, io/ioutil
 from go import path/filepath as FP
-from . import A, aphid, au
+from . import A, aphid, au, sym
 
 TERMITE1 = '''{
   me: 11,
@@ -99,6 +99,7 @@ def Clear():
     if not d.endswith('local'):
       for b in ['b.termite0', 'b.termite1', 'b.termite2', 'b.termite3']:
         os.Mkdir(FP.Join(d, b), 0777)
+    os.Symlink(FP.Join(d, 'b.termite3'), FP.Join(d, 'b.termite3peek')) 
 
   os.MkdirAll('__termite_local/termite0/dns', 0777)
   ioutil.WriteFile(
@@ -130,14 +131,20 @@ def Glob1(*names):
   must len(vec) == 1
   return vec[0]
 
-def LoadTermite3():
+def LoadTermite(i):
   for cmd in ['BigLocalDir', 'BigRemoteDir', 'push', 'BigLocalDir', 'BigRemoteDir']:
     say '@@@@@@@@@@@@@@@@@@@@@@@@@', cmd
-    au.main([
-        '--bund=termite0', '--dir=./__termite_local', '--server=127.0.0.1:28381',
-        '--cid=91', '--sid=92', '--exit=0',
-        cmd])
+    # bund = 'termite%d' % i if i<3 else 'termite%dpeek' % i
+    bund = 'termite%d' % i
+    pw = 'password' if i>2 else ''
+    fullcmd = [
+        '--bund=%s' % bund, '--dir=./__termite_local', '--server=127.0.0.1:28381',
+        '--cid=91', '--sid=92', '--exit=0', '--pw=%s' % pw,
+        cmd]
+    say '@@@@@@@@@@@@@@@@@@@@@@@@@', fullcmd
+    au.main(fullcmd)
     say '@@@@@@@@@@@@@@@@@@@@@@@@@'
+    A.Sleep(1)
 
 def main(_):
   Clear()
@@ -147,9 +154,14 @@ def main(_):
   t3 = aphid.Aphid(quit=quit, filename='termite3.conf', snippet=TERMITE3)
 
   t3.StartAll()
+  global Ring
+  Ring = t3.ring
+  say t3
+  say t3.ring
+  say Ring
 
   A.Sleep(1)
-  LoadTermite3()
+  LoadTermite(0)
   A.Sleep(1)
   CopyFilesDirToDir(
       '__termite__termite11/b.termite0/d.dns/f.aphid.cc/',
@@ -163,13 +175,14 @@ def main(_):
   t2.StartAll()
   A.Sleep(6)
 
-  os.MkdirAll('__termite_local/termite0/web/frog', 0777)
-  ioutil.WriteFile(
-      '__termite_local/termite0/web/frog/index.html',
-      'Hello Aphid!\n',
-      0666)
-  LoadTermite3()
-  A.Sleep(1)
+  for i in range(4):
+    os.MkdirAll('__termite_local/termite%d/web/frog' % i, 0777)
+    ioutil.WriteFile(
+        '__termite_local/termite%d/web/frog/index.html' % i,
+        'Hello Aphid!\n',
+        0666)
+    LoadTermite(i)
+    A.Sleep(1)
   Cmp(Glob1('__termite__termite13/b.termite0/d.web/d.frog/f.index.html/r.*.13'),
       Glob1('__termite_local/termite0/web/frog/index.html'))
   Cmp(Glob1('__termite__termite13/b.termite0/d.web/d.frog/f.index.html/r.*.13'),
