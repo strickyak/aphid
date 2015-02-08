@@ -1,7 +1,7 @@
 from go import bytes, io, os, time
 from go import io/ioutil, path/filepath
 
-from . import A, flag, keyring, rbundle
+from . import A, flag, keyring, rbundle, sym
 
 J = filepath.Join
 FPERM = 0644
@@ -50,7 +50,7 @@ def NewPull(args):
       continue  # Don't copy if mtime & size are same.
 
     jname = J(DIR.X, BUND.X, k)
-    b = client.RReadFile(BUND.X, k)
+    b = client.RReadFile(BUND.X, k, pw=PW.X)
     os.MkdirAll(filepath.Dir(jname), DPERM)
     ioutil.WriteFile(jname, b, FPERM)
     t = time.Unix(mtime, 0)
@@ -67,7 +67,7 @@ def NewPush(args):
       
     say 'WRITING', k, mtime, size, v2
     jname = J(DIR.X, BUND.X, k)
-    client.RWriteFile(BUND.X, k, ioutil.ReadFile(jname), mtime=mtime)
+    client.RWriteFile(BUND.X, k, ioutil.ReadFile(jname), mtime=mtime, pw=PW.X)
 
 def Push(args):
   fnord = J(DIR.X, BUND.X, 'FNORD')  # Build prefix plus word 'FNORD'.
@@ -80,7 +80,7 @@ def Push(args):
       short_path = path[prefix_len:]
       mtime = info.ModTime().Unix()
       say 'WRITING', path, short_path
-      client.RWriteFile(BUND.X, short_path, ioutil.ReadFile(path), mtime=mtime)
+      client.RWriteFile(BUND.X, short_path, ioutil.ReadFile(path), mtime=mtime, pw=PW.X)
 
   say 'filepath.Walk', J(DIR.X, BUND.X)
   filepath.Walk(J(DIR.X, BUND.X), fn)
@@ -97,14 +97,14 @@ def Pull(args):
       else:
         os.MkdirAll(filepath.Dir(jname), DPERM)
         say 'READING', BUND.X, name
-        b = client.RReadFile(BUND.X, name)
+        b = client.RReadFile(BUND.X, name, pw=PW.X)
         ioutil.WriteFile(jname, b, FPERM)
         t = time.Unix(mtime, 0)
         os.Chtimes(jname, t, t)
 
 def Cat(args):
   for name in args:
-    b = client.RReadFile(BUND.X, name)
+    b = client.RReadFile(BUND.X, name, pw=PW.X)
     io.Copy(os.Stdout, bytes.NewReader(b))
 
 def RawCat(args):
@@ -126,7 +126,7 @@ def Find(args):
 
 def FindFiles1(path):
   try:
-    for name, isDir, mtime, sz in sorted(client.RList4(BUND.X, path)):
+    for name, isDir, mtime, sz in sorted(client.RList4(BUND.X, path, pw=PW.X)):
       jname = J(path, name)
       yield jname, isDir, mtime, sz
       if isDir:
@@ -157,6 +157,7 @@ CID    = flag.String('cid', '91', 'Client DH ID.')
 SID    = flag.String('sid', '92', 'Server DH ID.')
 RING   = flag.String('ring', 'test.ring', 'Keyring File.')
 EXIT   = flag.Int('exit', 1, 'Exit at end of main()')
+PW     = flag.String('pw', '', 'Web password')
 
 def main(args):
   global client
