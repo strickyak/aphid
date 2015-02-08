@@ -47,6 +47,11 @@ class Aphid:
     .x_peers = .x['peers']
     .bus = pubsub.Bus(self)
 
+  def __str__():
+    return 'Aphid{%q}' % .filename
+  def __repr__():
+    return .__str__()
+
   def StartAll():
     .StartKeyring()
     .StartBundles()
