@@ -13,7 +13,7 @@ class Hung:
     .hanger = hanger
     .id = id
     .x = x
-    .seq = 1
+    .seq = 0
     .Touch()
     go .GC()
 
@@ -51,14 +51,15 @@ class Hung:
 class Hanger:
   def __init__():
     .d = {}
+    .serial = sema.Serial()
 
   def Hang(obj):
     "Hang the object on the hanger, and get an id for it."
-    id = .c.Next()
+    id = .serial.Next()
     .d[id] = Hung(self, id, obj)
     return id
 
   def Invoke(id, seq, msg, *args, **kw):
-    "Invoke msg on object id.  seq starts at 1, and must increment."
+    "Invoke msg on object id.  seq starts at 0, and must increment."
     hung = .d[id]
     return hung.Invoke(seq, msg, *args, **kw) 
