@@ -1,5 +1,6 @@
 from go import bufio, os, regexp, sync, time
 from go import io/ioutil, encoding/hex
+from go import path as P
 from go import path/filepath as F
 from go import crypto/md5, crypto/sha256
 from go import github.com/strickyak/redhed
@@ -76,19 +77,21 @@ class AttachedWebkeyBundle:
       if not .links:
         .bund = None
 
-  def MakeSteamReader(filepath, pw=None):
+  def MakeChunkReader(path, pw=None):
+    say path, pw
     if pw:
       .Link(pw)
     must .links
     with defer .UnlinkIfPw(pw):
-      return .bund.MakeStreamReader(filepath, pw=None)
+      return .bund.MakeChunkReader(path, pw=None)
 
-  def MakeSteamWriter(filepath, pw=None):
+  def MakeChunkWriter(path, pw=None):
+    say path, pw
     if pw:
       .Link(pw)
     must .links
     with defer .UnlinkIfPw(pw):
-      return .bund.MakeStreamWriter(filepath, pw=None)
+      return .bund.MakeChunkWriter(path, pw=None)
 
   def Stat3(path, pw=None):
     if pw:
@@ -438,6 +441,62 @@ class Bundle:
     say path, rev, raw
     return rev, raw
 
+  def MakeChunkReader(path, pw):
+    say path, pw
+    z = ChunkReader(self, .rhkey, path)
+    say z
+    return z
+
+  def MakeChunkWriter(path, pw):
+    say path, pw
+    z = ChunkWriter(self, .rhkey, path)
+    say z
+    return z
+
+class ChunkReader:
+  def __init__(bund, rhkey, path):
+    say bund, rhkey, path
+    rev1, path1 = bund.nameOfFileToOpen(path)
+    say path1
+    path2 = F.Join(bund.bundir, path1)
+    say path2
+    .fd = os.Open(path2)
+    if rhkey:
+      .r = redhed.NewReader(.fd, rhkey)
+    else:
+      .r = .fd
+    say .fd, .r
+
+  def ReadChunk(n):
+    say n
+    bb = mkbyt(n)
+    c = .r.Read(bb)
+    say c, n
+    return bb[:c]
+
+  def Close():
+    say 'Close'
+    .fd.Close()
+
+class ChunkWriter:
+  def __init__(bund, rhkey, path):
+    .path = path
+    .w = redhed.NewStreamWriter(bund.bundir, rhkey, .getname)
+
+  def WriteChunk(bb):
+    while bb:
+      say len(bb)
+      c = .w.Write(bb)
+      say c
+      must c > 0
+      bb = bb[:c]
+  def Close():
+    return .w.Close()
+
+  def getname(w):
+    now = time.Now().Unix()
+    return P.Join(.path, 'r.%011d.X.%d.%d.%s' % (now, now, w.Size, hex.EncodeToString(w.Hash[:9])))
+
 class atomicFileCreator:
   def __init__(bund, dest):
     say bund, dest
@@ -480,41 +539,6 @@ class atomicFileCreator:
     say 'os.Rename', .tmp, .dest, 'RELATIVE TO', .bund.bpath('.')
     os.Rename(.bund.bpath(.tmp), .bund.bpath(.dest))
     return .dest
-
-  def MakeSteamWriter(filepath, pw=None):
-    return StreamWriter(self, .key, filepath)
-
-  def MakeSteamReader(filepath, pw=None):
-    return StreamReader(self, .key, filepath)
-
-class StreamReader:
-  def __init__(bund, key, filepath):
-    .bund = bund
-    .key = key
-    .filepath = filepath
-    .fd = os.Open(filepath)
-    .r = redhed.NewReader(.fd, key)
-
-  def Read(bb):
-    return .r.Read(bb)
-  def Close():
-    return .w.Close()
-
-class StreamWriter:
-  def __init__(bund, key, filepath):
-    .bund = bund
-    .key = key
-    .filepath = filepath
-    .w = redhed.NewStreamWriter(bund.bundir, key, .getname)
-
-  def Write(bb):
-    return .w.Write(bb)
-  def Close():
-    return .w.Close()
-
-  def getname(w):
-    now = time.Now().Unix()
-    return 'r.%011d.X.%d.%d.%s' % (now, now, w.Size, hex.EncodeToString(w.Hash[:9]))
 
 class atomicFileRevCreator(atomicFileCreator):
   def __init__(bund, fpath, suffix, mtime, size, rev, rhkey):
