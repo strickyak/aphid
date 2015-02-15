@@ -1,10 +1,12 @@
 from go import os, time
 from go import path/filepath as F
 
-from . import A, bundle, flag, keyring, pubsub, rpc2
+from . import A, bundle, flag, hanger, keyring, pubsub, rpc2
 
 KEYNAME = byt('default')
 KEY = byt('ABCDEFGHabcdefgh')
+
+TheHanger = hanger.Hanger()
 
 class RBundleClient(rpc2.Client):
   def __init__(hostport, ring, clientId, serverId):
@@ -13,6 +15,15 @@ class RBundleClient(rpc2.Client):
 
   def RPing():
     return .Call("XPing").Wait()
+
+  def RInvoke(id, seq, msg, *args, *kw):
+    return .Call("XInvoke", id, seq, msg, *args, *kw)
+
+  def RMakeStreamReader(bund, path, pw):
+    return .Call('XMakeStreamReader', bund=bund, path=path, pw=pw)
+
+  def RMakeStreamWriter(bund, path, pw):
+    return .Call('XMakeStreamWriter', bund=bund, path=path, pw=pw)
 
   def RStat3(bund, path, pw=None):
     return .Call("XStat3", bund=bund, path=path, pw=pw).Wait()
@@ -43,6 +54,9 @@ class RBundleServer(rpc2.Server):
     .bus = aphid.bus
     .bundles = aphid.bundles
     .Register('XPing', .SPing)
+    .Register('XInvoke', .SInvoke)
+    .Register('XMakeStreamReader', .SMakeStreamReader)
+    .Register('XMakeStreamWriter', .SMakeStreamWriter)
     .Register('XStat3', .SStat3)
     .Register('XList4', .SList4)
     .Register('XReadFile', .SReadFile)
@@ -53,6 +67,15 @@ class RBundleServer(rpc2.Server):
 
   def SPing():
     return A.NowNanos()
+
+  def SInvoke(id, seq, msg, *args, *kw):
+    return TheHanger.Invoke(id, seq, msg, *args, *kw)
+
+  def SMakeStreamReader(bund, path, pw):
+    return .bundles[bund].MakeStreamReader(path=path, pw=pw)
+
+  def SMakeStreamWriter(bund, path, pw):
+    return .bundles[bund].MakeStreamWriter(path=path, pw=pw)
 
   def SStat3(bund, path, pw=None):
     say bund, path
