@@ -8,22 +8,26 @@ KEY = byt('ABCDEFGHabcdefgh')
 
 TheHanger = hanger.Hanger()
 
-class RemoteReader:
+class RemoteBase:
   def __init__(cli, id):
     .cli = cli
     .id = id
     .seq = 0
-  def Next():
+  def Advance():
     .seq += 1
+
+class RemoteReader(RemoteBase):
+  def __init__(cli, id):
+    super.__init__(cli, id)
   def ReadChunk(n):
     say n
-    with defer .Next():
+    with defer .Advance():
       bb = .cli.RInvoke(.id, .seq, 'ReadChunk', n).Wait()
     say len(bb), n
     return bb
   def Close():
     say 'Close'
-    with defer .Next():
+    with defer .Advance():
       .cli.RInvoke(.id, .seq, 'Close').Wait()
     say 'Closeed'
 native:
@@ -58,17 +62,17 @@ native:
     }
   `
 
-class RemoteWriter:
+class RemoteWriter(RemoteBase):
   def __init__(cli, id):
-    .cli = cli
-    .id = id
-    .seq = 0
+    super.__init__(cli, id)
   def WriteChunk(bb):
-    .cli.RInvoke(.id, .seq, 'Write', bb).Wait()
-    .seq += 1
+    say len(bb)
+    with defer .Advance():
+      .cli.RInvoke(.id, .seq, 'WriteChunk', bb).Wait()
+      say 'did .cli.RInvoke', .id, .seq
   def Close():
-    .cli.RInvoke(.id, .seq, 'Close').Wait()
-    .seq += 1
+    with defer .Advance():
+      .cli.RInvoke(.id, .seq, 'Close').Wait()
 native:
   `
     func (self *C_RemoteWriter) Write(p []byte) (n int, err error) {
@@ -164,19 +168,19 @@ class RBundleServer(rpc2.Server):
 
   def SMakeChunkReader(bund, path, pw):
     say bund, path, pw
-    z = .bundles[bund].MakeChunkReader(path=path, pw=pw)
-    say z
-    id = TheHanger.Hang(z)
-    say id
-    return id
+    cr = .bundles[bund].MakeChunkReader(path=path, pw=pw)
+    say cr
+    id_r = TheHanger.Hang(cr)
+    say id_r
+    return id_r
 
   def SMakeChunkWriter(bund, path, pw):
     say bund, path, pw
-    z = .bundles[bund].MakeChunkWriter(path=path, pw=pw)
-    say z
-    id = TheHanger.Hang(z)
-    say id
-    return id
+    cw = .bundles[bund].MakeChunkWriter(path=path, pw=pw)
+    say cw
+    id_w = TheHanger.Hang(cw)
+    say id_w
+    return id_w
 
   def SStat3(bund, path, pw=None):
     say bund, path

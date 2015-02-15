@@ -1,4 +1,4 @@
-from go import bufio, os, regexp, sync, time
+from go import bufio, log, os, regexp, sync, time
 from go import io/ioutil, encoding/hex
 from go import path as P
 from go import path/filepath as F
@@ -29,7 +29,7 @@ def RevFormat(fpath, tag, ms, suffix, mtime, size, rhkey):
   else:
     return '%s/%s.%014d.%s.%d.%d' % (fpath, tag, ms, suffix, mtime, size)
 
-PARSE_REV_FILENAME = regexp.MustCompile('^r[.](\w+)[.](\w+)[.]([-0-9]+)[.]([-0-9]+)$').FindStringSubmatch
+PARSE_REV_FILENAME = regexp.MustCompile('^r[.](\w+)[.](\w+)[.]([-0-9]+)[.]([-0-9]+)(.*)$').FindStringSubmatch
 
 # Extracts bundle name at [2] from path to bundle.
 PARSE_BUNDLE_PATH = regexp.MustCompile('(^|.*/)b[.]([A-Za-z0-9_]+)$').FindStringSubmatch
@@ -200,7 +200,7 @@ class Bundle:
         if not revs:
           continue
         rev_name = sorted(revs)[-1] # latest.
-        _, name3, suffix3, mtime3, size3 = PARSE_REV_FILENAME(rev_name)
+        _, name3, suffix3, mtime3, size3, more = PARSE_REV_FILENAME(rev_name)
         yield s[2:], False, int(mtime3), int(size3)
       elif s.startswith('f^'):
         fname2 = redhed.DecryptFilename(s[2:], .rhkey)
@@ -214,10 +214,10 @@ class Bundle:
         if not revs:
           continue
         rev_name = sorted(revs)[-1] # latest.
-        _, name3, suffix3, mtime3, size3 = PARSE_REV_FILENAME(rev_name)
+        _, name3, suffix3, mtime3, size3, more = PARSE_REV_FILENAME(rev_name)
         yield fname2, False, int(mtime3), int(size3)
       else:
-        A.Warn('Ignoring strange file: %q %q', path, s)
+        log.Printf('Ignoring strange file: %q %q', path, s)
 
   def ListFiles(path):
     say 'ListFiles', path
@@ -265,7 +265,7 @@ class Bundle:
 
     m = PARSE_REV_FILENAME(rev)
     must m, (m, rev, filename)
-    _, ts, suffix, mtime, size = m
+    _, ts, suffix, mtime, size, more = m
     return False, time.Unix(int(mtime), 0), int(size)
 
   def findOrConjure(xdir, s, prefix):
@@ -480,7 +480,7 @@ class ChunkReader:
 
 class ChunkWriter:
   def __init__(bund, rhkey, path):
-    .path = path
+    .fpath = bund.fpath(path)
     .w = redhed.NewStreamWriter(bund.bundir, rhkey, .getname)
 
   def WriteChunk(bb):
@@ -489,13 +489,13 @@ class ChunkWriter:
       c = .w.Write(bb)
       say c
       must c > 0
-      bb = bb[:c]
+      bb = bb[c:]
   def Close():
     return .w.Close()
 
   def getname(w):
     now = time.Now().Unix()
-    return P.Join(.path, 'r.%011d.X.%d.%d.%s' % (now, now, w.Size, hex.EncodeToString(w.Hash[:9])))
+    return P.Join(.fpath, 'r.%011d.CW.%d.%d.%s' % (now, now, w.Size, hex.EncodeToString(w.Hash[:9])))
 
 class atomicFileCreator:
   def __init__(bund, dest):

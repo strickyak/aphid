@@ -1,4 +1,4 @@
-from go import math/rand, regexp, time
+from go import log, math/rand, regexp, time
 from . import A, bundle, pubsub, rbundle
 
 WATCHDOG_PERIOD = 300
@@ -52,7 +52,7 @@ class Among:
     say thing.key2
     b = .aphid.bundles.get(thing.key2)
     if not b:
-      A.Err('Bundle %q NOT FOUND for WriteRawFileSyncronizerFunc, thing=%v' % (thing.key2, thing))
+      log.Printf('Bundle %q NOT FOUND for WriteRawFileSyncronizerFunc, thing=%v', thing.key2, thing)
       return
 
     p = thing.props
@@ -62,7 +62,7 @@ class Among:
 
     remote = .conn_map.get(thing.origin)
     if not remote:
-      A.Err('No connection to Origin: %q', thing.origin)
+      log.Printf('No connection to Origin: %q', thing.origin)
 
     try:
       data = remote.client.RReadRawFile(b.bname, rawpath)

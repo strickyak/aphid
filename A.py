@@ -1,4 +1,4 @@
-from go import fmt, os, time
+from go import fmt, log, os, time
 
 def ParseCommaEqualsDict(s):
   d = {}
@@ -25,29 +25,26 @@ def Sleep(secs):
   time.Sleep(micros)
   say 'After', secs, micros, NowMillis()
 
-def Fatal(s):
-  fmt.Fprintf(os.Stderr, '\n@0 %s\n', s)
+def Fatal(f, *v):
+  log.Printf("F+ " + f, *v)
   Exit(13)
 
-def Err(s):
-  fmt.Fprintf(os.Stderr, '\n@1 %s\n', s)
+def Err(f, *v):
+  log.Printf("E+ " + f, *v)
 
-def Warn(s):
-  fmt.Fprintf(os.Stderr, '\n@2 %s\n', s)
+def Warn(f, *v):
+  log.Printf("W+ " + f, *v)
 
-def Throw(s):
-  err = str(s)
-  fmt.Fprintf(os.Stderr, '\n@3 %s\n' % err)
+def Throw(f, *v):
+  err = fmt.Sprintf(f, *v)
+  log.Printf("T+ %s", err)
   raise err
 
-def Note(s):
-  fmt.Fprintf(os.Stderr, '\n@4 %s\n', s)
+def Note(f, *v):
+  log.Printf("N+ " + f, *v)
 
-def Info(s):
-  fmt.Fprintf(os.Stderr, '\n@5 %s\n', s)
-
-def Debug(level, s):
-  fmt.Fprintf(os.Stderr, '\n@%d %s\n', level + 6, s)
+def Info(f, *v):
+  log.Printf("I+ " + f, *v)
 
 Status = 0
 def SetExitStatus(status):
@@ -57,6 +54,6 @@ def SetExitStatus(status):
 def Exit(status):
   Status = status if status > Status else Status
   if Status:
-    Note('Exiting with status %d' % Status)
+    Note('Exiting with status %d', Status)
   os.Exit(Status)
   raise 'NOTREACHED'

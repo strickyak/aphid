@@ -123,6 +123,19 @@ def RawWrite(args):
   rawpath, data = args
   client.RWriteRawFile(BUND.X, rawpath=rawpath, data=byt(data))
 
+def NewCopyPush(args):
+  must len(args) == 2
+  src, dest = args
+
+  r = os.Open(src)
+  say src, r
+  w = client.OpenRemoteWriter(BUND.X, dest, pw=PW.X)
+  say dest, w
+  io.Copy(w, r)
+  say True
+  w.Close()
+  r.Close()
+
 def Find(args):
   if not args:
     args = ['/']
@@ -148,6 +161,7 @@ Ensemble = {
     'newcat': NewCat,
     'rawcat': RawCat,
     'rawwrite': RawWrite,
+    'NewCopyPush': NewCopyPush,
     'pull': Pull,
     'push': Push,
     'newpull': NewPull,
