@@ -189,3 +189,5 @@ def main(_):
       Glob1('__termite__termite11/b.termite0/d.web/d.frog/f.index.html/r.*.13'))
   Cmp(Glob1('__termite__termite13/b.termite0/d.web/d.frog/f.index.html/r.*.13'),
       Glob1('__termite__termite12/b.termite0/d.web/d.frog/f.index.html/r.*.13'))
+
+  say "OKAY termite_test.py"
