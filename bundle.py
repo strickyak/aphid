@@ -1,5 +1,5 @@
 from go import bufio, os, regexp, sync, time
-from go import io/ioutil
+from go import io/ioutil, encoding/hex
 from go import path/filepath as F
 from go import crypto/md5, crypto/sha256
 from go import github.com/strickyak/redhed
@@ -7,9 +7,6 @@ from . import  A, pubsub, sym, table
 
 DIR_PERM = 0755
 FILE_PERM = 0644
-
-# TODO: Get rid of this global.
-###Bundles = {}  # Map names to bundle.
 
 def TailGlob(pattern):
   for x in F.Glob(pattern):
@@ -78,6 +75,20 @@ class AttachedWebkeyBundle:
       .links -= 1
       if not .links:
         .bund = None
+
+  def MakeSteamReader(filepath, pw=None):
+    if pw:
+      .Link(pw)
+    must .links
+    with defer .UnlinkIfPw(pw):
+      return .bund.MakeStreamReader(filepath, pw=None)
+
+  def MakeSteamWriter(filepath, pw=None):
+    if pw:
+      .Link(pw)
+    must .links
+    with defer .UnlinkIfPw(pw):
+      return .bund.MakeStreamWriter(filepath, pw=None)
 
   def Stat3(path, pw=None):
     if pw:
@@ -469,6 +480,41 @@ class atomicFileCreator:
     say 'os.Rename', .tmp, .dest, 'RELATIVE TO', .bund.bpath('.')
     os.Rename(.bund.bpath(.tmp), .bund.bpath(.dest))
     return .dest
+
+  def MakeSteamWriter(filepath, pw=None):
+    return StreamWriter(self, .key, filepath)
+
+  def MakeSteamReader(filepath, pw=None):
+    return StreamReader(self, .key, filepath)
+
+class StreamReader:
+  def __init__(bund, key, filepath):
+    .bund = bund
+    .key = key
+    .filepath = filepath
+    .fd = os.Open(filepath)
+    .r = redhed.NewReader(.fd, key)
+
+  def Read(bb):
+    return .r.Read(bb)
+  def Close():
+    return .w.Close()
+
+class StreamWriter:
+  def __init__(bund, key, filepath):
+    .bund = bund
+    .key = key
+    .filepath = filepath
+    .w = redhed.NewStreamWriter(bund.bundir, key, .getname)
+
+  def Write(bb):
+    return .w.Write(bb)
+  def Close():
+    return .w.Close()
+
+  def getname(w):
+    now = time.Now().Unix()
+    return 'r.%011d.X.%d.%d.%s' % (now, now, w.Size, hex.EncodeToString(w.Hash[:9]))
 
 class atomicFileRevCreator(atomicFileCreator):
   def __init__(bund, fpath, suffix, mtime, size, rev, rhkey):
