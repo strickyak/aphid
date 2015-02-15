@@ -36,9 +36,9 @@ native:
         defer func() {
           r := recover()
           if r != nil {
-            println(fmt.Sprintf("$$$$$$$$$$$$ r == %T %#v", r, r))
+            println(fmt.Sprintf("RemoteReader::Close: r == %T %#v", r, r))
             err = NewErrorOrEOF(r)
-            println(fmt.Sprintf("$$$$$$$$$$$$ err == %T %#v", err, err))
+            println(fmt.Sprintf("RemoteReader::Close: err == %T %#v", err, err))
           }
           return
         }()
