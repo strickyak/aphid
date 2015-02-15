@@ -61,5 +61,8 @@ class Hanger:
 
   def Invoke(id, seq, msg, *args, **kw):
     "Invoke msg on object id.  seq starts at 0, and must increment."
+    say id, seq, msg, args, kw
     hung = .d[id]
-    return hung.Invoke(seq, msg, *args, **kw) 
+    z = hung.Invoke(seq, msg, *args, **kw)
+    say z
+    return z
