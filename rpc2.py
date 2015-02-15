@@ -3,18 +3,12 @@ from go import net, sync, time
 from go import crypto/rand
 
 from . import dh, sym, keyring
+from lib import sema
 
-SerialPrefix = mkbyt(12)  # Per Process nonce.
-rand.Read(SerialPrefix)
+ProcessNonce = mkbyt(12)  # Per Process nonce.
+rand.Read(ProcessNonce)
 
-SerialMutex = go_new(sync.Mutex)
-SerialCounter = 100
-def Serial():
-  global SerialCounter
-  SerialMutex.Lock()
-  with defer SerialMutex.Unlock():
-    SerialCounter += 1
-    return (SerialPrefix, SerialCounter)
+TheSerial = sema.Serial()
 
 def AtMost(n, s):
   s = str(s)
@@ -192,7 +186,7 @@ class Client:
         break
 
       # Allocate a serial, and remember the request.
-      req.serial = Serial()
+      req.serial = (ProcessNonce, TheSerial.Next())
       .requests[req.serial] = req
 
       pay = rye_pickle( (req.serial, req.proc, req.args, req.kw) )
