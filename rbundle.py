@@ -8,7 +8,7 @@ KEY = byt('ABCDEFGHabcdefgh')
 
 TheHanger = hanger.Hanger()
 
-class RemoteBase:
+class idRemoteBase:
   def __init__(cli, id):
     .cli = cli
     .id = id
@@ -16,7 +16,7 @@ class RemoteBase:
   def Advance():
     .seq += 1
 
-class RemoteReader(RemoteBase):
+class idRemoteReader(idRemoteBase):
   def __init__(cli, id):
     super.__init__(cli, id)
   def ReadChunk(n):
@@ -32,7 +32,7 @@ class RemoteReader(RemoteBase):
     say 'Closeed'
 native:
   `
-    func (self *C_RemoteReader) Read(p []byte) (n int, err error) {
+    func (self *C_idRemoteReader) Read(p []byte) (n int, err error) {
       plen := len(p)
       var x P
 
@@ -40,9 +40,9 @@ native:
         defer func() {
           r := recover()
           if r != nil {
-            println(fmt.Sprintf("RemoteReader::Close: r == %T %#v", r, r))
+            println(fmt.Sprintf("idRemoteReader::Read: r == %T %#v", r, r))
             err = NewErrorOrEOF(r)
-            println(fmt.Sprintf("RemoteReader::Close: err == %T %#v", err, err))
+            println(fmt.Sprintf("idRemoteReader::Read: err == %T %#v", err, err))
           }
           return
         }()
@@ -56,13 +56,13 @@ native:
       }
       return
     }
-    func (self *C_RemoteReader) Close(p []byte) (err error) {
+    func (self *C_idRemoteReader) Close(p []byte) (err error) {
       self.M_0_Close()
       return nil
     }
   `
 
-class RemoteWriter(RemoteBase):
+class idRemoteWriter(idRemoteBase):
   def __init__(cli, id):
     super.__init__(cli, id)
   def WriteChunk(bb):
@@ -75,12 +75,12 @@ class RemoteWriter(RemoteBase):
       .cli.RInvoke(.id, .seq, 'Close').Wait()
 native:
   `
-    func (self *C_RemoteWriter) Write(p []byte) (n int, err error) {
+    func (self *C_idRemoteWriter) Write(p []byte) (n int, err error) {
       plen := len(p)
       self.M_1_WriteChunk(MkByt(p))
       return plen, nil
     }
-    func (self *C_RemoteWriter) Close(p []byte) (err error) {
+    func (self *C_idRemoteWriter) Close(p []byte) (err error) {
       self.M_0_Close()
       return nil
     }
@@ -97,25 +97,25 @@ class RBundleClient(rpc2.Client):
   def RInvoke(id, seq, msg, *args, **kw):
     return .Call("XInvoke", id, seq, msg, *args, **kw)
 
-  def OpenRemoteReader(bund, path, pw):
-    id = .RMakeChunkReader(bund=bund, path=path, pw=pw).Wait()
+  def RemoteOpen(bund, path, pw, raw):
+    id = .RMakeChunkReader(bund=bund, path=path, pw=pw, raw=raw).Wait()
     say id
-    z = RemoteReader(cli=self, id=id)
+    z = idRemoteReader(cli=self, id=id)
     say z
     return z
 
-  def OpenRemoteWriter(bund, path, pw):
-    id = .RMakeChunkWriter(bund=bund, path=path, pw=pw).Wait()
+  def RemoteCreate(bund, path, pw, mtime, raw):
+    id = .RMakeChunkWriter(bund=bund, path=path, pw=pw, mtime=mtime, raw=raw).Wait()
     say id
-    z = RemoteWriter(cli=self, id=id)
+    z = idRemoteWriter(cli=self, id=id)
     say z
     return z
 
-  def RMakeChunkReader(bund, path, pw):
-    return .Call('XMakeChunkReader', bund=bund, path=path, pw=pw)
+  def RMakeChunkReader(bund, path, pw, raw):
+    return .Call('XMakeChunkReader', bund=bund, path=path, pw=pw, raw=raw)
 
-  def RMakeChunkWriter(bund, path, pw):
-    return .Call('XMakeChunkWriter', bund=bund, path=path, pw=pw)
+  def RMakeChunkWriter(bund, path, pw, mtime, raw):
+    return .Call('XMakeChunkWriter', bund=bund, path=path, pw=pw, mtime=mtime, raw=raw)
 
   def RStat3(bund, path, pw=None):
     return .Call("XStat3", bund=bund, path=path, pw=pw).Wait()
@@ -166,17 +166,17 @@ class RBundleServer(rpc2.Server):
     say z
     return z
 
-  def SMakeChunkReader(bund, path, pw):
+  def SMakeChunkReader(bund, path, pw, raw):
     say bund, path, pw
-    cr = .bundles[bund].MakeChunkReader(path=path, pw=pw)
+    cr = .bundles[bund].MakeChunkReader(path=path, pw=pw, raw=raw)
     say cr
     id_r = TheHanger.Hang(cr)
     say id_r
     return id_r
 
-  def SMakeChunkWriter(bund, path, pw):
+  def SMakeChunkWriter(bund, path, pw, mtime, raw):
     say bund, path, pw
-    cw = .bundles[bund].MakeChunkWriter(path=path, pw=pw)
+    cw = .bundles[bund].MakeChunkWriter(path=path, pw=pw, mtime=mtime, raw=raw)
     say cw
     id_w = TheHanger.Hang(cw)
     say id_w

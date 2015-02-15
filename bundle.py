@@ -85,13 +85,13 @@ class AttachedWebkeyBundle:
     with defer .UnlinkIfPw(pw):
       return .bund.MakeChunkReader(path, pw=None)
 
-  def MakeChunkWriter(path, pw=None):
+  def MakeChunkWriter(path, pw, mtime):
     say path, pw
     if pw:
       .Link(pw)
     must .links
     with defer .UnlinkIfPw(pw):
-      return .bund.MakeChunkWriter(path, pw=None)
+      return .bund.MakeChunkWriter(path, pw=None, mtime=mtime)
 
   def Stat3(path, pw=None):
     if pw:
@@ -441,31 +441,35 @@ class Bundle:
     say path, rev, raw
     return rev, raw
 
-  def MakeChunkReader(path, pw):
+  def MakeChunkReader(path, pw, raw):
     say path, pw
-    z = ChunkReader(self, .rhkey, path)
+    z = chunkReader(self, .rhkey, path, raw)
     say z
     return z
 
-  def MakeChunkWriter(path, pw):
+  def MakeChunkWriter(path, pw, mtime, raw):
     say path, pw
-    z = ChunkWriter(self, .rhkey, path)
+    z = chunkWriter(self, .rhkey, path, mtime, raw)
     say z
     return z
 
-class ChunkReader:
-  def __init__(bund, rhkey, path):
-    say bund, rhkey, path
-    rev1, path1 = bund.nameOfFileToOpen(path)
-    say path1
-    path2 = F.Join(bund.bundir, path1)
-    say path2
-    .fd = os.Open(path2)
-    if rhkey:
-      .r = redhed.NewReader(.fd, rhkey)
+class chunkReader:
+  def __init__(bund, rhkey, path, raw):
+    if raw:
+      .fd = os.Open(F.Join(bund.bundir, path))
+      .r = bufio.NewReader(.fd)
     else:
-      .r = .fd
-    say .fd, .r
+      say bund, rhkey, path
+      rev1, path1 = bund.nameOfFileToOpen(path)
+      say path1
+      path2 = F.Join(bund.bundir, path1)
+      say path2
+      .fd = os.Open(path2)
+      if rhkey:
+        .r = redhed.NewReader(.fd, rhkey)
+      else:
+        .r = .fd
+      say .fd, .r
 
   def ReadChunk(n):
     say n
@@ -477,11 +481,23 @@ class ChunkReader:
   def Close():
     say 'Close'
     .fd.Close()
+    .fd = None
+  def Dispose():
+    say 'Dispose'
+    if .fd:
+      .fd.Close()
+    .fd = None
 
-class ChunkWriter:
-  def __init__(bund, rhkey, path):
+class chunkWriter:
+  def __init__(bund, rhkey, path, mtime, raw):
     .fpath = bund.fpath(path)
-    .w = redhed.NewStreamWriter(bund.bundir, rhkey, .getname)
+    .mtime = mtime
+    if raw:
+      .fd = os.Create(F.Join(bund.bundir, path))
+      .w = bufio.NewWriter(.fd)
+    else:
+      .fd = None
+      .w = redhed.NewStreamWriter(bund.bundir, rhkey, mtime, .fnGetName)
 
   def WriteChunk(bb):
     while bb:
@@ -491,11 +507,25 @@ class ChunkWriter:
       must c > 0
       bb = bb[c:]
   def Close():
-    return .w.Close()
+    say 'Close'
+    .w.Close()
+    .w = None
+    if .fd:
+      .fd.Close()
+    .fd = None
+  def Dispose():
+    say 'Dispose'
+    if .fd:
+      .fd.Close()
+    .fd = None
+    if .w:
+      .w.Close()
+    .w = None
 
-  def getname(w):
-    now = time.Now().Unix()
-    return P.Join(.fpath, 'r.%011d.CW.%d.%d.%s' % (now, now, w.Size, hex.EncodeToString(w.Hash[:9])))
+  def fnGetName(w):
+    now = int(time.Now().UnixNano() * 1000000)  # timestamp is now, even if mtime is old,
+    path = P.Join(.fpath, 'r.%014d._.%d.%d.%s' % (now, w.MTimeMillis, w.Size, hex.EncodeToString(w.Hash[:9])))
+    return path
 
 class atomicFileCreator:
   def __init__(bund, dest):

@@ -69,6 +69,18 @@ def NewPush(args):
     jname = J(DIR.X, BUND.X, k)
     client.RWriteFile(BUND.X, k, ioutil.ReadFile(jname), mtime=mtime, pw=PW.X)
 
+def SPush(args):
+  dLocal, dRemote = BigDirs()  # Dicts mapping path to (mtime, size)
+
+  for path, localStats in sorted(dLocal.items()):
+    mtime, size = localStats
+    remoteMTimeSize = dRemote.get(path)
+    if remoteMTimeSize == localStats:
+      continue  # Don't copy if mtime & size are same.
+      
+    say 'WRITING', path, mtime, size, remoteMTimeSize
+    pushFile(J(DIR.X, BUND.X, path), path, mtime=mtime)
+
 def Push(args):
   fnord = J(DIR.X, BUND.X, 'FNORD')  # Build prefix plus word 'FNORD'.
   prefix_len = len(fnord) - 5  # Without the 'FNORD'.
@@ -107,11 +119,23 @@ def Cat(args):
     b = client.RReadFile(BUND.X, name, pw=PW.X)
     io.Copy(os.Stdout, bytes.NewReader(b))
 
-def NewCat(args):
-  for name in args:
-    r = client.OpenRemoteReader(BUND.X, name, pw=PW.X)
-    io.Copy(os.Stdout, r)
+def pullFile(src, dest):
+    r = client.RemoteOpen(BUND.X, src, pw=PW.X, raw=False)
+    w = os.Create(dest)
+    io.Copy(w, r)
+    w.Close()
     r.Close()
+  
+def pushFile(src, dest, mtime):
+    r = os.Open(src)
+    w = client.RemoteCreate(BUND.X, dest, pw=PW.X, mtime=mtime, raw=False)
+    io.Copy(w, r)
+    w.Close()
+    r.Close()
+
+def SCat(args):
+  for name in args:
+    pullFile(name, '/dev/stdout')
 
 def RawCat(args):
   for rawpath in args:
@@ -123,18 +147,9 @@ def RawWrite(args):
   rawpath, data = args
   client.RWriteRawFile(BUND.X, rawpath=rawpath, data=byt(data))
 
-def NewCopyPush(args):
-  must len(args) == 2
+def SWrite(args):
   src, dest = args
-
-  r = os.Open(src)
-  say src, r
-  w = client.OpenRemoteWriter(BUND.X, dest, pw=PW.X)
-  say dest, w
-  io.Copy(w, r)
-  say True
-  w.Close()
-  r.Close()
+  pushFile(src, dest, MTIME.X)
 
 def Find(args):
   if not args:
@@ -158,10 +173,12 @@ def FindFiles1(path):
 Ensemble = {
     'find': Find,
     'cat': Cat,
-    'newcat': NewCat,
+    'SCat': SCat,
     'rawcat': RawCat,
     'rawwrite': RawWrite,
-    'NewCopyPush': NewCopyPush,
+    'SWrite': SWrite,
+    #'SPull': SPull,
+    'SPush': SPush,
     'pull': Pull,
     'push': Push,
     'newpull': NewPull,
@@ -179,6 +196,7 @@ SID    = flag.String('sid', '92', 'Server DH ID.')
 RING   = flag.String('ring', 'test.ring', 'Keyring File.')
 EXIT   = flag.Int('exit', 1, 'Exit at end of main()')
 PW     = flag.String('pw', '', 'Web password')
+MTIME  = flag.Int('mtime', 0, 'Mtime of file creation')
 
 def main(args):
   global client
