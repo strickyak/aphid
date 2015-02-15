@@ -227,5 +227,7 @@ class Promise:
     result, err = .chan.Take()
     say AtMost(80, result), AtMost(80, err)
     if err:
+      if str(err) == 'EOF':
+        raise io.EOF
       raise 'PromiseWaitError', err
     return result
