@@ -1,4 +1,4 @@
-from go import log, math/rand, regexp, time
+from go import io, log, math/rand, regexp, time
 from . import A, bundle, pubsub, rbundle
 
 WATCHDOG_PERIOD = 300
@@ -14,6 +14,7 @@ class Among:
     .my_id = my_id
     .all_ids_map = all_ids_map
     .conn_map = {}
+    say 'CTOR Among', .my_id, .all_ids_map
 
   def Start():
     for peer_id, peer_loc in .all_ids_map.items():
@@ -21,15 +22,18 @@ class Among:
         go .Connect(peer_id, peer_loc)
 
   def Connect(peer_id, peer_loc):
+    say 'Connect <<<', .my_id, peer_id, peer_loc
     backoff = 1
     while True:
       try:
         conn = Conn(self, peer_id, peer_loc)
         .conn_map[peer_id] = conn
+        say 'Connect >>>>>>>>>>>>>>', .my_id, peer_id, peer_loc
         go conn.Watchdog()
         return
       except:
         pass
+      say 'Connect === Backoff', .my_id, peer_id, peer_loc, backoff
       A.Sleep(backoff)
       backoff = min(backoff, MAX_BACKOFF/2.0)
       backoff *= rand.Float64() + 1.0
@@ -40,23 +44,29 @@ class Among:
       say name, conn
       go conn.client.Call(proc_name, *args, **kw)
 
-  def WriteRawFileSyncronizerFunc(thing):
+  def WriteFileSyncronizerFunc(thing):
     say thing
-    assert thing.key1 == 'WriteRawFile'
+    assert thing.key1 == 'WriteFile'
     if thing.origin is None:
       # Originated locally, so send it to remotes.
       .BestEffortCallAllOthers('XPublish', .my_id, thing.key1, thing.key2, thing.props)
       return
 
-    # Originated from elsewhere.
-    say thing.key2
-    b = .aphid.bundles.get(thing.key2)
-    if not b:
-      log.Printf('Bundle %q NOT FOUND for WriteRawFileSyncronizerFunc, thing=%v', thing.key2, thing)
+    say thing.origin
+    if thing.origin == .my_id:
+      say 'MON RAW: Do not send to ourself', .my_id
       return
 
+    # Originated from elsewhere.
+    bname = thing.key2
+    say bname
+    b = .aphid.bundles.get(bname)
+    if not b:
+      log.Printf('Bundle %q NOT FOUND for WriteFileSyncronizerFunc, thing=%v', bname, thing)
+      return
+
+    say thing.props
     p = thing.props
-    say p
     rawpath = p['rawpath']
     say rawpath
 
@@ -64,17 +74,21 @@ class Among:
     if not remote:
       log.Printf('No connection to Origin: %q', thing.origin)
 
-    try:
-      data = remote.client.RReadRawFile(b.bname, rawpath)
-      say rawpath, len(data)
-      b.WriteRawFile(rawpath, data)
+    say 'MON RAW: ', .my_id, thing.origin, b.bundir
+    say 'MON RAW: remote.client.RemoteOpen', (b.bname, rawpath, None, True)
+    r = remote.client.RemoteOpen(b.bname, rawpath, pw=None, raw=True)
+    say 'MON RAW: RawChunkWriter', (b.bname, rawpath)
+    w = bundle.RawChunkWriter(bund=b, path=rawpath, mtime=None)
+    say 'MON RAW: bundle.CopyChunks'
+    bundle.CopyChunks(w, r)
+    say 'MON RAW: w.Close'
+    w.Close()
+    say 'MON RAW: r.Close'
+    r.Close()
 
-    except as ex:
-      say '@@@@@@@@@ EXCEPT:', ex
-      raise 'Exception In WriteRawFileSyncronizerFunc', ex
 
   def StartSyncronizer():
-    sub = pubsub.Sub(key1='WriteRawFile', re2=None, fn=.WriteRawFileSyncronizerFunc)
+    sub = pubsub.Sub(key1='WriteFile', re2=None, fn=.WriteFileSyncronizerFunc)
     .bus.Subscribe(sub)
 
 class Conn:

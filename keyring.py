@@ -25,6 +25,8 @@ class Line:
     .b_sym = None  # byt
     .base = None
 
+  def __repr__():
+    return .__str__()
   def __str__():
     must .num
     must .name

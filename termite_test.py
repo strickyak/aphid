@@ -1,6 +1,6 @@
 from go import os, io, io/ioutil
 from go import path/filepath as FP
-from . import A, aphid, au, sym
+from . import A, aphid, au, bundle, sym
 
 TERMITE1 = '''{
   me: 11,
@@ -99,7 +99,7 @@ def Clear():
     if not d.endswith('local'):
       for b in ['b.termite0', 'b.termite1', 'b.termite2', 'b.termite3']:
         os.Mkdir(FP.Join(d, b), 0777)
-    os.Symlink(FP.Join(d, 'b.termite3'), FP.Join(d, 'b.termite3peek')) 
+    os.Symlink('b.termite3', FP.Join(d, 'b.termite3peek')) 
 
   os.MkdirAll('__termite_local/termite0/dns', 0777)
   ioutil.WriteFile(
@@ -108,6 +108,7 @@ def Clear():
       0666)
 
 def CopyFilesDirToDir(dest, src):
+  say dest, src
   os.MkdirAll(dest, 0777)
   for f in FP.Glob(FP.Join(src, '*')):
     say f, dest
@@ -123,17 +124,20 @@ def Cmp(file1, file2):
   say file2
   x1 = ioutil.ReadFile(file1)
   x2 = ioutil.ReadFile(file2)
+  say len(x1), len(x2)
   must x1 == x2
 
 def Glob1(*names):
+  say names
   vec = FP.Glob(FP.Join('.', *names))
   say names, vec
   must len(vec) == 1
   return vec[0]
 
 def LoadTermite(i):
-  for cmd in ['BigLocalDir', 'BigRemoteDir', 'push', 'BigLocalDir', 'BigRemoteDir']:
-    say '@@@@@@@@@@@@@@@@@@@@@@@@@', cmd
+  say i
+  for cmd in ['BigLocalDir', 'BigRemoteDir', 'SPush', 'BigLocalDir', 'BigRemoteDir']:
+    say '@@@@@@@@@@@@@@@@@@@@@@@@@', i, cmd
     # bund = 'termite%d' % i if i<3 else 'termite%dpeek' % i
     bund = 'termite%d' % i
     pw = 'password' if i>2 else ''
@@ -141,10 +145,11 @@ def LoadTermite(i):
         '--bund=%s' % bund, '--dir=./__termite_local', '--server=127.0.0.1:28381',
         '--cid=91', '--sid=92', '--exit=0', '--pw=%s' % pw,
         cmd]
-    say '@@@@@@@@@@@@@@@@@@@@@@@@@', fullcmd
+    say '@@@@@@@@@@@@@@@@@@@@@@@@@', i, fullcmd
     au.main(fullcmd)
-    say '@@@@@@@@@@@@@@@@@@@@@@@@@'
-    A.Sleep(1)
+    say '@@@@@@@@@@@@@@@@@@@@@@@@@', i
+    if cmd == 'SPush':
+      A.Sleep(1)
 
 def main(_):
   Clear()
@@ -156,13 +161,20 @@ def main(_):
   t3.StartAll()
   global Ring
   Ring = t3.ring
-  say t3
-  say t3.ring
-  say Ring
+  #say t3
+  #say t3.ring
+  #say Ring
+
+  bt2 = t3.bundles['termite2']
+  say bt2, bt2.bundir
+  bundle.WriteFile(bt2, 'abcde/lmnop/wxyz.txt', 'oscar meyer wiener')
+  say 'Wrote it'
+  x = bundle.ReadFile(bt2, 'abcde/lmnop/wxyz.txt')
+  say 'Red it', x
 
   A.Sleep(1)
   LoadTermite(0)
-  A.Sleep(1)
+
   CopyFilesDirToDir(
       '__termite__termite11/b.termite0/d.dns/f.aphid.cc/',
       '__termite__termite13/b.termite0/d.dns/f.aphid.cc/')
@@ -173,21 +185,38 @@ def main(_):
   t1.StartAll()
   A.Sleep(1)
   t2.StartAll()
-  A.Sleep(6)
+  A.Sleep(4)
 
+  HELLO_APHID = 'Hello Aphid!\n'
   for i in range(4):
+    say i
     os.MkdirAll('__termite_local/termite%d/web/frog' % i, 0777)
     ioutil.WriteFile(
         '__termite_local/termite%d/web/frog/index.html' % i,
-        'Hello Aphid!\n',
+        HELLO_APHID,
         0666)
+    say i
     LoadTermite(i)
     A.Sleep(1)
-  Cmp(Glob1('__termite__termite13/b.termite0/d.web/d.frog/f.index.html/r.*.13'),
-      Glob1('__termite_local/termite0/web/frog/index.html'))
-  Cmp(Glob1('__termite__termite13/b.termite0/d.web/d.frog/f.index.html/r.*.13'),
-      Glob1('__termite__termite11/b.termite0/d.web/d.frog/f.index.html/r.*.13'))
-  Cmp(Glob1('__termite__termite13/b.termite0/d.web/d.frog/f.index.html/r.*.13'),
-      Glob1('__termite__termite12/b.termite0/d.web/d.frog/f.index.html/r.*.13'))
+    say i
+
+    x = ioutil.ReadFile('__termite_local/termite0/web/frog/index.html')
+    print x
+    must len(x) == 13
+    must x == byt(HELLO_APHID)
+
+    pw = 'password' if i>2 else None
+    for t in [t3, t2, t1]:
+      say i, str(t)
+      y = bundle.ReadFile(t.bundles['termite%d' % i], 'web/frog/index.html', pw=pw)
+      print x, y
+      must byt(x)==byt(y), (i, str(t), x, y)
+
+    #Cmp(Glob1('__termite__termite13/b.termite%d/d.web/d.frog/f.index.html/r.*.13.*' % i),
+    #    Glob1('__termite_local/termite0/web/frog/index.html'))
+    #Cmp(Glob1('__termite__termite13/b.termite%d/d.web/d.frog/f.index.html/r.*.13.*' % i),
+    #    Glob1('__termite__termite11/b.termite%d/d.web/d.frog/f.index.html/r.*.13.*' % i))
+    #Cmp(Glob1('__termite__termite13/b.termite%d/d.web/d.frog/f.index.html/r.*.13.*' % i),
+    #    Glob1('__termite__termite12/b.termite%d/d.web/d.frog/f.index.html/r.*.13.*' % i))
 
   say "OKAY termite_test.py"

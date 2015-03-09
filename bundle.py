@@ -1,40 +1,97 @@
-from go import bufio, log, os, regexp, sync, time
+from go import bufio, bytes, io, log, os, regexp, strings, sync, time
 from go import io/ioutil, encoding/hex
 from go import path as P
 from go import path/filepath as F
-from go import crypto/md5, crypto/sha256
+from go import crypto/md5, crypto/sha256, crypto/rand
 from go import github.com/strickyak/redhed
 from . import  A, pubsub, sym, table
+from lib import sema
 
 DIR_PERM = 0755
 FILE_PERM = 0644
 
-def TailGlob(pattern):
-  for x in F.Glob(pattern):
+TheSerial = sema.Serial()
+
+def ReadFile(bund, path, pw=None, raw=None, rev=None):
+  r = bund.MakeReader(path, pw=pw, raw=raw, rev=rev)
+  say bund, path, rev
+  w = go_new(bytes.Buffer)
+  io.Copy(w, r)
+  r.Close()
+  return w.String()
+
+def WriteFile(bund, path, body, pw=None, mtime=0, raw=None):
+  say bund, path, body, pw, raw
+  r = ioutil.NopCloser(bytes.NewReader(byt(body)))
+  w = bund.MakeWriter(path, pw=None, mtime=0, raw=None)
+  io.Copy(w, r)
+  say bund, path, body, pw, raw
+  w.Close()
+  r.Close()
+
+def ListDirs(b, d, pw):
+  return [x[2:] for x in b.List4(d, pw) if x.startswith('d.')]
+
+def ListFiles(b, d, pw):
+  return [x[2:] for x in b.List4(d, pw) if x.startswith('f.')]
+
+def osTailGlob(pattern):
+  for x in TRY(lambda: F.Glob(pattern)):
     yield F.Base(x)
 
 def TRY(fn):
   try:
-    fn()
-  except:
-    pass
+    z = fn()
+    say z
+    return z
+  except as ex:
+    say ex
+    return None
 
 def NowMillis():
     return time.Now().UnixNano() // 1000000
 
-def RevFormat(fpath, tag, ms, suffix, mtime, size, rhkey):
-  if rhkey:
-    xname = redhed.EncryptFilename('%014d.%s.%d.%d' % (ms, suffix, mtime, size), rhkey)
-    return '%s/%s^%s' % (fpath, tag, xname)
-  else:
-    return '%s/%s.%014d.%s.%d.%d' % (fpath, tag, ms, suffix, mtime, size)
+def RevFormat(fpath, tag, ms, suffix, mtime, size):
+  return '%s/%s.%014d.%s.%d.%d' % (fpath, tag, ms, suffix, mtime, size)
 
-PARSE_REV_FILENAME = regexp.MustCompile('^r[.](\w+)[.](\w+)[.]([-0-9]+)[.]([-0-9]+)(.*)$').FindStringSubmatch
+PARSE_REV_FILENAME = regexp.MustCompile('^r?[.]?r?[.]?(\w+)[.](\w+)[.]([-0-9]+)[.]([-0-9]+)(.*)$').FindStringSubmatch
 
 # Extracts bundle name at [2] from path to bundle.
 PARSE_BUNDLE_PATH = regexp.MustCompile('(^|.*/)b[.]([A-Za-z0-9_]+)$').FindStringSubmatch
 
-class AttachedWebkeyBundle:
+class Base:
+  def __init__():
+    .wx = None  # Tested by awiki.
+  def OsReadDir(s):
+    fd = os.Open(F.Join(.bundir, s))
+    with defer fd.Close():
+      return fd.Readdir(-1)
+  def TryOsReadDir(s):
+    say s
+    z = TRY(lambda: .OsReadDir(s))
+    say z
+    return z
+
+  def Link(pw):
+    pass
+  def Unlink():
+    pass
+
+  def ListDirs(d, pw=None):
+    return [x for x, isdir, _, _ in .List4(d, pw) if isdir]
+    #return [x for x, isdir, _, _ in .List4(d, pw) if x.startswith('d.')]
+  def ListFiles(d, pw=None):
+    return [x for x, isdir, _, _ in .List4(d, pw) if not isdir]
+    #return [x for x, isdir, _, _ in .List4(d, pw) if x.startswith('f.')]
+
+
+
+  def __str__():
+    return '%T{%s}' % (self, .bname)
+  def __repr__():
+    return '%T{%s}' % (self, .bname)
+
+class WebkeyBundle(Base):
   def __init__(aphid, bname, topdir='.', suffix, webkeyid, webkey, basekey):
     .aphid = aphid
     must webkeyid
@@ -48,11 +105,6 @@ class AttachedWebkeyBundle:
     .wx = True  # Does use encrypted webpw -- please Link(pw) it.
     .bundir = F.Join(topdir, 'b.%s' % bname)
 
-  def __str__():
-    return 'AttachedWebkeyBundle{%s}' % .bname
-  def __repr__():
-    return 'AttachedWebkeyBundle{%s}' % .bname
-
   def SymKeyFromWebPw(pw):
     # TODO -- extract from multi-pw
     h = sha256.Sum256(pw.strip(' \t\n\r'))
@@ -60,11 +112,15 @@ class AttachedWebkeyBundle:
     return h ^ .webkey  # In rye, xor of byt & byt is byt.
 
   def Link(pw):
+    must pw
     .mu.Lock()
     with defer .mu.Unlock():
+      symkey = .SymKeyFromWebPw(pw)
       if .links == 0:
-        symkey = .SymKeyFromWebPw(pw)
-        .bund = Bundle(.aphid, .bname, .bundir, .suffix, keyid=.basekey, key=symkey)
+        .bund = RedhedBundle(.aphid, .bname, .bundir, .suffix, keyid=.basekey, key=symkey)
+      else:
+        # Don't allow different key
+        must .bund.symkey == symkey
       .links += 1
 
   def UnlinkIfPw(pw):
@@ -77,120 +133,84 @@ class AttachedWebkeyBundle:
       if not .links:
         .bund = None
 
-  def MakeChunkReader(path, pw=None):
-    say path, pw
+  def MakeReader(path, pw, raw, rev=None):
+    must pw or raw
+    say path, pw, raw
     if pw:
       .Link(pw)
-    must .links
+    must .links or raw
     with defer .UnlinkIfPw(pw):
-      return .bund.MakeChunkReader(path, pw=None)
+      return .bund.MakeReader(path, pw=pw, raw=raw, rev=rev)
 
-  def MakeChunkWriter(path, pw, mtime):
+  def MakeChunkReader(path, pw=None, raw=False):
+    must pw or raw
+    say path, pw, raw
+
+    if raw:
+      fd = os.Open(F.Join(.bundir, path))
+      return ChunkReaderAdapter(fd)
+
+    if pw:
+      .Link(pw)
+    must .links or raw
+    with defer .UnlinkIfPw(pw):
+      return .bund.MakeChunkReader(path, pw=pw, raw=raw)
+
+  def MakeChunkWriter(path, pw, mtime, raw):
+    must pw or raw
     say path, pw
     if pw:
       .Link(pw)
-    must .links
+    must .links or raw
     with defer .UnlinkIfPw(pw):
-      return .bund.MakeChunkWriter(path, pw=None, mtime=mtime)
+      return .bund.MakeChunkWriter(path, pw=pw, mtime=mtime, raw=raw)
 
   def Stat3(path, pw=None):
+    must pw
     if pw:
       .Link(pw)
     must .links
     with defer .UnlinkIfPw(pw):
       return .bund.Stat3(path)
   def List4(path, pw=None):
+    must pw
     if pw:
       .Link(pw)
     must .links
     with defer .UnlinkIfPw(pw):
       return .bund.List4(path)
-  def ReadFile(path, rev=None, pw=None):
-    if pw:
-      .Link(pw)
-    must .links
-    with defer .UnlinkIfPw(pw):
-      return .bund.ReadFile(path, rev)
-  def WriteFile(path, data, mtime=-1, rev=None, slave=None, pw=None):
-    if pw:
-      .Link(pw)
-    must .links
-    with defer .UnlinkIfPw(pw):
-      return .bund.WriteFile(path, data, mtime, rev, slave)
-
-  def ListDirs(path):
-    return [name for name, isDir, _, _ in .List4(path) if isDir]
-  def ListFiles(path):
-    return [name for name, isDir, _, _ in .List4(path) if not isDir]
 
   def ReadRawFile(rawpath):
     dont_use_key = None
-    b = Bundle(.aphid, .bname, .bundir, .suffix, keyid=dont_use_key, key=dont_use_key)
+    b = PlainBundle(.aphid, .bname, .bundir, .suffix, keyid=dont_use_key, key=dont_use_key)
     return b.ReadRawFile(rawpath)
   def WriteRawFile(rawpath, data):
     dont_use_key = None
-    b = Bundle(.aphid, .bname, .bundir, .suffix, keyid=dont_use_key, key=dont_use_key)
+    b = PlainBundle(.aphid, .bname, .bundir, .suffix, keyid=dont_use_key, key=dont_use_key)
     return b.WriteRawFile(rawpath, data)
 
-class Bundle:
+
+class PlainBundle(Base):
   def __init__(aphid, bname, bundir, suffix, keyid=None, key=None):
+    say bname, bundir, suffix, keyid, key
     .aphid = aphid
     .bus = aphid.bus
-    say bname, bundir, suffix, keyid, key
     .bname = bname
     .bundir = bundir
     .suffix = suffix
-    if key:
-      must type(key) == byt
-      must len(key) == sym.KEY_BYT_LEN
-      .rhkey = redhed.NewKey(keyid, key)
-      say .rhkey
+    must not key
     .table = table.Table(F.Join(.bundir, 'd.table'))
-    .wikdir = F.Join(.bundir, 'd.wiki')
-    .wx = False  # Does not use encrypted webpw
-
-  def __str__():
-    return 'Bundle{%s}' % .bname
-  def __repr__():
-    return 'Bundle{%s}' % .bname
-
-  # These are NOPs in a regular bundle.
-  def Link(pw):
-    pass
-  def Unlink():
-    pass
-
-  def ListDirs(path):
-    say 'ListDirs', path
-    z = []
-    dp = .dpath(path)
-    fd = os.Open(.bpath(dp))
-    vec = fd.Readdir(-1)
-    say vec
-    for info in vec:
-      say info
-      s = info.Name()
-      if s.startswith('d.'):
-        z.append(s[2:])
-    say z
-    return z
+    os.MkdirAll(bundir, 0777)
 
   def List4(path, pw=None):
     say 'List4', path
     dp = .dpath(path)
-    try:
-      fd = os.Open(.bpath(dp))
-      vec = fd.Readdir(-1)
-    except:
-      return  # from Generator.
-    say vec
+    vec = .TryOsReadDir(dp)
     for info in vec:
       say info
       s = info.Name()
       if s.startswith('d.'):
         yield s[2:], True, -1, -1
-      elif s.startswith('d^'):
-        yield redhed.DecryptFilename(s[2:], .rhkey), True, -1, -1
       elif s.startswith('f.'):
         fd2 = os.Open(.bpath(F.Join(dp, s)))
         vec2 = fd2.Readdir(-1)
@@ -202,37 +222,8 @@ class Bundle:
         rev_name = sorted(revs)[-1] # latest.
         _, name3, suffix3, mtime3, size3, more = PARSE_REV_FILENAME(rev_name)
         yield s[2:], False, int(mtime3), int(size3)
-      elif s.startswith('f^'):
-        fname2 = redhed.DecryptFilename(s[2:], .rhkey)
-        fd2 = os.Open(.bpath(F.Join(dp, s)))
-        vec2 = fd2.Readdir(-1)
-        say fname2, fd2, vec2
-
-        xrevs = [fi.Name() for fi in vec2 if fi.Name().startswith('r^')]
-        revs = ['r.' + redhed.DecryptFilename(x[2:], .rhkey) for x in xrevs]
-
-        if not revs:
-          continue
-        rev_name = sorted(revs)[-1] # latest.
-        _, name3, suffix3, mtime3, size3, more = PARSE_REV_FILENAME(rev_name)
-        yield fname2, False, int(mtime3), int(size3)
       else:
         log.Printf('Ignoring strange file: %q %q', path, s)
-
-  def ListFiles(path):
-    say 'ListFiles', path
-    z = []
-    dp = .dpath(path)
-    fd = os.Open(.bpath(dp))
-    vec = fd.Readdir(-1)
-    for info in vec:
-      say info, info.Name()
-      s = info.Name()
-      if s.startswith('f.'):
-        z.append(s[2:])
-      if s.startswith('f^'):
-        z.append(redhed.DecryptFilename(s[2:], .rhkey))
-    return z
 
   def ListRevs(path):
     z = []
@@ -251,10 +242,10 @@ class Bundle:
     return z
 
   def Stat3(path, pw=None):
-    dpath = .dpath(path)
     try:
-      st = os.Stat(.bpath(dpath))
-      return True, -1, -1
+      # First try it as a directory.
+      st = os.Stat(.bpath(.dpath(path)))
+      return True, -1, -1  # IsDir, mtime -1, length -1.
     except:
       pass
 
@@ -265,26 +256,8 @@ class Bundle:
 
     m = PARSE_REV_FILENAME(rev)
     must m, (m, rev, filename)
-    _, ts, suffix, mtime, size, more = m
-    return False, time.Unix(int(mtime), 0), int(size)
-
-  def findOrConjure(xdir, s, prefix):
-    say xdir, s, prefix
-    try:
-      fd = os.Open(.bpath(xdir))
-    except:
-      pass
-    if fd:
-      for fi in fd.Readdir(-1):
-        name = fi.Name()
-        if len(name) > 15 and name.startswith(prefix):
-          plainname = redhed.DecryptFilename(name[2:], .rhkey)
-          say s, name, plainname
-          if plainname == s:
-            return name
-    z = redhed.EncryptFilename(s, .rhkey)
-    say s, z
-    return '%s%s' % (prefix, z)
+    _, ts, suffix, millis, size, more = m
+    return False, int(millis), int(size)
 
   def bpath(path):
     return F.Join(.bundir, path)
@@ -293,17 +266,7 @@ class Bundle:
     say path
     vec = [str(s) for s in path.split('/') if s]
     say vec
-
-    if .rhkey:
-      xdir = '.'
-      say xdir
-      for s in vec:
-        say s
-        xpart = .findOrConjure(xdir, s, 'd^')
-        xdir = F.Join(xdir, xpart)
-      return xdir
-    else:
-      return F.Join('.', *['d.%s' % s for s in vec])
+    return F.Join('.', *['d.%s' % s for s in vec])
 
   def fpath(path):
     say path
@@ -312,16 +275,205 @@ class Bundle:
     fname = vec.pop()
     dp = .dpath('/'.join(vec))
     say path, dp
-    if .rhkey:
-      xdir = dp
-      xpart = .findOrConjure(xdir, s, 'f^')
-      xfile = F.Join(xdir, xpart)
-      say path, xfile
-      return xfile
+    z = F.Join(dp, 'f.%s' % fname)
+    say path, z
+    return z
+
+  def NewReadSeekerTimeSize(path, rev=None):
+    say path, rev
+    rev, name = .nameOfFileToOpen(path, rev)
+    say name
+    words = name.split('/')[-1].split('.')
+    mtime, size = int(words[2]), int(words[3])
+    say mtime, size, words, name
+    return os.Open(.bpath(name)), mtime, size
+
+  def nameOfFileToOpen(path, rev=None):
+    """Returns rev, raw"""
+    say path
+    fp = .fpath(path)
+    say fp
+    if rev:
+      # TODO -- we need plain vs. z, in case of .rhkey.
+      return F.Join(fp, rev), .bpath(F.Join(fp, rev))
+    tails = sorted([str(f) for f in osTailGlob(F.Join(.bpath(fp), 'r.*'))])
+    raws = [F.Join(.bpath(fp), g) for g in tails]
+
+    say raws
+    if not raws:
+      raise 'no such file: bundle=%s path=%s' % (.bname, path)
+    
+    rev = tails[-1]
+    raw = raws[-1]  # The latest one is last, in sorted order.
+    say path, rev, raw
+    return rev, raw
+
+  def MakeReader(path, pw, raw, rev=None):
+    # Raw doesn't matter, on a Plain Bundle file.
+    must not pw
+    say path, raw, rev
+    if raw:
+      say (.bundir, path)
+      return os.Open(F.Join(.bundir, path))
     else:
-      z = F.Join(dp, 'f.%s' % fname)
-      say path, z
+      rev, filename = .nameOfFileToOpen(path=path, rev=rev)
+      say rev, filename, (path, rev)
+      return os.Open(filename)
+
+  def MakeChunkReader(path, pw, raw=False, rev=None):
+    return ChunkReaderAdapter(.MakeReader(path=path, pw=pw, raw=raw, rev=rev))
+
+  def MakeChunkWriter(path, pw, mtime, raw):
+    must not pw
+    say path, pw
+    cw = ChunkWriter(self, None, path, mtime, raw)
+    say str(cw)
+    return cw
+
+class RedhedBundle(Base):
+  def __init__(aphid, bname, bundir, suffix, keyid=None, key=None):
+    .aphid = aphid
+    .bus = aphid.bus
+    say bname, bundir, suffix, keyid, key
+    .bname = bname
+    .bundir = bundir
+    .suffix = suffix
+    must key
+    must type(key) == byt
+    must len(key) == sym.KEY_BYT_LEN
+    .rhkey = redhed.NewKey(keyid, key)
+    say .rhkey
+    #.table = table.Table(F.Join(.bundir, 'd.table'))
+    os.MkdirAll(bundir, 0777)
+
+  def OsReadDir(s):
+    fd = os.Open(F.Join(.bundir, s))
+    with defer fd.Close():
+      return fd.Readdir(-1)
+  def TryOsReadDir(s):
+    say s
+    z = TRY(lambda: .OsReadDir(s))
+    say z
+    return z
+
+  def List4(path, pw=None):
+    say 'List4', path
+    dp = .dpath(path)
+    vec = .TryOsReadDir(dp)
+    for info in vec:
+      say info
+      x = info.Name()
+      s = redhed.DecryptFilename(x, .rhkey)
+
+      if s.startswith('d.'):
+        yield s[2:], True, -1, -1
+
+      elif s.startswith('f.'):
+        fd2 = os.Open(.bpath(F.Join(dp, x)))
+        vec2 = fd2.Readdir(-1)
+        say s, x, fd2, vec2
+
+        xrevs = [fi.Name() for fi in vec2 if fi.Name().startswith('%') and len(fi.Name()) > 40]
+        revs = []
+        for x in xrevs:
+          rev = redhed.DecryptFilename(x, .rhkey)
+          if rev.startswith('r.'):
+            revs.append(rev)
+        if revs:
+          rev_name = sorted(revs)[-1] # latest.
+          m = PARSE_REV_FILENAME(rev_name)
+          if not m:
+            raise 'Cannot PARSE_REV_FILENAME: ' + repr((rev_name, dp, s))
+          _, name3, suffix3, millis, size3, more = m
+          yield s[2:], False, int(millis), int(size3)
+      else:
+        log.Printf('Ignoring strange file: %q %q', path, s)
+
+  def ListRevs(path):
+    z = []
+    fp = .fpath(path)
+    try:
+      fd = os.Open(.bpath(fp))
+    except:
       return z
+    vec = fd.Readdir(-1)
+    for info in vec:
+      s = info.Name()
+      if s.startswith('%') and len(s) > 40:
+        z.append(redhed.DecryptFilename(s, .rhkey))
+    return sorted(z)
+
+  def Stat3(path, pw=None):
+    dpath = .dpath(path)
+    say path, dpath, pw
+    try:
+      say .bpath(dpath)
+      st = os.Stat(.bpath(dpath))
+      return True, -1, -1
+    except:
+      pass
+
+    say path, dpath, pw
+    rev, filename = .nameOfFileToOpen(path)
+    say rev, filename
+
+    m = PARSE_REV_FILENAME(rev)
+    must m, (m, rev, filename)
+    _, ts, suffix, millis, size, more = m
+    return False, int(millis), int(size)
+
+  def findOrConjure(xdir, s):
+    return redhed.GetEncryptedPath(xdir, s, .rhkey)
+
+    say xdir, s
+    try:
+      say .bpath(xdir)
+      fd = os.Open(.bpath(xdir))
+    except as ex:
+      say 'Could not open', ex
+      pass
+    if fd:
+      for fi in fd.Readdir(-1):
+        name = fi.Name()
+        if len(name) > 40 and name.startswith('%'):
+          plainname = redhed.DecryptFilename(name, .rhkey)
+          say s, name, plainname
+          if plainname == s:
+            say 'return', name
+            return name
+    z = redhed.EncryptFilename(s, .rhkey)
+    say s, z
+    return z
+
+  def bpath(path):
+    return F.Join(.bundir, path)
+
+  def dpath(path):
+    say path
+    vec = [str(s) for s in path.split('/') if s and s != "."]
+    say vec
+
+    top = .bundir
+    say top
+    xpath = ''
+    for s in vec:
+      dpart = 'd.%s' % s
+      say "zyx", top, xpath, dpart
+      xpart = .findOrConjure(top, dpart)
+      top = F.Join(top, xpart)
+      xpath = F.Join(xpath, xpart) if xpath else xpart
+    say "zyxxx", xpath
+    return xpath
+
+  def fpath(path):
+    say path
+    dp = .dpath(F.Dir(path))
+    fname = F.Base(path)
+    fpart = 'f.%s' % fname
+    xpart = .findOrConjure(F.Join(.bundir, dp), fpart)
+    z = F.Join(dp, xpart)
+    say "zyxfff", path, dp, fname, fpart, xpart, z
+    return z
 
   def NewReadSeekerTimeSize(path, rev=None):
     say path, rev
@@ -341,78 +493,6 @@ class Bundle:
       say mtime, size, words, name
       return os.Open(.bpath(name)), mtime, size
 
-  def ReadFile(path, rev=None, pw=None):
-    say path, rev
-    if .rhkey:
-      rev, xname = .nameOfFileToOpen(path, rev)
-      say xname
-      fd = os.Open(.bpath(xname))
-      with defer TRY(lambda: fd.Close()):
-        r = redhed.NewReader(fd, .rhkey)
-        z = ioutil.ReadAll(r)
-        say len(z), z[:80]
-        TRY(lambda: r.Close())
-        return z
-    else:
-      rev, name = .nameOfFileToOpen(path, rev)
-      say name
-      z = ioutil.ReadFile(.bpath(name))
-      say len(z), z[:80]
-      return z
-
-  def ReadRawFile(rawpath):
-    fullpath = F.Join(.bundir, rawpath)
-    say rawpath, fullpath
-    z = ioutil.ReadFile(fullpath)
-    say len(z), z[:80]
-    return z
-
-  def WriteRawFile(rawpath, data):
-    must type(data) == byt
-    say rawpath, len(data)
-    w = atomicFileCreator(self, rawpath)
-    try:
-      w.Write(data)  # Fully.
-      w.Close()
-    except as ex:
-      w.Abort()
-      raise ex
-
-  def WriteFile(path, data, mtime=-1, rev=None, slave=None, pw=None):
-    bb = byt(data)
-    mtime = mtime if mtime>0 else time.Now().Unix()
-    say 'WriteFile', path, len(bb), mtime, rev
-    say 'WriteFile2', .bname, .bundir, .suffix, .rhkey
-    w = atomicFileRevCreator(self, .fpath(path), .suffix, mtime=mtime, size=len(bb), rev=rev, rhkey=.rhkey)
-
-    try:
-      if .rhkey:
-        csum = md5.Sum(bb)
-        say 'redhed.NewWriter', path, mtime, len(bb), csum
-        redw = redhed.NewWriter(w, .rhkey, path, mtime, len(bb), csum)
-        say redw
-        writer = redw
-      else:
-        writer = w
-
-      try:
-        writer.Write(bb)  # Fully.
-      except as ex:
-        if .rhkey:
-          redw.Abort()
-        raise ex
-
-      if .rhkey:
-        redw.Close()
-    except as ex:
-      w.Abort()
-      raise ex
-    rawpath = w.Close()
-
-    if not slave:
-      t = pubsub.Thing(origin=None, key1='WriteRawFile', key2=.bname, props=dict(rawpath=rawpath))
-      .bus.Publish(t)
-
   def nameOfFileToOpen(path, rev=None):
     """Returns rev, raw"""
     say path
@@ -421,37 +501,112 @@ class Bundle:
     if rev:
       # TODO -- we need plain vs. z, in case of .rhkey.
       return F.Join(fp, rev), .bpath(F.Join(fp, rev))
-    if .rhkey:
-      baseglob = TailGlob(F.Join(fp, 'r^*'))
-      say baseglob
-      pairs = sorted([('r.' + redhed.DecryptFilename(x[2:], .rhkey), x) for x in baseglob])
-      say pairs
-    else:
-      tails = sorted([str(f) for f in TailGlob(F.Join(.bpath(fp), 'r.*'))])
-      raws = [F.Join(fp, g) for g in tails]
+
+    must .rhkey
+    say (F.Join(.bundir, fp, '%*'))
+    raws = list(osTailGlob(F.Join(.bundir, fp, '%*')))
+    say raws
+    pairs = sorted([(redhed.DecryptFilename(x, .rhkey), x) for x in raws])
+    say pairs
+
     say raws
     if not raws:
       raise 'no such file: bundle=%s path=%s' % (.bname, path)
-    if .rhkey:
-      raw = F.Join(.bpath(fp), raws[-1][1])  # raw r^* filename is the second in the tuple
-      rev = pairs[-1][0]
-    else:
-      rev = tails[-1]
-      raw = raws[-1]  # The latest one is last, in sorted order.
+
+    raw = F.Join(.bpath(fp), pairs[-1][1])  # raw r^* filename is the second in the tuple
+    say raw, 0
+    rev = pairs[-1][0]
+    say rev, 0
+
     say path, rev, raw
     return rev, raw
 
-  def MakeChunkReader(path, pw, raw):
-    say path, pw
-    z = chunkReader(self, .rhkey, path, raw)
-    say z
-    return z
+  def MakeReader(path, pw, raw, rev=None):
+    if raw:
+      assert not pw
+      assert not rev
+      return os.Open(F.Join(.bundir, path))
+
+    say path, raw, rev
+    rev, filename = .nameOfFileToOpen(path=path, rev=rev)
+    fd = os.Open(filename)
+    return redhed.NewReader(fd, .rhkey)
+
+  def MakeChunkReader(path, pw, raw=False, rev=None):
+    return ChunkReaderAdapter(.MakeReader(path=path, pw=pw, raw=raw, rev=rev))
+
+  def MakeWriter(path, pw=None, mtime=0, raw=None):
+    return .MakeChunkWriter(path, pw=pw, mtime=mtime, raw=raw)
 
   def MakeChunkWriter(path, pw, mtime, raw):
     say path, pw
-    z = chunkWriter(self, .rhkey, path, mtime, raw)
+    z = ChunkWriter(self, .rhkey, path, mtime, raw)
     say z
     return z
+
+class ChunkWriterAdapter:
+  def __init__(w):
+    .w = w
+
+  def WriteChunk(buf):
+    c = .w.Write(byt(buf))
+    say len(buf), c
+    return c
+
+  def Close():
+    say 'Close', .w
+    if .w:
+      say .w
+      .w.Close()
+      .w = None
+
+  def Dispose():
+    say 'Dispose', .w
+    if .w:
+      say .w
+      .w.Close()
+      .w = None
+
+class ChunkReaderAdapter:
+  def __init__(r):
+    .r = r
+
+  def ReadChunk(n):
+    say n
+    bb = .SafeReadChunk(n)
+    say n, len(bb)
+    return bb
+
+  def Close():
+    say 'Close'
+    try:
+      .r.Close()
+      .r = None
+    except:
+      pass
+  def Dispose():
+    say 'Dispose'
+    try:
+      .r.Close()
+      .r = None
+    except:
+      pass
+
+  def SafeReadChunk(n):
+    native:
+      `
+         r := self.M_r.Contents().(i_io.Reader)
+         n := a_n.Int()
+         bb := make([]byte, int(n))
+         cc, err := r.Read(bb)
+         if err == nil {
+           return MkByt(bb[:cc])
+         }
+         if err == io.EOF {
+           return MkByt(bb[:cc])
+         }
+         panic(err)
+      `
 
 class chunkReader:
   def __init__(bund, rhkey, path, raw):
@@ -488,16 +643,57 @@ class chunkReader:
       .fd.Close()
     .fd = None
 
-class chunkWriter:
-  def __init__(bund, rhkey, path, mtime, raw):
-    .fpath = bund.fpath(path)
+class RawChunkWriter:
+  def __init__(bund, path, mtime):
+    say bund, path, mtime
+    .bund = bund
+    .path = path
     .mtime = mtime
-    if raw:
-      .fd = os.Create(F.Join(bund.bundir, path))
+    junk = mkbyt(10)
+    rand.Read(junk)
+    hexjunk = hex.EncodeToString(junk)
+    .tmppath = F.Join(.bund.bundir, 'tmp.%s' % hexjunk)
+    os.MkdirAll(.bund.bundir, 0777)
+    .fd = os.Create(.tmppath)
+    .w = bufio.NewWriter(.fd)
+  def WriteChunk(bb):
+    c = .w.Write(bb)
+    must c == len(bb)
+  def Close():
+    .w.Flush()
+    .fd.Close()
+    target = F.Join(.bund.bundir, .path)
+    os.MkdirAll(F.Dir(target), 0777)
+    os.Rename(.tmppath, target)
+    if .mtime:
+      t = time.Unix(0, .mtime * 1000000)  # Nano to Millis
+    else:
+      t = time.Now()
+    os.Chtimes(target, time.Now(), t)
+native:
+  `
+    func (self *C_RawChunkWriter) Write(p []byte) (n int, err error) {
+      return self.M_w.Contents().(io.Writer).Write(p)
+    }
+  `
+
+class ChunkWriter:
+  def __init__(bund, rhkey, path, mtime, raw):
+    say path, mtime, raw
+    must not strings.HasPrefix(path, '%')
+    .bund = bund
+    .rhkey = rhkey
+    .path = path
+    .mtime = mtime
+    .raw = raw
+    if .raw:
+      .tmp = F.Join(.bund.bundir, 'tmp.ChunkWriter.%d' % TheSerial.Take())
+      os.MkdirAll(F.Dir(.tmp), 0777)
+      .fd = os.Create(.tmp)
       .w = bufio.NewWriter(.fd)
     else:
       .fd = None
-      .w = redhed.NewStreamWriter(bund.bundir, rhkey, mtime, .fnGetName)
+      .w = redhed.NewStreamWriter(.bund.bundir, rhkey, mtime, .fnGetName)
 
   def WriteChunk(bb):
     while bb:
@@ -507,12 +703,32 @@ class chunkWriter:
       must c > 0
       bb = bb[c:]
   def Close():
-    say 'Close'
-    .w.Close()
-    .w = None
-    if .fd:
+    if .raw:
+      .w.Flush()
       .fd.Close()
+
+      target = F.Join(.bund.bundir, .path)
+      os.MkdirAll(F.Dir(target), 0777)
+      os.Rename(.tmp, target)
+      .RawDest = .path
+    else:
+      say str(.w)
+      say .w
+      say str(.w)
+      .w.Close()
+      .RawDest = .w.RawDest
+    say .raw, .path, .RawDest
+    must .RawDest
+
+    .w = None
     .fd = None
+    .Publish()
+
+  def Publish():
+    if not .raw:
+      t = pubsub.Thing(origin=None, key1='WriteFile', key2=.bund.bname, props=dict(rawpath=.RawDest, DEBUG_path=.path))
+      .bund.bus.Publish(t)
+
   def Dispose():
     say 'Dispose'
     if .fd:
@@ -523,87 +739,50 @@ class chunkWriter:
     .w = None
 
   def fnGetName(w):
-    now = int(time.Now().UnixNano() * 1000000)  # timestamp is now, even if mtime is old,
-    path = P.Join(.fpath, 'r.%014d._.%d.%d.%s' % (now, w.MTimeMillis, w.Size, hex.EncodeToString(w.Hash[:9])))
+    say .bund.bundir, .path
+    #if .bund.rhkey:
+    #  .fpath = .bund.fpath(.path)
+    #else:
+    #  .fpath = .bund.fpath(.path)
+    try:
+      vec = .path.split('/')
+      say vec
+      f = vec.pop()
+      say vec, f
+      dpath = F.Join(F.Join(*[('d.%s' % x) for x in vec]), 'f.%s' % f)
+      say dpath
+      now = int(time.Now().UnixNano() / 1000000)  # timestamp is now, even if mtime is old,
+      say now
+      path = P.Join(dpath, 'r.%014d._.%d.%d.%s' % (now, w.MTimeMillis, w.Size, hex.EncodeToString(w.Hash[:9])))
+      say path
+      say 111
+    except as ex:
+      say 222
+      say ex
+    say 333, path
+    #say .path, .fpath, dpath, path
+    #say .path, path
     return path
 
-class atomicFileCreator:
-  def __init__(bund, dest):
-    say bund, dest
-    .bund = bund
-    .dest = dest
-    d = F.Dir(.dest)
-    b = F.Base(.dest)
-
-    .tmp = F.Join(d, 'tmp.' + b)
-    say 'os.Create', .tmp
-    os.MkdirAll(.bund.bpath(d), DIR_PERM)
-    .fd = os.Create(.bund.bpath(.tmp))
-    .bw = bufio.NewWriter(.fd)
-
-  def Flush():
-    return .bw.Flush()
-  def Write(bb):
-    say 'Write', len(bb)
-    return .bw.Write(bb)  # bufio writes fully, or error.
-  def WriteString(s):
-    say 'WriteString', len(s)
-    return .bw.WriteString(s)
-
-  def Abort():
-    try:
-      say 'ABORTING ============='
-      .fd.Close()
-    except:
-      pass
-    say 'Abort: os.Remove', .tmp
-    os.Remove(.bund.bpath(.tmp))
-    .bw = None
-    .fd = None
-
-  def Close():
-    say 'CLOSING ============='
-    .bw.Flush()
-    .fd.Close()
-
-    say 'os.Rename', .tmp, .dest, 'RELATIVE TO', .bund.bpath('.')
-    os.Rename(.bund.bpath(.tmp), .bund.bpath(.dest))
-    return .dest
-
-class atomicFileRevCreator(atomicFileCreator):
-  def __init__(bund, fpath, suffix, mtime, size, rev, rhkey):
-    .bund = bund
-    .fpath = fpath
-    .suffix = suffix
-    .mtime = mtime
-    .size = size
-    .rhkey = rhkey
-    .rev = rev
-
-    ms = NowMillis()
-    if not .mtime:
-      .mtime = ms // 1000
-
-    if .rev:
-      dest = '%s/%s' % (.fpath, .rev)
-    else:
-      ms = NowMillis()
-      dest = RevFormat(.fpath, 'r', ms, .suffix, .mtime, .size, .rhkey)
-
-    super.__init__(bund, dest)
-
 native:
-  'func (self *C_atomicFileCreator) WriteAt(p []byte, off int64) (n int, err error) {'
-  '  _ = off'
-  '  bb := MkByt(p)'
-  '  self.M_1_Write(bb)'
-  '  return  len(p), nil'
-  '}'
+  `
+    func (self *C_ChunkWriter) Write(p []byte) (n int, err error) {
+      return self.M_w.Contents().(io.Writer).Write(p)
+    }
+  `
 
-  'func (self *C_atomicFileCreator) Write(p []byte) (n int, err error) {'
-  '  bb := MkByt(p)'
-  '  self.M_1_Write(bb)'
-  '  return  len(p), nil'
-  '}'
+
+def CopyChunks(w, r):
+  say str(w), str(r)
+  try:
+    while True:
+      x = r.ReadChunk(256*256)
+      say len(x)
+      if not x:
+        return
+      w.WriteChunk(x)
+  except as ex:
+    say ex
+    must strings.Contains(ex, 'EOF'), ex
 
 pass

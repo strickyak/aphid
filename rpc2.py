@@ -186,7 +186,7 @@ class Client:
         break
 
       # Allocate a serial, and remember the request.
-      req.serial = (ProcessNonce, TheSerial.Next())
+      req.serial = (ProcessNonce, TheSerial.Take())
       .requests[req.serial] = req
 
       pay = rye_pickle( (req.serial, req.proc, req.args, req.kw) )
@@ -207,7 +207,7 @@ class Client:
 
 
   def Call(proc, *args, **kw):
-    say 'CALLING', proc, ArgsSummary(args, kw)
+    say 'SUN CALLING', proc, ArgsSummary(args, kw)
     req = Request(proc, args, kw)
     .inQ.Put(req)
     return Promise(req.replyQ)
@@ -225,7 +225,7 @@ class Promise:
 
   def Wait():
     result, err = .chan.Take()
-    say AtMost(80, result), AtMost(80, err)
+    say 'SUN', AtMost(80, result), AtMost(80, err)
     if err:
       if str(err) == 'EOF':
         raise io.EOF

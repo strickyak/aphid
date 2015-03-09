@@ -39,7 +39,7 @@ def main(args):
     must key
     must key.b_sym
     must key.base
-    bundle.Bundles[bname] = bundle.AttachedWebkeyBundle(
+    bundle.Bundles[bname] = bundle.WebkeyBundle(
         bname, topdir=FLAG_BUNDLE_TOPDIR.X, suffix='0',
         webkeyid=v, webkey=key.b_sym, basekey=key.base)
 

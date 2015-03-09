@@ -69,15 +69,15 @@ class Aphid:
       bundir = F.Join(.f_topdir, 'b.%s' % bname)
       switch bx['kind']:
         case 'plain':
-          .bundles[bname] = bundle.Bundle(self, bname, bundir, suffix='0')
+          .bundles[bname] = bundle.PlainBundle(self, bname=bname, bundir=bundir, suffix='0')
         case 'sym':
           keyid = bx['key']
           key = .ring[keyid]
-          .bundles[bname] = bundle.Bundle(self, bname, bundir, suffix='0', keyid=keyid, key=key.b_sym)
+          .bundles[bname] = bundle.RedhedBundle(self, bname=bname, bundir=bundir, suffix='0', keyid=keyid, key=key.b_sym)
         case 'websym':
           keyid = bx['key']
           key = .ring[keyid]
-          .bundles[bname] = bundle.AttachedWebkeyBundle(
+          .bundles[bname] = bundle.WebkeyBundle(
               self, bname, topdir=.f_topdir, suffix='0',
               webkeyid=keyid, webkey=key.b_sym, basekey=key.base)
 
@@ -87,7 +87,7 @@ class Aphid:
     .zones = {}
     for zname, zx in .x_zones.items():
       bund = .bundles[zx['bundle']]
-      body = bund.ReadFile(zx['zonefile'])
+      body = bundle.ReadFile(bund, zx['zonefile'])
       must body
       azoner.ParseBody(.zones, body, zname, .f_ip)
 

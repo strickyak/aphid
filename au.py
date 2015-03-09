@@ -21,24 +21,34 @@ def BigLocalDir(_):
 
   say 'filepath.Walk(', J(DIR.X, BUND.X),' fn)'
   filepath.Walk(J(DIR.X, BUND.X), fn)
+  i = 0
   for k, v in sorted(z.items()):
     print k, v, '[%s]local' % J(DIR.X, BUND.X)
+    i += 1
+  say 'Listed %d files' % i
   return z
 
 def BigRemoteDir(_):
+  say 'HHHHHHHHHHHHHHHHHHHHELLO'
   z = {}
   for name, isDir, mtime, sz in FindFiles1('/'):
     if not isDir:
       name = name.lstrip('/')
       z[name] = (mtime, sz)
+  i = 0
   for k, v in sorted(z.items()):
     print k, v, '[%s]remote' % BUND.X
+    i += 1
+  say 'Listed %d files' % i
   return z
 
 def BigDirs():
-  lo = go BigLocalDir([])
-  re = go BigRemoteDir([])
-  return lo.Wait(), re.Wait()
+  #lo = go BigLocalDir([])
+  #re = go BigRemoteDir([])
+  #return lo.Wait(), re.Wait()
+  lo = BigLocalDir([])
+  re = BigRemoteDir([])
+  return lo, re
 
 def NewPull(args):
   lo, re = BigDirs()
@@ -68,6 +78,18 @@ def NewPush(args):
     say 'WRITING', k, mtime, size, v2
     jname = J(DIR.X, BUND.X, k)
     client.RWriteFile(BUND.X, k, ioutil.ReadFile(jname), mtime=mtime, pw=PW.X)
+
+def SPull(args):
+  dLocal, dRemote = BigDirs()  # Dicts mapping path to (mtime, size)
+
+  for path, remoteStats in sorted(dRemote.items()):
+    mtime, size = remoteStats
+    localMTimeSize = dLocal.get(path)
+    if localMTimeSize == remoteStats:
+      continue  # Don't copy if mtime & size are same.
+      
+    say 'READING', path, mtime, size, localMTimeSize
+    pullFile(path, J(DIR.X, BUND.X, path), mtime=mtime)
 
 def SPush(args):
   dLocal, dRemote = BigDirs()  # Dicts mapping path to (mtime, size)
@@ -119,12 +141,16 @@ def Cat(args):
     b = client.RReadFile(BUND.X, name, pw=PW.X)
     io.Copy(os.Stdout, bytes.NewReader(b))
 
-def pullFile(src, dest):
+def pullFile(src, dest, mtime=None):
     r = client.RemoteOpen(BUND.X, src, pw=PW.X, raw=False)
+    os.MkdirAll(filepath.Dir(dest), 0777)
     w = os.Create(dest)
     io.Copy(w, r)
     w.Close()
     r.Close()
+    now = time.Now()
+    mtime = mtime if mtime else now 
+    os.Chtimes(dest, now, time.Unix(0, 1000000*mtime))
   
 def pushFile(src, dest, mtime):
     r = os.Open(src)
@@ -135,7 +161,7 @@ def pushFile(src, dest, mtime):
 
 def SCat(args):
   for name in args:
-    pullFile(name, '/dev/stdout')
+    pullFile(name, '/dev/stdout', mtime=None)
 
 def RawCat(args):
   for rawpath in args:
@@ -177,7 +203,7 @@ Ensemble = {
     'rawcat': RawCat,
     'rawwrite': RawWrite,
     'SWrite': SWrite,
-    #'SPull': SPull,
+    'SPull': SPull,
     'SPush': SPush,
     'pull': Pull,
     'push': Push,
@@ -215,7 +241,8 @@ def main(args):
     A.Fatal("No such command: %q" % cmd)
     os.Exit(11)
 
+  print >>os.Stderr, "\n%s -- START -- %s -- %s\n" % (f, cmd, args)
   f(args)
-  say EXIT.X
+  print >>os.Stderr, "\n%s -- OKAY -- %s -- %s\n" % (f, cmd, args)
   if EXIT.X:
     A.Exit(0)

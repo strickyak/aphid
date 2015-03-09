@@ -1,4 +1,4 @@
-from go import os, time
+from go import bytes, io, os, time
 from go import path/filepath as F
 
 from . import A, bundle, flag, hanger, keyring, pubsub, rpc2
@@ -56,7 +56,7 @@ native:
       }
       return
     }
-    func (self *C_idRemoteReader) Close(p []byte) (err error) {
+    func (self *C_idRemoteReader) Close() (err error) {
       self.M_0_Close()
       return nil
     }
@@ -65,12 +65,14 @@ native:
 class idRemoteWriter(idRemoteBase):
   def __init__(cli, id):
     super.__init__(cli, id)
+    say .cli, .id, .seq
   def WriteChunk(bb):
-    say len(bb)
+    say .cli, .id, .seq, len(bb)
     with defer .Advance():
       .cli.RInvoke(.id, .seq, 'WriteChunk', bb).Wait()
       say 'did .cli.RInvoke', .id, .seq
   def Close():
+    say .cli, .id, .seq
     with defer .Advance():
       .cli.RInvoke(.id, .seq, 'Close').Wait()
 native:
@@ -95,20 +97,23 @@ class RBundleClient(rpc2.Client):
     return .Call("XPing").Wait()
 
   def RInvoke(id, seq, msg, *args, **kw):
-    return .Call("XInvoke", id, seq, msg, *args, **kw)
+    say 'SUN', id, seq, msg
+    z = .Call("XInvoke", id, seq, msg, *args, **kw)
+    say 'SUN', z
+    return z
 
   def RemoteOpen(bund, path, pw, raw):
     id = .RMakeChunkReader(bund=bund, path=path, pw=pw, raw=raw).Wait()
-    say id
+    say 'SUN', id
     z = idRemoteReader(cli=self, id=id)
-    say z
+    say 'SUN', z
     return z
 
   def RemoteCreate(bund, path, pw, mtime, raw):
     id = .RMakeChunkWriter(bund=bund, path=path, pw=pw, mtime=mtime, raw=raw).Wait()
-    say id
+    say 'SUN', id
     z = idRemoteWriter(cli=self, id=id)
-    say z
+    say 'SUN', z
     return z
 
   def RMakeChunkReader(bund, path, pw, raw):
@@ -123,14 +128,15 @@ class RBundleClient(rpc2.Client):
   def RList4(bund, path, pw=None):
     return .Call("XList4", bund=bund, path=path, pw=pw).Wait()
 
-  def RReadFile(bund, path, rev=None, pw=None):
-    return .Call("XReadFile", bund=bund, path=path, rev=rev, pw=pw).Wait()
-
   def RReadRawFile(bund, rawpath):
     return .Call("XReadRawFile", bund=bund, rawpath=rawpath).Wait()
 
   def RWriteFile(bund, path, data, mtime=-1, rev=None, slave=None, pw=None):
-    return .Call("XWriteFile", bund, path, data, mtime, rev, slave, pw=pw).Wait()
+    must not rev
+    w = .RemoteCreate(bund, path, pw=pw, mtime=mtime, raw=False)
+    r = bytes.NewReader(byt(data))
+    io.Copy(w, r)
+    w.Close()
 
   def RWriteRawFile(bund, rawpath, data):
     return .Call("XWriteRawFile", bund, rawpath=rawpath, data=data).Wait()
@@ -151,9 +157,9 @@ class RBundleServer(rpc2.Server):
     .Register('XMakeChunkWriter', .SMakeChunkWriter)
     .Register('XStat3', .SStat3)
     .Register('XList4', .SList4)
-    .Register('XReadFile', .SReadFile)
+    #.Register('XReadFile', .SReadFile)
     .Register('XReadRawFile', .SReadRawFile)
-    .Register('XWriteFile', .SWriteFile)
+    #.Register('XWriteFile', .SWriteFile)
     .Register('XWriteRawFile', .SWriteRawFile)
     .Register('XPublish', .SPublish)
 
@@ -169,7 +175,7 @@ class RBundleServer(rpc2.Server):
   def SMakeChunkReader(bund, path, pw, raw):
     say bund, path, pw
     cr = .bundles[bund].MakeChunkReader(path=path, pw=pw, raw=raw)
-    say cr
+    say str(cr)
     id_r = TheHanger.Hang(cr)
     say id_r
     return id_r
@@ -177,7 +183,7 @@ class RBundleServer(rpc2.Server):
   def SMakeChunkWriter(bund, path, pw, mtime, raw):
     say bund, path, pw
     cw = .bundles[bund].MakeChunkWriter(path=path, pw=pw, mtime=mtime, raw=raw)
-    say cw
+    say str(cw)
     id_w = TheHanger.Hang(cw)
     say id_w
     return id_w
@@ -190,17 +196,9 @@ class RBundleServer(rpc2.Server):
     say bund, path
     return list(.bundles[bund].List4(path=path, pw=pw))
 
-  def SReadFile(bund, path, rev, pw=None):
-    say bund, path, rev
-    return .bundles[bund].ReadFile(path=path, rev=rev, pw=pw)
-
   def SReadRawFile(bund, rawpath):
     say bund, rawpath
     return .bundles[bund].ReadRawFile(rawpath=rawpath)
-
-  def SWriteFile(bund, path, data, mtime, rev=None, slave=None, pw=None):
-    say bund, path, mtime, len(data), rev, slave
-    return .bundles[bund].WriteFile(path=path, data=data, mtime=mtime, rev=rev, slave=slave, pw=pw)
 
   def SWriteRawFile(bund, rawpath, data):
     say bund, rawpath, len(data)

@@ -35,45 +35,6 @@ def FileExists(filename):
   except:
     return False
 
-#class WebDir:
-#  def __init__(top):
-#    .top = top
-#
-#  def Handle4(w, r, host, path):
-#    filename = filepath.Join(.top, path)
-#    try:
-#      if DirExists(filename):
-#        if path[-1] != '/':
-#          http.Redirect(w, r, r.URL.Path + '/', http.StatusMovedPermanently)
-#          return
-#
-#      http.ServeFile(w, r, filename)
-#      return
-#
-#      fd = os.Open(filename)
-#      with defer fd.Close():
-#        st = fd.Stat()
-#        if st.IsDir():
-#          if path[-1] != '/':
-#            # TODO -- needs to correct original path.
-#            http.Redirect(w, r, path + '/', http.StatusMovedPermanently)
-#          else:
-#            index_path = filepath.Join(filename, 'index.html')
-#            if FileExists(index_path):
-#              say "SERVING INDEX", index_path
-#              fd = os.Open(index_path)
-#              with defer fd.Close():
-#                http.ServeContent(w, r, index_path, st.ModTime(), fd)
-#            else:
-#              EmitDir(w, r, fd, '/', path)
-#        else:
-#          say "SERVING FILE", filename
-#          http.ServeContent(w, r, filename, st.ModTime(), fd)
-#
-#    except as ex:
-#      w.Header().Set('Content-Type', 'text/plain')
-#      w.Write( 'Exception:\n%s\n' % ex)
-
 STRIP_WEB = regexp.MustCompile('^/web($|/.*$)').FindStringSubmatch
 def StripWeb(s):
   m = STRIP_WEB(s)
@@ -88,6 +49,7 @@ class BundDir:
 
   def Handle2(w, r):
     host, path = util.HostAndPath(r)
+    say host, path
     return .Handle4(w, r, host, path)
   def Handle4(w, r, host, path):
     doDir = path.endswith('/')
@@ -125,33 +87,4 @@ class BundDir:
     except as ex:
       w.Header().Set('Content-Type', 'text/plain')
       w.Write( 'Exception:\n%s\n' % ex)
-
-
-#def ProcessTriples():
-#  for name, d in flag.Triples.items():
-#    for k, v in d.items():
-#      if name == 'alias':
-#        h = HostHandlers.get(v)
-#        must h, 'Host %q not handled, in alias %q' % (v, k)
-#        HostHandlers[k] = h
-#      elif name == 'wiki':
-#        HostHandlers[k] = awiki.AWikiMaster(v).Handle4
-#      #elif name == 'webdir':
-#      #  HostHandlers[k] = WebDir(v).Handle4
-#      elif name == 'web':
-#        HostHandlers[k] = BundDir(v).Handle4
-#      else:
-#        pass
-  
-# HostHandlers = dict()
-
-#def main(argv):
-#  argv = flag.Munch(argv)
-#  for k, v in flag.Triples.get('bundle', {}).items():
-#    bundle.LoadBundle(k)
-#
-#  RegisterDirectories(argv)
-#  ProcessTriples()
-#
-#  http.HandleFunc('/', RoutingFunc)
-#  http.ListenAndServe(BIND.X , None)
+pass
