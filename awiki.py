@@ -59,7 +59,12 @@ class AWikiMaster:
 
   def Handle2(w, r):
     host, path = util.HostAndPath(r)
-    return .Handle4(w, r, host, path)
+    say host, path
+    try:
+      return .Handle4(w, r, host, path)
+    except as ex:
+      say ex
+      raise ex
   def Handle4(w, r, host, path):
     if path == '/favicon.ico':
       return
@@ -116,6 +121,7 @@ def VerbDemo(w, r, m, wp):
       FootBox = wp.d['Object'],
       Debug = m.bund.ListFiles('wiki')
   )
+  say d
   EmitHtml(w, d, atemplate.Demo)
 
 def VerbList(w, r, m, wp):
