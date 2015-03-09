@@ -26,25 +26,25 @@ def Sleep(secs):
   say 'After', secs, micros, NowMillis()
 
 def Fatal(f, *v):
-  log.Printf("F+ " + f, *v)
+  log.Printf("F/ " + f, *v)
   Exit(13)
 
 def Err(f, *v):
-  log.Printf("E+ " + f, *v)
+  log.Printf("E/ " + f, *v)
 
 def Warn(f, *v):
-  log.Printf("W+ " + f, *v)
+  log.Printf("W/ " + f, *v)
 
 def Throw(f, *v):
   err = fmt.Sprintf(f, *v)
-  log.Printf("T+ %s", err)
+  log.Printf("T/ %s", err)
   raise err
 
 def Note(f, *v):
-  log.Printf("N+ " + f, *v)
+  log.Printf("N/ " + f, *v)
 
 def Info(f, *v):
-  log.Printf("I+ " + f, *v)
+  log.Printf("I/ " + f, *v)
 
 Status = 0
 def SetExitStatus(status):
