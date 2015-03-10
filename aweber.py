@@ -2,7 +2,7 @@ from go import bytes, html, os, regexp
 from go import net/http
 from go import path/filepath
 
-from . import basic, bundle, flag
+from . import adapt, basic, bundle, flag
 from . import awiki, util
 
 BIND = flag.String('bind_addr', ':8080', 'Bind to this address to server web.')
@@ -81,8 +81,8 @@ class BundDir:
           if isDir:
             http.Redirect(w, r, path + '/', http.StatusMovedPermanently)
 
-          br = bytes.NewReader(.bund.ReadFile(wpath))  # TODO, avoid loading in memory?
-          http.ServeContent(w, r, path, modTime, br)
+          br = .bund.MakeReader(wpath, pw=pw, raw=False, rev=None)
+          http.ServeContent(w, r, path, adapt.UnixToTime(modTime), br)
 
     except as ex:
       w.Header().Set('Content-Type', 'text/plain')

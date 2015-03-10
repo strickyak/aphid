@@ -79,12 +79,17 @@ class Base:
 
   def ListDirs(d, pw=None):
     return [x for x, isdir, _, _ in .List4(d, pw) if isdir]
-    #return [x for x, isdir, _, _ in .List4(d, pw) if x.startswith('d.')]
   def ListFiles(d, pw=None):
     return [x for x, isdir, _, _ in .List4(d, pw) if not isdir]
-    #return [x for x, isdir, _, _ in .List4(d, pw) if x.startswith('f.')]
 
+  def ReadFile(path, pw=None, raw=None, rev=None):
+    return ReadFile(self, path=path, pw=pw, raw=raw, rev=rev)
 
+  def WriteFile(path, body, pw=None, mtime=0, raw=None):
+    return WriteFile(self, path, body, pw=pw, mtime=mtime, raw=raw)
+
+  def MakeWriter(path, pw=None, mtime=0, raw=None):
+    return .MakeChunkWriter(path, pw=pw, mtime=mtime, raw=raw)
 
   def __str__():
     return '%T{%s}' % (self, .bname)
@@ -534,9 +539,6 @@ class RedhedBundle(Base):
 
   def MakeChunkReader(path, pw, raw=False, rev=None):
     return ChunkReaderAdapter(.MakeReader(path=path, pw=pw, raw=raw, rev=rev))
-
-  def MakeWriter(path, pw=None, mtime=0, raw=None):
-    return .MakeChunkWriter(path, pw=pw, mtime=mtime, raw=raw)
 
   def MakeChunkWriter(path, pw, mtime, raw):
     say path, pw
