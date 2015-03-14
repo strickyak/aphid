@@ -57,3 +57,4 @@ def Exit(status):
     Note('Exiting with status %d', Status)
   os.Exit(Status)
   raise 'NOTREACHED'
+
