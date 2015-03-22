@@ -695,7 +695,7 @@ class ChunkWriter:
       .w = bufio.NewWriter(.fd)
     else:
       .fd = None
-      .w = redhed.NewStreamWriter(.bund.bundir, rhkey, mtime, .fnGetName)
+      .w = redhed.NewStreamWriter(.bund.bundir, rhkey, redhed.Magic2, mtime, .fnGetName)
 
   def WriteChunk(bb):
     while bb:
