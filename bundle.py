@@ -29,11 +29,12 @@ def WriteFile(bund, path, body, pw=None, mtime=0, raw=None):
   w.Close()
   r.Close()
 
-def ListDirs(b, d, pw):
-  return [x[2:] for x in b.List4(d, pw) if x.startswith('d.')]
+def ListDirs(b, d, pw=None):
+  return list([x for x, isDir, _, _ in b.List4(d, pw) if isDir])
 
-def ListFiles(b, d, pw):
-  return [x[2:] for x in b.List4(d, pw) if x.startswith('f.')]
+def ListFiles(b, d, pw=None):
+  say list([x for x, isDir, _, _ in b.List4(d, pw) if not isDir])
+  return list([x for x, isDir, _, _ in b.List4(d, pw) if not isDir])
 
 def osTailGlob(pattern):
   for x in TRY(lambda: F.Glob(pattern)):
@@ -215,6 +216,7 @@ class PlainBundle(Base):
       say info
       s = info.Name()
       if s.startswith('d.'):
+        say s[2:], True, -1, -1
         yield s[2:], True, -1, -1
       elif s.startswith('f.'):
         fd2 = os.Open(.bpath(F.Join(dp, s)))
@@ -226,6 +228,7 @@ class PlainBundle(Base):
           continue
         rev_name = sorted(revs)[-1] # latest.
         _, name3, suffix3, mtime3, size3, more = PARSE_REV_FILENAME(rev_name)
+        say s[2:], False, int(mtime3), int(size3)
         yield s[2:], False, int(mtime3), int(size3)
       else:
         log.Printf('Ignoring strange file: %q %q', path, s)
@@ -289,9 +292,9 @@ class PlainBundle(Base):
     rev, name = .nameOfFileToOpen(path, rev)
     say name
     words = name.split('/')[-1].split('.')
-    mtime, size = int(words[2]), int(words[3])
+    mtime, size = int(words[3]), int(words[4])
     say mtime, size, words, name
-    return os.Open(.bpath(name)), mtime, size
+    return os.Open(name), mtime, size
 
   def nameOfFileToOpen(path, rev=None):
     """Returns rev, raw"""
