@@ -58,7 +58,7 @@ class AWikiMaster:
       .users = data.Eval(BASIC.X)
 
   def Handle2(w, r):
-    host, extra, path = util.HostAndPath(r)
+    host, extra, path, root = util.HostExtraPathRoot(r)
     say host, path
     try:
       return .Handle4(w, r, host, path)

@@ -2,13 +2,12 @@ from go import regexp, reflect, sort, html/template
 
 MATCH_HOST_IN_PATH = regexp.MustCompile('/@([-A-Za-z0-9.]+)(@\\w+)?($|/.*$)').FindStringSubmatch
 
-def HostAndPath(r):
-  host = r.Host
+def HostExtraPathRoot(r):
   path = r.URL.Path
   m = MATCH_HOST_IN_PATH(path)
   if m:
-    return m[1], m[2], m[3]
-  return host, '', path
+    return m[1], m[2], m[3], '/@%s%s' % (m[1], m[2])
+  return r.Host, '', path, ''
 
 def TemplateFuncs():
   native:
@@ -38,9 +37,9 @@ def NativeExecuteTemplate(t, w, name, d):
          var val interface{} = v.Contents()
 
          println(fmt.Sprintf("afugio::NativeExecuteTemplate [%q] == <<<%#v>>>", k, val))
-         println(fmt.Sprintf("afugio::NativeExecuteTemplate [%q] == <<<%#v>>>", k, i_reflect.ValueOf(val)))
-         println(fmt.Sprintf("afugio::NativeExecuteTemplate [%q] == <<<%#v>>>", k, i_reflect.ValueOf(val).Type()))
-         println(fmt.Sprintf("afugio::NativeExecuteTemplate [%q] == <<<%#v>>>", k, i_reflect.ValueOf(val).Type().String()))
+         //println(fmt.Sprintf("afugio::NativeExecuteTemplate [%q] == <<<%#v>>>", k, i_reflect.ValueOf(val)))
+         //println(fmt.Sprintf("afugio::NativeExecuteTemplate [%q] == <<<%#v>>>", k, i_reflect.ValueOf(val).Type()))
+         //println(fmt.Sprintf("afugio::NativeExecuteTemplate [%q] == <<<%#v>>>", k, i_reflect.ValueOf(val).Type().String()))
 
          z[k] = val
       }

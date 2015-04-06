@@ -83,11 +83,11 @@ class Base:
   def ListFiles(d, pw=None):
     return [x for x, isdir, _, _ in .List4(d, pw) if not isdir]
 
-  def ReadFile(path, pw=None, raw=None, rev=None):
-    return ReadFile(self, path=path, pw=pw, raw=raw, rev=rev)
-
-  def WriteFile(path, body, pw=None, mtime=0, raw=None):
-    return WriteFile(self, path, body, pw=pw, mtime=mtime, raw=raw)
+  #def ReadFile(path, pw=None, raw=None, rev=None):
+  #  return ReadFile(self, path=path, pw=pw, raw=raw, rev=rev)
+  #
+  #def WriteFile(path, body, pw=None, mtime=0, raw=None):
+  #  return WriteFile(self, path, body, pw=pw, mtime=mtime, raw=raw)
 
   def MakeWriter(path, pw=None, mtime=0, raw=None):
     return .MakeChunkWriter(path, pw=pw, mtime=mtime, raw=raw)
@@ -684,6 +684,7 @@ native:
 
 class ChunkWriter:
   def __init__(bund, rhkey, path, mtime, raw):
+    path = P.Clean(P.Join('.', path))
     say path, mtime, raw
     must not strings.HasPrefix(path, '%')
     .bund = bund

@@ -13,5 +13,5 @@ import (
 )
 
 import (
-	"io"
+	_ "io"
 )
