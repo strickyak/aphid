@@ -1,5 +1,5 @@
 from . import A, flag
-from . import among, aweber, awiki, azoner, afugio
+from . import among, aweber, awiki, awedit, azoner, afugio
 from . import bundle, keyring, pubsub, rbundle
 
 from go import net/http, time
@@ -104,7 +104,7 @@ class Aphid:
       obj = aweber.BundDir(self, bname, bund=bund)
       .mux.HandleFunc('%s/' % wname, obj.Handle2)
       .mux.HandleFunc('/@%s/' % wname, obj.Handle2)
-      .mux.HandleFunc('/@%s@' % wname, obj.Handle2)
+      .mux.HandleFunc('/@%s@e' % wname, awedit.Master(self, bname, bund=bund).Handle2)
     # Add wikis.
     for wname, wx in .x_wikis.items():
       bname = wx['bundle']
@@ -112,7 +112,7 @@ class Aphid:
       obj = awiki.AWikiMaster(self, bname, bund=bund)
       .mux.HandleFunc('%s/' % wname, obj.Handle2)
       .mux.HandleFunc('/@%s/' % wname, obj.Handle2)
-      .mux.HandleFunc('/@%s@' % wname, obj.Handle2)
+      .mux.HandleFunc('/@%s@e' % wname, awedit.Master(self, bname, bund=bund).Handle2)
     # Add fugio.
     for wname, wx in .x_fugio.items():
       bname = wx['bundle']
@@ -120,7 +120,8 @@ class Aphid:
       obj = afugio.AFugioMaster(self, bname, bund=bund)
       .mux.HandleFunc('%s/' % wname, obj.Handle2)
       .mux.HandleFunc('/@%s/' % wname, obj.Handle2)
-      .mux.HandleFunc('/@%s@' % wname, obj.Handle2)
+      .mux.HandleFunc('/@%s@e/' % wname, awedit.Master(self, bname, bund=bund).Handle2)
+      say 'WEDIT', '/@%s@e/' % wname
     # Misc
     .mux.HandleFunc('/@@quit', lambda w, r: .quit.Put(1))
     # Go Serve.

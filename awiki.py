@@ -58,7 +58,7 @@ class AWikiMaster:
       .users = data.Eval(BASIC.X)
 
   def Handle2(w, r):
-    host, path = util.HostAndPath(r)
+    host, extra, path = util.HostAndPath(r)
     say host, path
     try:
       return .Handle4(w, r, host, path)
@@ -154,7 +154,7 @@ def VerbView(w, r, m, wp):
     return
 
   say 'VerbView', text
-  html = markdown.Process(text)
+  _, html = markdown.Process(text)
   say 'VerbView', html
   d = dict(
       Html = html,

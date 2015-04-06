@@ -48,7 +48,7 @@ class BundDir:
     .bund = bund
 
   def Handle2(w, r):
-    host, path = util.HostAndPath(r)
+    host, extra, path = util.HostAndPath(r)
     say host, path
     return .Handle4(w, r, host, path)
   def Handle4(w, r, host, path):
