@@ -1,4 +1,4 @@
-from go import bufio, bytes, fmt, reflect, regexp, sort, time
+from go import bufio, bytes, fmt, log, reflect, regexp, sort, time
 from go import html/template, net/http, io/ioutil
 from go import path as P
 from . import A, atemplate, bundle, markdown, util
@@ -13,12 +13,6 @@ MatchSimplePage = regexp.MustCompile('^/+(\\w+)/*$').FindStringSubmatch
 MatchHome = regexp.MustCompile('^/+(index.html)?$').FindStringSubmatch
 MatchCommand = regexp.MustCompile('^/+[*](\\w+)$').FindStringSubmatch
 
-def Page():
-  return dict(
-    Title='PageTitle',
-    Content='PageContent',
-    )
-
 class AFugioMaster:
   def __init__(aphid, bname, bund=None, users=None):
     .aphid = aphid
@@ -27,10 +21,42 @@ class AFugioMaster:
     .bund = bund
     .users = users
     .ReloadTemplates()
+    .ReloadFrontMatter()
+
+  def ReloadFrontMatter():
+    fronts = {}
+    try:
+      fnames = bundle.ListFiles(.bund, '/fugio/content')
+    except:
+      fnames = []
+    for fname in fnames:
+      try:
+        guts = bundle.ReadFile(.bund, J('/fugio/content', fname))
+        front, back = markdown.Process(guts)
+        fronts[fname] = front
+      except as ex:
+        log.Printf('ReloadFrontMatter: ERROR slurping %q: %s', fname, ex)
+    .fronts = fronts
+
+    tags = {}
+    main_menu = {}
+    for k, v in .fronts.items():
+      if v is not None:
+        taglist = v.get('tags', [])
+        for t in taglist:
+          d = tags.get(t)
+          if not d:
+            d = {}
+            tags[t] = d
+          d[k] = True
+
+        m = v.get('mainmenu')
+        if m:
+          main_menu[m] = k
 
   def ReloadTemplates():
-    .t = template.New('ROOT')
-    .t.Funcs(util.TemplateFuncs())
+    tpl = template.New('ROOT')
+    tpl.Funcs(util.TemplateFuncs())
 
     try:
       dnames = bundle.ListDirs(.bund, '/fugio/layouts')
@@ -46,17 +72,19 @@ class AFugioMaster:
           name = J('theme', dname, tname)
           guts = bundle.ReadFile(.bund, J('/fugio/layouts', dname, tname))
           say name, guts
-          .t.New(name).Parse(guts)
+          tpl.New(name).Parse(guts)
+    .tpl = tpl
 
   def Handle2(w, r):
     host, extra, path, root = util.HostExtraPathRoot(r)
     say host, path
     try:
-      return .Handle4(w, r, host, path)
+      return .Handle5(w, r, host, path, extra)
     except as ex:
       say ex
       raise ex
-  def Handle4(w, r, host, path):
+
+  def Handle5(w, r, host, path, extra):
     if path == '/favicon.ico':
       return
 
@@ -77,130 +105,41 @@ class AFugioMaster:
       say 'MatchSimplePage', page
       w.Header().Set('Content-Type', 'text/html')
 
-      md = bundle.ReadFile(.bund, '/fugio/content/%s.md' % page, None)
-      say md
+      fname = J('/fugio/content', '%s.md' % page)
+      isDir, modTime, fSize = .bund.Stat3(fname, pw=None)
+      if isDir:
+        raise 'Error: isDir: %q' % fname
+      md = bundle.ReadFile(.bund, fname, None)
       front, html = markdown.Process(md)
-      say front, html
-      d = dict(Title=path, Content=html)
-      say d
-      util.NativeExecuteTemplate(.t, w, 'theme/_default/single.html', d)
+      ts = front.get('date', time.Unix(modTime, 0).Format(time.RFC1123))
+      d = dict(
+          Title=path,
+          Content=html,
+          Permalink=J(extra, path) if extra else path,
+          Params=front,
+          Date=ts,
+          )
+      util.NativeExecuteTemplate(.tpl, w, 'theme/_default/single.html', d)
       return
 
+    # Special Commands.
     m = MatchCommand(path)
     if m:
       _, cmd = m
-      r.ParseForm()
-      # Keep single-valued form fields for query.
-      query = dict([(k, v[0]) for k, v in r.Form.items() if len(v)==1])
       switch cmd:
-        case 'text':
-          filepath = query['f']
-          text = bundle.ReadFile(.bund, filepath, None)
-          front, text = markdown.Process(text)
-          front = str(front) if front else ''
-          d = dict(Title='VIEW TEXT: %q' % filepath,
-                   Edit='*edit?f=%s' % filepath,
-                   Filepath=filepath,
-                   Text=text,
-                   Front=front,
-                   )
-        case 'edit':
-          filepath = query['f']
-          text = query.get('Text')
-          if text:
-            # This is a submission.
-            bundle.WriteFile(.bund, filepath, text, None)
-            http.Redirect(w, r, "*text?f=%s" % filepath, http.StatusMovedPermanently)
-            return
-          
-          text = bundle.ReadFile(.bund, filepath, None)
-          d = dict(Title='VIEW TEXT: %q' % filepath,
-                   Edit='*edit?f=%s' % filepath,
-                   Filepath=filepath,
-                   Text=text,
-                   EditTitle='Bogus Title for %q' % filepath
-                   )
+        case 'debug':
+          w.Header().Set('Content-Type', 'text/plain')
+          fmt.Fprintf(w, '## Front Matter ##\n')
+          for k, v in .fronts.items():
+            fmt.Fprintf(w, '%s: %s\n', k, str(v))
+          fmt.Fprintf(w, '\n## Templates ##\n')
+          for t in .tpl.Templates():
+            fmt.Fprintf(w, '  %#v\n', t)
         default:
-          raise "fugio: Bad cmd: %q %q %q" % (host, path, cmd)
-      util.NativeExecuteTemplate(.t, w, cmd.upper(), d)
+          w.Header().Set('Content-Type', 'text/plain')
+          fmt.Fprintf(w, '*** Unknown Command: %q\n', path)
       return
 
-
     raise "fugio: Bad URL: %q %q" % (host, path)
-
-HEAD = `
-  <html><head>
-    <meta content="text/html; charset=UTF-8" http-equiv="Content-Type">
-    <title>{{.Title}}</title>
-    <style>
-      body {
-        background-color: #e5ccee;
-      }
-      .stuff {
-        background-color: white;
-        padding: 10px;
-      }
-      .floor {
-        padding: 10px;
-      }
-    </style>
-  </head><body>
-    <table class="title-table" width=100% cellpadding=10><tr>
-      <td align=center> <h2 class="title"><tt>{{.Title}}</tt></h2>
-      <td align=right> <h2><tt>Fugio</tt></h2>
-    </tr></table>
-    <div class="stuff">
-  `
-TAIL = `
-    </div>
-
-    <hr>
-    <tt><h4>DEBUG:</h4>
-    <dl>
-    {{ range (keys $) }}
-      <dt> <b>{{ printf "%s:" . }}</b>
-      <dd> {{ printf "%#v" (index $ .) }}
-    {{ end }}
-    </dl>
-    </tt>
-
-  </body></html>
-  `
-TEXT = `
-  {{ template "HEAD" $ }}
-  <pre>{{.Text}}</pre>
-  </div>
-  <div class="floor">
-  [<a href="{{.Edit}}">EDIT</a>] &nbsp;
-
-  {{ template "TAIL" $ }}
-  `
-EDIT = `
-  {{ template "HEAD" $ }}
-  <form method="POST" action="{{.Submit}}">
-    <b>Title:</b> <input name=EditTitle size=80 value="{{.EditTitle}}">
-    <p>
-    <textarea name=Text wrap=virtual rows=30 cols=80 style="width: 95%; height: 80%"
-      >{{.Text}}</textarea>
-    <p>
-    <input type=submit value=Save> &nbsp;
-    <input type=reset>
-    <tt>&nbsp; <big>[<a href={{.Cancel}}>Cancel</a>]</big></tt>
-  </form>
-  {{ template "TAIL" $ }}
-  `
-ATTACH = `
-  {{ template "HEAD" $ }}
-  <form method="POST" action="{{.Subject}}" enctype="multipart/form-data">
-    <p>
-    Upload a new attachment:
-    <input type="file" name="file">
-    <p>
-    <input type=submit value=Save> &nbsp;
-    <input type=reset>
-    <tt>&nbsp; <big>[<a href={{.Cancel}}>Cancel</a>]</big></tt>
-  </form>
-  {{ template "TAIL" $ }}
-  `
 
 pass
