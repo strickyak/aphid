@@ -1,8 +1,8 @@
 from go import bufio, bytes, fmt, reflect, regexp, sort, time
 from go import html/template, net/http, io/ioutil
 from go import path as P
-from . import A, atemplate, bundle, util
-from . import basic, flag
+from . import A, atemplate, bundle
+from . import adapt, basic, flag, util
 from lib import data
 
 F = fmt.Sprintf
@@ -73,7 +73,7 @@ class Master:
             util.NativeExecuteTemplate(.t, w, 'EDIT', d)
 
         default:
-          isDir, mTime, fSize = .bund.Stat3(path, pw=None)
+          isDir, modTime, fSize = .bund.Stat3(path, pw=None)
           if isDir:
             dirs = .bund.ListDirs(path, pw=None)
             files = .bund.ListFiles(path, pw=None)
@@ -84,13 +84,8 @@ class Master:
             say d
             util.NativeExecuteTemplate(.t, w, 'DIR', d)
           else:
-            text = bundle.ReadFile(.bund, path, None)
-            d = dict(Title=path,
-                     Edit='%s%s?c=edit' % (root, path),
-                     Filepath=path,
-                     Text=text,
-                     )
-            util.NativeExecuteTemplate(.t, w, 'TEXT', d)
+            br = .bund.MakeReader(path, pw=None, raw=False, rev=None)
+            http.ServeContent(w, r, path, adapt.UnixToTime(modTime), br)
 
 HEAD = `
   <html><head>
@@ -148,6 +143,8 @@ DIR = `
   <tt><ul>
   {{ range $.ff | keys }}
     <li> <a href="{{ index $.ff . }}">{{ . }}</a>
+         &nbsp; &nbsp;
+         [<a href="{{ index $.ff . }}?c=edit">edit</a>]
   {{ end }}
   </ul></tt>
 
