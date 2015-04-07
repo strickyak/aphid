@@ -32,7 +32,7 @@ File3 = `{nando}`
 
 front, back = markdown.Process(File3)
 say front, back
-must front == dict(foo='bar')
-must str(back) == '<p>one\ntwo\nthree</p>\n'
+must front is None 
+must str(back) == '<p>{nando}</p>\n'
 
 pass
