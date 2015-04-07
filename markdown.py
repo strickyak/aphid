@@ -4,7 +4,7 @@ from go import github.com/microcosm-cc/bluemonday
 from go import github.com/russross/blackfriday
 from lib import data
 
-FRONT_MATTER = regexp.MustCompile(`^({\n.*?\n}\n)(.*)$`)
+FRONT_MATTER = regexp.MustCompile(`(?s)^(\s*{\s*\n.*?\n\s*}\s*\n)(.*)$`)
 
 def Process(text):
   f = None
