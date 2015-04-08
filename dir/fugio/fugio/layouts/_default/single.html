@@ -1,0 +1,13 @@
+{{ template "theme/_default/header.html" . }}
+
+<table width="100%" border=2 cellpadding=20 class="outer_table"><tr><td>
+
+  <H1> {{ .Title }} </h1>
+
+  <div class="content">
+    {{ .Content }}
+  </div>
+
+</td></tr></table>
+
+{{ template "theme/_default/footer.html" . }}
