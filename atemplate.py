@@ -23,10 +23,14 @@ PlainBase.Parse('''
       <meta charset="UTF-8">
       <title>{{.Title}}</title>
     </head><body>
+              <big><a href="HomePage.attach">(((ATTACH)))</a></big><p>
       {{template "HeadBar" .}}
+              <big><a href="HomePage.attach">(((ATTACH)))</a></big><p>
       <h1 class="Title">{{.Title}}</h1>
       {{template "Inner" .}}
+              <big><a href="HomePage.attach">(((ATTACH)))</a></big><p>
       {{template "FootBar" .}}
+              <big><a href="HomePage.attach">(((ATTACH)))</a></big><p>
       {{template "Debug" .}}
     </body></html>
   {{end}}
