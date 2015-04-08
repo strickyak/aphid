@@ -111,7 +111,8 @@ class AFugioMaster:
         raise 'Error: isDir: %q' % fname
       md = bundle.ReadFile(.bund, fname, None)
       front, html = markdown.Process(md)
-      ts = front.get('date', time.Unix(modTime, 0).Format(time.RFC1123))
+      ts = front.get('date') if front else None
+      ts = ts if ts else time.Unix(modTime, 0).Format(time.RFC1123)
       d = dict(
           Title=path,
           Content=html,
