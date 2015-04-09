@@ -20,10 +20,10 @@ class idRemoteReader(idRemoteBase):
   def __init__(cli, id):
     super.__init__(cli, id)
   def ReadChunk(n):
-    say n
+    #say n
     with defer .Advance():
       bb = .cli.RInvoke(.id, .seq, 'ReadChunk', n).Wait()
-    say len(bb), n
+    #say len(bb), n
     return bb
   def Close():
     say 'Close'
@@ -65,14 +65,14 @@ native:
 class idRemoteWriter(idRemoteBase):
   def __init__(cli, id):
     super.__init__(cli, id)
-    say .cli, .id, .seq
+    #say .cli, .id, .seq
   def WriteChunk(bb):
-    say .cli, .id, .seq, len(bb)
+    #say .cli, .id, .seq, len(bb)
     with defer .Advance():
       .cli.RInvoke(.id, .seq, 'WriteChunk', bb).Wait()
-      say 'did .cli.RInvoke', .id, .seq
+      #say 'did .cli.RInvoke', .id, .seq
   def Close():
-    say .cli, .id, .seq
+    #say .cli, .id, .seq
     with defer .Advance():
       .cli.RInvoke(.id, .seq, 'Close').Wait()
 native:
@@ -97,23 +97,23 @@ class RBundleClient(rpc2.Client):
     return .Call("XPing").Wait()
 
   def RInvoke(id, seq, msg, *args, **kw):
-    say 'SUN', id, seq, msg
+    #say 'SUN', id, seq, msg
     z = .Call("XInvoke", id, seq, msg, *args, **kw)
-    say 'SUN', z
+    #say 'SUN', z
     return z
 
   def RemoteOpen(bund, path, pw, raw):
     id = .RMakeChunkReader(bund=bund, path=path, pw=pw, raw=raw).Wait()
-    say 'SUN', id
+    #say 'SUN', id
     z = idRemoteReader(cli=self, id=id)
-    say 'SUN', z
+    #say 'SUN', z
     return z
 
   def RemoteCreate(bund, path, pw, mtime, raw):
     id = .RMakeChunkWriter(bund=bund, path=path, pw=pw, mtime=mtime, raw=raw).Wait()
-    say 'SUN', id
+    #say 'SUN', id
     z = idRemoteWriter(cli=self, id=id)
-    say 'SUN', z
+    #say 'SUN', z
     return z
 
   def RMakeChunkReader(bund, path, pw, raw):
@@ -167,25 +167,25 @@ class RBundleServer(rpc2.Server):
     return A.NowNanos()
 
   def SInvoke(id, seq, msg, *args, **kw):
-    say seq, msg, args, kw
+    #say seq, msg, args, kw
     z = TheHanger.Invoke(id, seq, msg, *args, **kw)
-    say z
+    #say z
     return z
 
   def SMakeChunkReader(bund, path, pw, raw):
-    say bund, path, pw
+    #say bund, path, pw
     cr = .bundles[bund].MakeChunkReader(path=path, pw=pw, raw=raw)
-    say str(cr)
+    #say str(cr)
     id_r = TheHanger.Hang(cr)
-    say id_r
+    #say id_r
     return id_r
 
   def SMakeChunkWriter(bund, path, pw, mtime, raw):
-    say bund, path, pw
+    #say bund, path, pw
     cw = .bundles[bund].MakeChunkWriter(path=path, pw=pw, mtime=mtime, raw=raw)
-    say str(cw)
+    #say str(cw)
     id_w = TheHanger.Hang(cw)
-    say id_w
+    #say id_w
     return id_w
 
   def SStat3(bund, path, pw=None):

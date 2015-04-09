@@ -90,7 +90,7 @@ class AFugioMaster:
 
     m = MatchStatic(path)
     if m:
-      flavor, path = m
+      _, flavor, path = m
       say 'MatchStatic', flavor, path
       rs, nanos, size = .bund.NewReadSeekerTimeSize('/fugio/static/%s/%s' % (flavor, path))
       http.ServeContent(w, r, r.URL.Path, time.Unix(0, nanos), rs)
