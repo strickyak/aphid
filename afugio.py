@@ -38,10 +38,12 @@ class AFugioMaster:
         log.Printf('ReloadFrontMatter: ERROR slurping %q: %s', fname, ex)
     .fronts = fronts
 
+    # Visit pages, to build tags & menus.
     tags = {}
     main_menu = {}
     for k, v in .fronts.items():
       if v is not None:
+        # Collect tags.
         taglist = v.get('tags', [])
         for t in taglist:
           d = tags.get(t)
@@ -50,6 +52,7 @@ class AFugioMaster:
             tags[t] = d
           d[k] = True
 
+        # Collect menus.
         m = v.get('mainmenu')
         if m:
           main_menu[m] = k
