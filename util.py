@@ -24,27 +24,27 @@ def TemplateFuncs():
       return MkGo(m)
     `
 
-pass
-
+native:
+  `type NativeSlice []interface{}`
 native:
   `type NativeMap map[string]interface{}`
 
-def NativeExecuteTemplate(t, w, name, d):
+def NativeSlice(vec):
+  native:
+    `
+      z := make(NativeSlice, a_vec.Len())
+      for i, e := range a_vec.List() {
+         z[i] = e.Contents()
+      }
+      return MkGo(z)
+    `
+def NativeMap(d):
   native:
     `
       z := make(NativeMap)
       for k, v := range a_d.Dict() {
-         var val interface{} = v.Contents()
-
-         println(fmt.Sprintf("afugio::NativeExecuteTemplate [%q] == <<<%#v>>>", k, val))
-         //println(fmt.Sprintf("afugio::NativeExecuteTemplate [%q] == <<<%#v>>>", k, i_reflect.ValueOf(val)))
-         //println(fmt.Sprintf("afugio::NativeExecuteTemplate [%q] == <<<%#v>>>", k, i_reflect.ValueOf(val).Type()))
-         //println(fmt.Sprintf("afugio::NativeExecuteTemplate [%q] == <<<%#v>>>", k, i_reflect.ValueOf(val).Type().String()))
-
-         z[k] = val
+         z[k] = v.Contents()
       }
-      a_t.Contents().(*i_template.Template).ExecuteTemplate(
-          a_w.Contents().(io.Writer), 
-          a_name.String(),
-          z)
+      return MkGo(z)
     `
+pass

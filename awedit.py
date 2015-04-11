@@ -70,7 +70,7 @@ class Master:
                      Text=text,
                      EditTitle='Bogus Title for %q' % path
                      )
-            util.NativeExecuteTemplate(.t, w, 'EDIT', d)
+            .t.ExecuteTemplate(w, 'EDIT', util.NativeMap(d))
 
         default:
           isDir, modTime, fSize = .bund.Stat3(path, pw=None)
@@ -82,7 +82,7 @@ class Master:
             up = J(root, path, '..') if path != '/' else ''
             d = dict(Title=path, dd=dd, ff=ff, up=up)
             say d
-            util.NativeExecuteTemplate(.t, w, 'DIR', d)
+            .t.ExecuteTemplate(w, 'DIR', util.NativeMap(d))
           else:
             br = .bund.MakeReader(path, pw=None, raw=False, rev=None)
             http.ServeContent(w, r, path, adapt.UnixToTime(modTime), br)

@@ -9,7 +9,7 @@ F = fmt.Sprintf
 J = P.Join
 
 MatchStatic = regexp.MustCompile('^/+(css|js|img|media)/(.*)$').FindStringSubmatch
-MatchSimplePage = regexp.MustCompile('^/+(\\w+)/*$').FindStringSubmatch
+MatchSimplePage = regexp.MustCompile('^/+([-A-Za-z0-9_]+)/*$').FindStringSubmatch
 MatchHome = regexp.MustCompile('^/+(index.html)?$').FindStringSubmatch
 MatchCommand = regexp.MustCompile('^/+[*](\\w+)$').FindStringSubmatch
 
@@ -30,32 +30,63 @@ class AFugioMaster:
     except:
       fnames = []
     for fname in fnames:
-      try:
-        guts = bundle.ReadFile(.bund, J('/fugio/content', fname))
-        front, back = markdown.Process(guts)
-        fronts[fname] = front
-      except as ex:
-        log.Printf('ReloadFrontMatter: ERROR slurping %q: %s', fname, ex)
+      if fname.endswith('.md'):
+        try:
+          guts = bundle.ReadFile(.bund, J('/fugio/content', fname))
+          fname = fname[:-3]  # Strip ".md"
+          front, back = markdown.Process(guts)
+          fronts[fname] = front
+        except as ex:
+          log.Printf('ReloadFrontMatter: ERROR slurping %q: %s', fname, ex)
     .fronts = fronts
 
     # Visit pages, to build tags & menus.
     tags = {}
     main_menu = {}
-    for k, v in .fronts.items():
-      if v is not None:
+    menus = {}
+    for page, json in .fronts.items():
+      if json is not None:
         # Collect tags.
-        taglist = v.get('tags', [])
+        taglist = json.get('tags', [])
         for t in taglist:
           d = tags.get(t)
           if not d:
             d = {}
             tags[t] = d
-          d[k] = True
+          d[page] = True
 
         # Collect menus.
-        m = v.get('mainmenu')
-        if m:
-          main_menu[m] = k
+        j_menus = json.get('menu')
+        for which_menu in json.get('menu'):
+          j_menu = j_menus[which_menu]
+
+          menu = menus.get(which_menu, [])
+          menus[which_menu] = menu
+
+          menu_item =dict(
+              Identifier=page,
+              Menu=which_menu,
+              Name=j_menu.get('name', page),
+              URL='/%s' % page,
+              Weight=j_menu.get('weight', 0.0),
+              Pre='', Post='',
+              Parent='', Childern=[],
+              )
+          menu.append(util.NativeMap(menu_item))
+
+    # Sort the menus.
+    def WeightedKey(x):
+      try:
+        w = float(x.get('weight', 0))
+      except:
+        w = 0.0
+      return (w, x.get('Identifier', "?"))
+
+    for which_menu, menu in menus.items():
+      menu.sort(key=lambda x: WeightedKey(x))
+      menus[which_menu] = util.NativeSlice(menu)
+    menus = util.NativeMap(menus)
+    .site = util.NativeMap(dict(Menus=menus))
 
   def ReloadTemplates():
     tpl = template.New('ROOT')
@@ -74,13 +105,11 @@ class AFugioMaster:
         if tname.endswith('.html'):
           name = J('theme', dname, tname)
           guts = bundle.ReadFile(.bund, J('/fugio/layouts', dname, tname))
-          say name, guts
           tpl.New(name).Parse(guts)
     .tpl = tpl
 
   def Handle2(w, r):
     host, extra, path, root = util.HostExtraPathRoot(r)
-    say host, path
     try:
       return .Handle5(w, r, host, path, extra)
     except as ex:
@@ -122,8 +151,9 @@ class AFugioMaster:
           Permalink=J(extra, path) if extra else path,
           Params=front,
           Date=ts,
+          Site=.site,
           )
-      util.NativeExecuteTemplate(.tpl, w, 'theme/_default/single.html', d)
+      .tpl.ExecuteTemplate(w, 'theme/_default/single.html', util.NativeMap(d))
       return
 
     # Special Commands.

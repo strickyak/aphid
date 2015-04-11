@@ -2,7 +2,7 @@ from . import A, flag
 from . import among, aweber, awiki, awedit, azoner, afugio
 from . import bundle, keyring, pubsub, rbundle
 
-from go import net/http, time
+from go import fmt, net/http, time
 from go import path/filepath as F
 from go import github.com/strickyak/jsonnet_cgo as VM
 from lib import data
@@ -28,8 +28,8 @@ def EvalFileOrSnippet(filename, snippet=None, imports=None):
 class Aphid:
   def __init__(quit, filename, snippet=None, imports=None):
     .quit = quit
-    .filename = filename    
-    .snippet = snippet    
+    .filename = filename
+    .snippet = snippet
     .x = EvalFileOrSnippet(filename=filename, snippet=snippet, imports=imports)
     .x_me = .x['me']
     .x_confname = .x['confname']
@@ -103,6 +103,7 @@ class Aphid:
       bund = .bundles[bname]
       obj = aweber.BundDir(self, bname, bund=bund)
       .mux.HandleFunc('%s/' % wname, obj.Handle2)
+      .mux.HandleFunc('%s:%d/' % (wname, .p_http), obj.Handle2)
       .mux.HandleFunc('/@%s/' % wname, obj.Handle2)
       .mux.HandleFunc('/@%s@e' % wname, awedit.Master(self, bname, bund=bund).Handle2)
     # Add wikis.
@@ -111,6 +112,7 @@ class Aphid:
       bund = .bundles[bname]
       obj = awiki.AWikiMaster(self, bname, bund=bund)
       .mux.HandleFunc('%s/' % wname, obj.Handle2)
+      .mux.HandleFunc('%s:%d/' % (wname, .p_http), obj.Handle2)
       .mux.HandleFunc('/@%s/' % wname, obj.Handle2)
       .mux.HandleFunc('/@%s@e' % wname, awedit.Master(self, bname, bund=bund).Handle2)
     # Add fugio.
@@ -119,11 +121,24 @@ class Aphid:
       bund = .bundles[bname]
       obj = afugio.AFugioMaster(self, bname, bund=bund)
       .mux.HandleFunc('%s/' % wname, obj.Handle2)
+      .mux.HandleFunc('%s:%d/' % (wname, .p_http), obj.Handle2)
       .mux.HandleFunc('/@%s/' % wname, obj.Handle2)
       .mux.HandleFunc('/@%s@e/' % wname, awedit.Master(self, bname, bund=bund).Handle2)
       say 'WEDIT', '/@%s@e/' % wname
     # Misc
     .mux.HandleFunc('/@@quit', lambda w, r: .quit.Put(1))
+
+    def Otherwise(w, r):
+      w.WriteHeader(http.StatusNotFound)
+      fmt.Fprintf(w, "404 NOT FOUND\n\n")
+      fmt.Fprintf(w, "[aphid] Proto: %q Method: %q\n", r.Proto, r.Method)
+      fmt.Fprintf(w, "[aphid] Host: %q Path: %q\n", r.Host, r.URL.Path)
+      fmt.Fprintf(w, "[aphid] Header:\n")
+      for k, v in sorted(r.Header.items()):
+        for e in v:
+          fmt.Fprintf(w, "[aphid]   %q : %q\n", k, e)
+    .mux.HandleFunc('/', Otherwise)
+
     # Go Serve.
     say 'SERVING', .server
     .server = go_new(http.Server) {
