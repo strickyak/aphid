@@ -7,11 +7,19 @@ from lib import data
 
 F = fmt.Sprintf
 J = P.Join
+Nav = util.Nav
+TIME_FORMAT = '2006-01-02T15:04:05-07:00'
 
 MatchStatic = regexp.MustCompile('^/+(css|js|img|media)/(.*)$').FindStringSubmatch
-MatchSimplePage = regexp.MustCompile('^/+([-A-Za-z0-9_]+)/*$').FindStringSubmatch
+MatchContent = regexp.MustCompile('^/+(([-A-Za-z0-9_]+)/)?([-A-Za-z0-9_]+)/*$').FindStringSubmatch
 MatchHome = regexp.MustCompile('^/+(index.html)?$').FindStringSubmatch
 MatchCommand = regexp.MustCompile('^/+[*](\\w+)$').FindStringSubmatch
+
+MatchMdDirName = regexp.MustCompile('^[a-z][-a-z0-9_]*$').FindString
+MatchMdFileName = regexp.MustCompile('^[a-z][-a-z0-9_]*[.]md$').FindString
+
+def WeightedKey(x):
+  return x.Weight, x.Name
 
 class AFugioMaster:
   def __init__(aphid, bname, bund=None, users=None):
@@ -21,72 +29,107 @@ class AFugioMaster:
     .bund = bund
     .users = users
     .ReloadTemplates()
-    .ReloadFrontMatter()
+    .ReloadPageMeta()
 
-  def ReloadFrontMatter():
-    fronts = {}
-    try:
-      fnames = bundle.ListFiles(.bund, '/fugio/content')
-    except:
-      fnames = []
-    for fname in fnames:
-      if fname.endswith('.md'):
-        try:
-          guts = bundle.ReadFile(.bund, J('/fugio/content', fname))
-          fname = fname[:-3]  # Strip ".md"
-          front, back = markdown.Process(guts)
-          fronts[fname] = front
-        except as ex:
-          log.Printf('ReloadFrontMatter: ERROR slurping %q: %s', fname, ex)
-    .fronts = fronts
+  def MakePage(pname, modTime, fileSize):
+    say pname
+    slug = P.Base(pname)
+    section = P.Dir(pname)
+    section = '' if section == '.' else section
+
+    fname = J('/fugio/content', '%s.md' % pname)
+    md = bundle.ReadFile(.bund, fname, None)
+    meta, html = markdown.Process(md)
+    title = meta.get('title', pname) if meta else pname
+    ts = meta.get('date') if meta else None
+    ts = ts if ts else time.Unix(modTime, 0).Format(TIME_FORMAT)
+    p = go_new(Page) {
+        Title: title,
+        Content: html,
+        Permalink: pname,  # TODO -- host, extra
+        Params: util.NativeMap(meta),
+        Date: time.Parse(TIME_FORMAT, ts),
+        Section: section,
+        Slug: slug,
+        Identifier: pname,
+    }
+    return p
+
+  def WalkMdTreeMakingPages(dirname):
+    say dirname
+    for name, isDir, mtime, sz in sorted(.bund.List4(J('/fugio/content', dirname), pw=None)):
+      if isDir and MatchMdDirName(name):
+        for pair in .WalkMdTreeMakingPages(J(dirname, name)):
+          say pair
+          yield pair
+      else:
+        if sz > 0 and MatchMdFileName(name):
+          pname = J(dirname, name[:-3])
+          p = .MakePage(pname, mtime, sz)
+          say pname, p
+          yield pname, p
+
+  def ReloadPageMeta():
+    paged = dict(.WalkMdTreeMakingPages('/'))
+    print paged
+    page_list = paged.values()
+    print page_list
+
+    # Sort pages.
+    pages_by = go_new(PagesBy) {
+      ByTitle: util.NativeSlice(sorted(page_list, key=lambda x: x.Title)),
+      ByDate: util.NativeSlice(sorted(page_list, reverse=True, key=lambda x: x.Date)),
+      ByURL: util.NativeSlice(sorted(page_list, key=lambda x: x.Permalink)),
+    }
 
     # Visit pages, to build tags & menus.
+    menud = {}
     tags = {}
-    main_menu = {}
-    menus = {}
-    for page, json in .fronts.items():
-      if json is not None:
+    for pname, p in paged.items():
+      if p.Params:
         # Collect tags.
-        taglist = json.get('tags', [])
+        taglist = p.Params.get('tags', [])
         for t in taglist:
-          d = tags.get(t)
-          if not d:
-            d = {}
-            tags[t] = d
-          d[page] = True
+          d = Nav(tags, t)
+          d[pname] = True
 
         # Collect menus.
-        j_menus = json.get('menu')
-        for which_menu in json.get('menu'):
+        j_menus = p.Params.get('menu')
+        for which_menu in j_menus:
           j_menu = j_menus[which_menu]
 
-          menu = menus.get(which_menu, [])
-          menus[which_menu] = menu
+          # Fetch or create the menu from menus.
+          menu = Nav(menud, which_menu)
 
-          menu_item =dict(
-              Identifier=page,
-              Menu=which_menu,
-              Name=j_menu.get('name', page),
-              URL='/%s' % page,
-              Weight=j_menu.get('weight', 0.0),
-              Pre='', Post='',
-              Parent='', Childern=[],
-              )
-          menu.append(util.NativeMap(menu_item))
+          # Make new entry, and add to that menu.
+          entry = go_new(MenuEntry) {
+              Identifier: pname,
+              Menu: which_menu,
+              Name: j_menu.get('name', pname),
+              URL: '%s' % pname,
+              Weight: j_menu.get('weight', 0),
+              Pre: '', Post: '',
+              }
+          entry.DebugName = entry.Name + "/" + WeightedKey(entry)
+          menu[pname] = entry
 
     # Sort the menus.
-    def WeightedKey(x):
-      try:
-        w = float(x.get('weight', 0))
-      except:
-        w = 0.0
-      return (w, x.get('Identifier', "?"))
+    for which_menu, menu in menud.items():
+      say menu
+      menu2 = sorted(menu.values(), key=WeightedKey)
+      say 'sorted', menu2
+      menud[which_menu] = util.NativeSlice(menu2)
 
-    for which_menu, menu in menus.items():
-      menu.sort(key=lambda x: WeightedKey(x))
-      menus[which_menu] = util.NativeSlice(menu)
-    menus = util.NativeMap(menus)
-    .site = util.NativeMap(dict(Menus=menus))
+    # Construct the site.
+    .paged = paged
+    .site = go_new(Site) {
+      Menus: util.NativeMap(menud),
+      Pages: pages_by,
+      Sections: util.NativeMap(menud),
+      Title: '(site-title)',
+    }
+    for pname, p in paged.items():
+      p.Site = .site
 
   def ReloadTemplates():
     tpl = template.New('ROOT')
@@ -129,31 +172,20 @@ class AFugioMaster:
       return
 
     # If not static, it must be a page.
-    m = MatchSimplePage(path)
+    m = MatchContent(path)
     if MatchHome(path):
-      m = '/home', 'home'
+      m = '/home', (), '', 'home'
     if m:
-      _, page = m
-      say 'MatchSimplePage', page
+      _, _, section, base = m
+      pname = J('/', section, base)
+      p = .paged.get(pname)
+      say 'MatchContent', path, section, base, pname, p
+      say sorted(.paged)
+      say .paged
+      assert p, (path, section, base, pname, sorted(.paged))
       w.Header().Set('Content-Type', 'text/html')
 
-      fname = J('/fugio/content', '%s.md' % page)
-      isDir, modTime, fSize = .bund.Stat3(fname, pw=None)
-      if isDir:
-        raise 'Error: isDir: %q' % fname
-      md = bundle.ReadFile(.bund, fname, None)
-      front, html = markdown.Process(md)
-      ts = front.get('date') if front else None
-      ts = ts if ts else time.Unix(modTime, 0).Format(time.RFC1123)
-      d = dict(
-          Title=path,
-          Content=html,
-          Permalink=J(extra, path) if extra else path,
-          Params=front,
-          Date=ts,
-          Site=.site,
-          )
-      .tpl.ExecuteTemplate(w, 'theme/_default/single.html', util.NativeMap(d))
+      .tpl.ExecuteTemplate(w, 'theme/_default/single.html', p)
       return
 
     # Special Commands.
@@ -164,7 +196,7 @@ class AFugioMaster:
         case 'debug':
           w.Header().Set('Content-Type', 'text/plain')
           fmt.Fprintf(w, '## Front Matter ##\n')
-          for k, v in .fronts.items():
+          for k, v in .metas.items():
             fmt.Fprintf(w, '%s: %s\n', k, str(v))
           fmt.Fprintf(w, '\n## Templates ##\n')
           for t in .tpl.Templates():
@@ -177,3 +209,72 @@ class AFugioMaster:
     raise "fugio: Bad URL: %q %q" % (host, path)
 
 pass
+
+native: `
+type MenuEntry struct {
+        URL        string
+        Name       string
+        DebugName  string
+        Menu       string
+        Identifier string
+        Pre        i_template.HTML
+        Post       i_template.HTML
+        Weight     int
+        Parent     string
+        // Children   Menu
+}
+
+type Page struct {
+        Params          i_util.NativeMap
+        Content         i_template.HTML
+        Aliases         i_util.NativeSlice // []string
+        // Summary         i_template.HTML
+        // Status          string
+        // Images          []Image
+        // Videos          []Video
+        // TableOfContents i_template.HTML
+        // Truncated       bool
+        // Draft           bool
+        // PublishDate     i_time.Time
+        // Tmpl            tpl.Template
+        // Markup          string
+
+        Type            string
+        Title           string
+        Permalink       string
+        Date            i_time.Time
+        Site            *Site
+        Section         string
+        Slug            string
+        Identifier      string
+}
+
+type PagesBy struct {
+        ByTitle         i_util.NativeSlice
+        ByDate          i_util.NativeSlice
+        ByURL           i_util.NativeSlice
+}
+
+type Site struct {
+        Title          string
+        Pages          *PagesBy
+        // Files          []*source.File
+        // Tmpl           tpl.Template
+        // Taxonomies     TaxonomyList
+        // Source         source.Input
+        Sections       i_util.NativeMap
+        // Info           SiteInfo
+        // Shortcodes     map[string]ShortcodeFunc
+        Menus          i_util.NativeMap
+        // timer          *nitro.B
+        // Targets        targetList
+        // targetListInit sync.Once
+        // Completed      chan bool
+        // RunMode        runmode
+        // params         map[string]interface{}
+        // draftCount     int
+        // futureCount    int
+        Data           i_util.NativeMap
+        Params           i_util.NativeMap
+}
+`

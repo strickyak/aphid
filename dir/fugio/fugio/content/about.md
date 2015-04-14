@@ -1,7 +1,7 @@
 {
-  title: 'About Us',
+  title: "About Us",
   menu: { main: {
-    name: 'about',
+    name: "about",
     weight: -99,
   }},
 }

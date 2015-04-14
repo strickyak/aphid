@@ -1,5 +1,17 @@
 from go import regexp, reflect, sort, html/template
 
+def Nav(top, *keys):
+  """Navigate cascaded dicts from top dictionary through keys, making dicts as needed."""
+  d = top
+  for key in keys:
+    if key in d:
+      d = d[key]
+    else:
+      t = {}
+      d[key] = t
+      d = t
+  return d
+
 MATCH_HOST_IN_PATH = regexp.MustCompile('/@([-A-Za-z0-9.]+)(@\\w+)?($|/.*$)').FindStringSubmatch
 
 def HostExtraPathRoot(r):
