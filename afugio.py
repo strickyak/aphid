@@ -2,18 +2,21 @@ from go import bufio, bytes, fmt, log, reflect, regexp, sort, time
 from go import html/template, net/http, io/ioutil
 from go import path as P
 from . import A, atemplate, bundle, markdown, util
-from . import basic, flag
+from . import adapt, basic, flag
 from lib import data
 
 F = fmt.Sprintf
-J = P.Join
 Nav = util.Nav
 TIME_FORMAT = '2006-01-02T15:04:05-07:00'
+
+#J = P.Join
+def J(*vec):
+  return P.Clean(P.Join(*vec))
 
 MatchStatic = regexp.MustCompile('^/+(css|js|img|media)/(.*)$').FindStringSubmatch
 MatchContent = regexp.MustCompile('^/+(([-A-Za-z0-9_]+)/)?([-A-Za-z0-9_]+)/*$').FindStringSubmatch
 MatchHome = regexp.MustCompile('^/+(index.html)?$').FindStringSubmatch
-MatchCommand = regexp.MustCompile('^/+[*](\\w+)$').FindStringSubmatch
+MatchEditor = regexp.MustCompile('^/+([_]\\w+)$').FindStringSubmatch
 
 MatchMdDirName = regexp.MustCompile('^[a-z][-a-z0-9_]*$').FindString
 MatchMdFileName = regexp.MustCompile('^[a-z][-a-z0-9_]*[.]md$').FindString
@@ -22,12 +25,14 @@ def WeightedKey(x):
   return x.Weight, x.Name
 
 class AFugioMaster:
-  def __init__(aphid, bname, bund=None, users=None):
+  def __init__(aphid, bname, bund, users=None):
     .aphid = aphid
+    must bname
     .bname = bname
     must bund
     .bund = bund
     .users = users
+    .editor = Editor(aphid=aphid, bname=bname, bund=bund, users=users)
     .ReloadTemplates()
     .ReloadPageMeta()
 
@@ -153,14 +158,32 @@ class AFugioMaster:
 
   def Handle2(w, r):
     host, extra, path, root = util.HostExtraPathRoot(r)
+    say host, extra, path, root
     try:
-      return .Handle5(w, r, host, path, extra)
+      return .Handle5(w, r, host, path, root)
     except as ex:
       say ex
       raise ex
 
-  def Handle5(w, r, host, path, extra):
+  def Handle5(w, r, host, path, root):
     if path == '/favicon.ico':
+      return
+
+    # Special Commands.
+    m = MatchEditor(path)
+    if m:
+      _, cmd = m
+      switch cmd:
+        case '_debug':
+          w.Header().Set('Content-Type', 'text/plain')
+          fmt.Fprintf(w, '## Front Matter ##\n')
+          for k, v in .metas.items():
+            fmt.Fprintf(w, '%s: %s\n', k, str(v))
+          fmt.Fprintf(w, '\n## Templates ##\n')
+          for t in .tpl.Templates():
+            fmt.Fprintf(w, '  %#v\n', t)
+        default:
+          .editor.Handle5(w, r, host=host, path=path, root=root)
       return
 
     m = MatchStatic(path)
@@ -180,30 +203,12 @@ class AFugioMaster:
       pname = J('/', section, base)
       p = .paged.get(pname)
       say 'MatchContent', path, section, base, pname, p
-      say sorted(.paged)
-      say .paged
+      #say sorted(.paged)
+      #say .paged
       assert p, (path, section, base, pname, sorted(.paged))
       w.Header().Set('Content-Type', 'text/html')
 
       .tpl.ExecuteTemplate(w, 'theme/_default/single.html', p)
-      return
-
-    # Special Commands.
-    m = MatchCommand(path)
-    if m:
-      _, cmd = m
-      switch cmd:
-        case 'debug':
-          w.Header().Set('Content-Type', 'text/plain')
-          fmt.Fprintf(w, '## Front Matter ##\n')
-          for k, v in .metas.items():
-            fmt.Fprintf(w, '%s: %s\n', k, str(v))
-          fmt.Fprintf(w, '\n## Templates ##\n')
-          for t in .tpl.Templates():
-            fmt.Fprintf(w, '  %#v\n', t)
-        default:
-          w.Header().Set('Content-Type', 'text/plain')
-          fmt.Fprintf(w, '*** Unknown Command: %q\n', path)
       return
 
     raise "fugio: Bad URL: %q %q" % (host, path)
@@ -278,3 +283,187 @@ type Site struct {
         Params           i_util.NativeMap
 }
 `
+
+##############################################
+
+
+#from go import bufio, bytes, fmt, reflect, regexp, sort, time
+#from go import html/template, net/http, io/ioutil
+#from go import path as P
+#from . import A, atemplate, bundle
+#from . import adapt, basic, flag, util
+#from lib import data
+
+class Editor:
+  def __init__(aphid, bname, bund, users=None):
+    .aphid = aphid
+    .bname = bname
+    must bund
+    .bund = bund
+    .users = users
+    .ReloadTemplates()
+
+  def ReloadTemplates():
+    .t = template.New('ROOT')
+    .t.Funcs(util.TemplateFuncs())
+
+    .t.New('HEAD').Parse(HEAD)
+    .t.New('TAIL').Parse(TAIL)
+    .t.New('DIR').Parse(DIR)
+    .t.New('TEXT').Parse(TEXT)
+    .t.New('EDIT').Parse(EDIT)
+    .t.New('ATTACH').Parse(ATTACH)
+
+  def Handle2(w, r):
+    host, extra, path, root = util.HostExtraPathRoot(r)
+    say host, extra, path, root
+    try:
+      return .Handle5(w, r, host, path, root)
+    except as ex:
+      say 'EXCEPTION IN Handle5', ex
+      raise ex
+
+  def Handle5(w, r, host, path, root):
+    if path == '/favicon.ico':
+      return
+
+    cmd = P.Base(path)
+    query = util.ParseQuery(r)
+    fname = query.get('f')
+
+    switch cmd:
+        case '_edit_submit':
+          text = query['Text']
+          say 'bundle.WriteFile', fname, text
+          bundle.WriteFile(.bund, fname, text, pw=None)
+          http.Redirect(w, r, "%s_view?f=%s" % (root, fname), http.StatusMovedPermanently)
+
+        case '_edit':
+            text = bundle.ReadFile(.bund, fname, pw=None)
+            d = dict(Title='VIEW TEXT: %q' % fname,
+                     Submit='%s_edit_submit?f=%s' % (root, fname),
+                     Filepath=fname,
+                     Text=text,
+                     EditTitle='Bogus Title for %q' % fname
+                     )
+            .t.ExecuteTemplate(w, 'EDIT', util.NativeMap(d))
+
+        case '_view':
+          isDir, modTime, fSize = .bund.Stat3(fname, pw=None)
+          if isDir:
+            dirs = .bund.ListDirs(fname, pw=None)
+            files = .bund.ListFiles(fname, pw=None)
+            dd = dict([(d, '%s_view?f=%s/%s' % (root, fname, d)) for d in dirs if d])
+            ff = dict([(f, '%s_view?f=%s/%s' % (root, fname, f)) for f in files if f])
+            up = J(root, fname, '..') if fname != '/' else ''
+            d = dict(Title=fname, dd=dd, ff=ff, up=up)
+            say d
+            .t.ExecuteTemplate(w, 'DIR', util.NativeMap(d))
+          elif fSize:
+            br = .bund.MakeReader(fname, pw=None, raw=False, rev=None)
+            http.ServeContent(w, r, fname, adapt.UnixToTime(modTime), br)
+          else:
+            raise 'Cannot view empty or deleted file: %q' % fname
+
+HEAD = `
+  <html><head>
+    <meta content="text/html; charset=UTF-8" http-equiv="Content-Type">
+    <title>{{.Title}}</title>
+    <style>
+      body {
+        background-color: #e5ccee;
+      }
+      .stuff {
+        background-color: white;
+        padding: 10px;
+      }
+      .floor {
+        padding: 10px;
+      }
+    </style>
+  </head><body>
+    <table class="title-table" width=100% cellpadding=10><tr>
+      <td align=center> <h2 class="title"><tt>{{.Title}}</tt></h2>
+      <td align=right> <h2><tt>Wedit</tt></h2>
+    </tr></table>
+    <div class="stuff">
+  `
+TAIL = `
+    </div>
+
+    <hr>
+    <tt><h4>DEBUG:</h4>
+    <dl>
+    {{ range (keys $) }}
+      <dt> <b>{{ printf "%s:" . }}</b>
+      <dd> {{ printf "%#v" (index $ .) }}
+    {{ end }}
+    </dl>
+    <hr>
+        {{ printf "%#v" $ }}
+    </tt>
+
+  </body></html>
+  `
+DIR = `
+  {{ template "HEAD" $ }}
+  <h3>Directories</h3>
+  <tt><ul>
+  {{ if $.up }}
+    <li> <a href="{{ $.up }}">[up]</a>
+  {{ end }}
+  {{ range $.dd | keys }}
+    <li> <a href="{{ index $.dd . }}">{{ . }}</a>
+  {{ end }}
+  </ul></tt>
+
+  <h3>Files</h3>
+  <tt><ul>
+  {{ range $.ff | keys }}
+    <li> <a href="{{ index $.ff . }}">{{ . }}</a>
+         &nbsp; &nbsp;
+         [<a href="{{ index $.ff . }}?c=edit">edit</a>]
+  {{ end }}
+  </ul></tt>
+
+  {{ template "TAIL" $ }}
+  `
+TEXT = `
+  {{ template "HEAD" $ }}
+  <pre>{{.Text}}</pre>
+  </div>
+  <div class="floor">
+  [<a href="{{.Edit}}">EDIT</a>] &nbsp;
+
+  {{ template "TAIL" $ }}
+  `
+EDIT = `
+  {{ template "HEAD" $ }}
+  <form method="POST" action="{{.Submit}}">
+    <b>Title:</b> <input name=EditTitle size=80 value="{{.EditTitle}}">
+    <p>
+    <textarea name=Text wrap=virtual rows=30 cols=80 style="width: 95%; height: 80%"
+      >{{.Text}}</textarea>
+    <p>
+    <input type=hidden name="c" value="edit"> &nbsp;
+    <input type=submit value=Save> &nbsp;
+    <input type=reset>
+    <tt>&nbsp; <big>[<a href={{.Cancel}}>Cancel</a>]</big></tt>
+  </form>
+  {{ template "TAIL" $ }}
+  `
+ATTACH = `
+  {{ template "HEAD" $ }}
+  <form method="POST" action="{{.Subject}}" enctype="multipart/form-data">
+    <p>
+    Upload a new attachment:
+    <input type="file" name="file">
+    <p>
+    <input type=submit value=Save> &nbsp;
+    <input type=reset>
+    <tt>&nbsp; <big>[<a href={{.Cancel}}>Cancel</a>]</big></tt>
+  </form>
+  {{ template "TAIL" $ }}
+  `
+
+pass
