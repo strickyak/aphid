@@ -16,7 +16,7 @@ def J(*vec):
 MatchStatic = regexp.MustCompile('^/+(css|js|img|media)/(.*)$').FindStringSubmatch
 MatchContent = regexp.MustCompile('^/+(([-A-Za-z0-9_]+)/)?([-A-Za-z0-9_]+)/*$').FindStringSubmatch
 MatchHome = regexp.MustCompile('^/+(index.html)?$').FindStringSubmatch
-MatchEditor = regexp.MustCompile('^/+([_]\\w+)$').FindStringSubmatch
+MatchEditor = regexp.MustCompile('^/+([*]\\w+)$').FindStringSubmatch
 
 MatchMdDirName = regexp.MustCompile('^[a-z][-a-z0-9_]*$').FindString
 MatchMdFileName = regexp.MustCompile('^[a-z][-a-z0-9_]*[.]md$').FindString
@@ -32,7 +32,7 @@ class AFugioMaster:
     must bund
     .bund = bund
     .users = users
-    .editor = Editor(aphid=aphid, bname=bname, bund=bund, users=users)
+    .editor = Editor(master=self, bname=bname, bund=bund, users=users)
     .ReloadTemplates()
     .ReloadPageMeta()
 
@@ -174,7 +174,7 @@ class AFugioMaster:
     if m:
       _, cmd = m
       switch cmd:
-        case '_debug':
+        case '*debug':
           w.Header().Set('Content-Type', 'text/plain')
           fmt.Fprintf(w, '## Front Matter ##\n')
           for k, v in .metas.items():
@@ -295,8 +295,8 @@ type Site struct {
 #from lib import data
 
 class Editor:
-  def __init__(aphid, bname, bund, users=None):
-    .aphid = aphid
+  def __init__(master, bname, bund, users=None):
+    .master = master
     .bname = bname
     must bund
     .bund = bund
@@ -310,8 +310,10 @@ class Editor:
     .t.New('HEAD').Parse(HEAD)
     .t.New('TAIL').Parse(TAIL)
     .t.New('DIR').Parse(DIR)
+    .t.New('SITE').Parse(SITE)
     .t.New('TEXT').Parse(TEXT)
     .t.New('EDIT').Parse(EDIT)
+    .t.New('EDIT_CONFIG').Parse(EDIT_CONFIG)
     .t.New('ATTACH').Parse(ATTACH)
 
   def Handle2(w, r):
@@ -332,31 +334,57 @@ class Editor:
     fname = query.get('f')
 
     switch cmd:
-        case '_edit_submit':
+        case '*':
+          .t.ExecuteTemplate(w, 'SITE', .master.site)
+
+        case '*edit_submit':
           text = query['Text']
           say 'bundle.WriteFile', fname, text
           bundle.WriteFile(.bund, fname, text, pw=None)
-          http.Redirect(w, r, "%s_view?f=%s" % (root, fname), http.StatusMovedPermanently)
+          http.Redirect(w, r, "%s*view?f=%s" % (root, fname), http.StatusMovedPermanently)
 
-        case '_edit':
+        case '*edit':
             text = bundle.ReadFile(.bund, fname, pw=None)
             d = dict(Title='VIEW TEXT: %q' % fname,
-                     Submit='%s_edit_submit?f=%s' % (root, fname),
+                     Submit='%s*edit_submit?f=%s' % (root, fname),
                      Filepath=fname,
                      Text=text,
                      EditTitle='Bogus Title for %q' % fname
                      )
             .t.ExecuteTemplate(w, 'EDIT', util.NativeMap(d))
 
-        case '_view':
+        case '*edit_config_submit':
+          x = dict(
+              Title= query['EditTitle'],
+              )
+          s = markdown.EncodeToml(x)
+          fname = '/fugio/config.toml'
+          say 'bundle.WriteFile', fname, s
+          bundle.WriteFile(.bund, fname, s, pw=None)
+          http.Redirect(w, r, "%s*view?f=%s" % (root, fname), http.StatusMovedPermanently)
+
+        case '*edit_config':
+          s = bundle.ReadFile(.bund, fname, pw=None)
+          x = markdown.EvalToml(s)
+          fname = '/fugio/config.toml'
+          d = dict(Title='Edit Site Configuration',
+                   Submit='%s*edit_submit' % root,
+                   Text=text,
+                   EditTitle=x.get('Title')
+                   )
+          .t.ExecuteTemplate(w, 'EDIT', util.NativeMap(d))
+
+        case '*view':
           isDir, modTime, fSize = .bund.Stat3(fname, pw=None)
           if isDir:
             dirs = .bund.ListDirs(fname, pw=None)
             files = .bund.ListFiles(fname, pw=None)
-            dd = dict([(d, '%s_view?f=%s/%s' % (root, fname, d)) for d in dirs if d])
-            ff = dict([(f, '%s_view?f=%s/%s' % (root, fname, f)) for f in files if f])
-            up = J(root, fname, '..') if fname != '/' else ''
-            d = dict(Title=fname, dd=dd, ff=ff, up=up)
+
+            dd = dict([(d, J(fname, d)) for d in dirs if d])
+            ff = dict([(f, J(fname, f)) for f in files if f])
+            up = '/' if fname == '/' else J(fname, '..')
+            d = dict(Title=fname, root=root, dd=dd, ff=ff, up=up)
+
             say d
             .t.ExecuteTemplate(w, 'DIR', util.NativeMap(d))
           elif fSize:
@@ -407,24 +435,37 @@ TAIL = `
   `
 DIR = `
   {{ template "HEAD" $ }}
+
   <h3>Directories</h3>
   <tt><ul>
   {{ if $.up }}
-    <li> <a href="{{ $.up }}">[up]</a>
+    <li> <a href="{{$.root}}*view?f={{ $.up }}">[up]</a>
   {{ end }}
   {{ range $.dd | keys }}
-    <li> <a href="{{ index $.dd . }}">{{ . }}</a>
+    <li> <a href="{{$.root}}*view?f={{ index $.dd . }}">{{ . }}</a>
   {{ end }}
   </ul></tt>
 
   <h3>Files</h3>
   <tt><ul>
   {{ range $.ff | keys }}
-    <li> <a href="{{ index $.ff . }}">{{ . }}</a>
+    <li> <a href="{{$.root}}*view?f={{ index $.ff . }}">{{ . }}</a>
          &nbsp; &nbsp;
-         [<a href="{{ index $.ff . }}?c=edit">edit</a>]
+         [<a href="{{$.root}}*edit?f={{ index $.ff . }}">edit</a>]
   {{ end }}
   </ul></tt>
+
+  {{ template "TAIL" $ }}
+  `
+SITE = `
+  {{ template "HEAD" $ }}
+
+  This is for the site:
+  <p>
+  <tt>{{ printf "%#v" $ }}</tt>
+  <p>
+  [<a href="TODO">TODO</a>] &nbsp;
+  <p>
 
   {{ template "TAIL" $ }}
   `
@@ -448,6 +489,19 @@ EDIT = `
     <input type=hidden name="c" value="edit"> &nbsp;
     <input type=submit value=Save> &nbsp;
     <input type=reset>
+    <tt>&nbsp; <big>[<a href={{.Cancel}}>Cancel</a>]</big></tt>
+  </form>
+  {{ template "TAIL" $ }}
+  `
+EDIT_CONFIG = `
+  {{ template "HEAD" $ }}
+  <form method="POST" action="{{.Submit}}">
+    <b>Site Title:</b>
+    <input name=EditTitle size=80 value="{{.EditTitle}}">
+    <br>
+    <input type=hidden name="c" value="edit">
+    <input type=submit value=Save> &nbsp; &nbsp;
+    <input type=reset> &nbsp; &nbsp;
     <tt>&nbsp; <big>[<a href={{.Cancel}}>Cancel</a>]</big></tt>
   </form>
   {{ template "TAIL" $ }}

@@ -1,4 +1,4 @@
-from go import regexp
+from go import bytes, regexp
 from go import html/template
 from go import github.com/BurntSushi/toml
 from go import github.com/microcosm-cc/bluemonday
@@ -20,6 +20,11 @@ def EvalToml(s):
   f = util.NativeMap(dict())
   toml.Decode(s, f)
   return f
+
+def EncodeToml(x):
+  b = go_new(bytes.Buffer)
+  s = toml.NewEncoder(b).Encode(x)
+  return s
 
 def TranslateMarkdown(s):
   t = blackfriday.MarkdownCommon(s)
