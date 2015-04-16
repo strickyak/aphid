@@ -1,0 +1,12 @@
+<table border=1 cellpadding=10><tr>
+
+  <td> MAIN MENU:
+
+{{ range .Site.Menus.main }}
+  <td> ITEM:
+    <a class="menu" href="{{.URL}}">
+       {{ .Pre }}<span>{{ .Name }}</span></a>
+
+{{end}}
+
+</tr></table>

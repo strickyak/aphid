@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes" ?>
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
+  <channel>
+    <title>Posts on Favemon Web Site</title>
+    <link>http://localhost:3333/post/</link>
+    <description>Recent content in Posts on Favemon Web Site</description>
+    <generator>Hugo -- gohugo.io</generator>
+    <language>en-us</language>
+    <lastBuildDate>Wed, 25 Mar 2015 21:42:36 -0700</lastBuildDate>
+    <atom:link href="http://localhost:3333/post/index.xml" rel="self" type="application/rss+xml" />
+    
+    <item>
+      <title>First Posting, about my drums.</title>
+      <link>http://localhost:3333/post/first/</link>
+      <pubDate>Thu, 01 Jan 2015 01:02:03 -0700</pubDate>
+      
+      <guid>http://localhost:3333/post/first/</guid>
+      <description>
+
+&lt;h1 id=&#34;i-don-t-wanna-work:e8fb9c67eba912c72729806db31eaa1b&#34;&gt;I don&amp;rsquo;t wanna work.&lt;/h1&gt;
+
+&lt;h2 id=&#34;i-don-t-wanna-work-1:e8fb9c67eba912c72729806db31eaa1b&#34;&gt;I don&amp;rsquo;t wanna work.&lt;/h2&gt;
+
+&lt;h3 id=&#34;i-don-t-wanna-work-2:e8fb9c67eba912c72729806db31eaa1b&#34;&gt;I don&amp;rsquo;t wanna work.&lt;/h3&gt;
+
+&lt;p&gt;I just wanna bang on the drum all day.&lt;/p&gt;
+</description>
+    </item>
+    
+    <item>
+      <title>Another Post about my true intentions.</title>
+      <link>http://localhost:3333/post/second/</link>
+      <pubDate>Wed, 25 Mar 2015 21:42:36 -0700</pubDate>
+      
+      <guid>http://localhost:3333/post/second/</guid>
+      <description>
+
+&lt;h2 id=&#34;i-wish-i-were-an-oscar-mayer-wienermobile:9f7936f9b5c071ae81db818b80a44a0d&#34;&gt;I wish i were an Oscar Mayer Wienermobile.&lt;/h2&gt;
+
+&lt;p&gt;That is what I truly want to be!&lt;/p&gt;
+</description>
+    </item>
+    
+  </channel>
+</rss>

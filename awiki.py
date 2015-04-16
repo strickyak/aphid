@@ -154,7 +154,7 @@ def VerbView(w, r, m, wp):
     return
 
   say 'VerbView', text
-  _, html = markdown.Process(text)
+  _, html = markdown.ProcessWithFrontMatter(text)
   say 'VerbView', html
   d = dict(
       Html = html,

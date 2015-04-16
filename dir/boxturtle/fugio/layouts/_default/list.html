@@ -1,0 +1,16 @@
+{{ template "theme/_default/header.html" . }}
+
+<h1> BOXTURTLE LIST: {{ .Title }} </h1>
+
+<table border=1 cellpadding=10>
+    <tr><td>
+    THIS IS A BOXTURTLE LIST
+    </td></tr> 
+    {{ range .Data.Pages.ByDate }}
+    <tr><td>
+       {{ .Render "listitem" }}
+    </td></tr>
+    {{ end }}
+</table>
+
+{{ template "theme/_default/footer.html" . }}

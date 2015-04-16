@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes" ?>
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
+  <channel>
+    <title>Dark Mind on Favemon Web Site</title>
+    <link>http://localhost:3333/tags/dark-mind/</link>
+    <description>Recent content in Dark Mind on Favemon Web Site</description>
+    <generator>Hugo -- gohugo.io</generator>
+    <language>en-us</language>
+    <lastBuildDate>Wed, 25 Mar 2015 21:34:55 -0700</lastBuildDate>
+    <atom:link href="http://localhost:3333/tags/dark-mind/index.xml" rel="self" type="application/rss+xml" />
+    
+    <item>
+      <title>Gengar #94</title>
+      <link>http://localhost:3333/gengar/</link>
+      <pubDate>Wed, 25 Mar 2015 21:34:55 -0700</pubDate>
+      
+      <guid>http://localhost:3333/gengar/</guid>
+      <description>&lt;p&gt;== Everybody Loves Gengar&lt;/p&gt;
+
+&lt;p&gt;He&amp;rsquo;s a poisonous Ghost.&lt;/p&gt;
+</description>
+    </item>
+    
+  </channel>
+</rss>

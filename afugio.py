@@ -44,7 +44,7 @@ class AFugioMaster:
 
     fname = J('/fugio/content', '%s.md' % pname)
     md = bundle.ReadFile(.bund, fname, None)
-    meta, html = markdown.Process(md)
+    meta, html = markdown.ProcessWithFrontMatter(md)
     title = meta.get('title', pname) if meta else pname
     ts = meta.get('date') if meta else None
     ts = ts if ts else time.Unix(modTime, 0).Format(TIME_FORMAT)

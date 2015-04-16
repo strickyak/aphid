@@ -1,0 +1,121 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes" ?>
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
+  <channel>
+    <title>Favemon Web Site</title>
+    <link>http://localhost:3333/</link>
+    <description>Recent content on Favemon Web Site</description>
+    <generator>Hugo -- gohugo.io</generator>
+    <language>en-us</language>
+    <lastBuildDate>Thu, 26 Mar 2015 22:41:56 -0700</lastBuildDate>
+    <atom:link href="http://localhost:3333/index.xml" rel="self" type="application/rss+xml" />
+    
+    <item>
+      <title>All About Us</title>
+      <link>http://localhost:3333/about/</link>
+      <pubDate>Thu, 26 Mar 2015 22:41:56 -0700</pubDate>
+      
+      <guid>http://localhost:3333/about/</guid>
+      <description>&lt;p&gt;This is the page about us.&lt;/p&gt;
+</description>
+    </item>
+    
+    <item>
+      <title>Another Post about my true intentions.</title>
+      <link>http://localhost:3333/post/second/</link>
+      <pubDate>Wed, 25 Mar 2015 21:42:36 -0700</pubDate>
+      
+      <guid>http://localhost:3333/post/second/</guid>
+      <description>
+
+&lt;h2 id=&#34;i-wish-i-were-an-oscar-mayer-wienermobile:9f7936f9b5c071ae81db818b80a44a0d&#34;&gt;I wish i were an Oscar Mayer Wienermobile.&lt;/h2&gt;
+
+&lt;p&gt;That is what I truly want to be!&lt;/p&gt;
+</description>
+    </item>
+    
+    <item>
+      <title>Bulbasaur #1</title>
+      <link>http://localhost:3333/lame/bulbasaur/</link>
+      <pubDate>Wed, 25 Mar 2015 21:37:14 -0700</pubDate>
+      
+      <guid>http://localhost:3333/lame/bulbasaur/</guid>
+      <description>&lt;p&gt;== Bulbasaur is Not #1&lt;/p&gt;
+
+&lt;p&gt;In fact it looks like a dumb frog.&lt;/p&gt;
+</description>
+    </item>
+    
+    <item>
+      <title>Business Hours</title>
+      <link>http://localhost:3333/hours/</link>
+      <pubDate>Thu, 26 Mar 2015 13:22:00 -0700</pubDate>
+      
+      <guid>http://localhost:3333/hours/</guid>
+      <description>&lt;p&gt;Do we have hours?&lt;/p&gt;
+</description>
+    </item>
+    
+    <item>
+      <title>Directions to our Office</title>
+      <link>http://localhost:3333/directions/</link>
+      <pubDate>Thu, 26 Mar 2015 13:22:44 -0700</pubDate>
+      
+      <guid>http://localhost:3333/directions/</guid>
+      <description>&lt;p&gt;If we had a google map to the Cinnabar Archipelago, we would give it to you here.&lt;/p&gt;
+</description>
+    </item>
+    
+    <item>
+      <title>First Posting, about my drums.</title>
+      <link>http://localhost:3333/post/first/</link>
+      <pubDate>Thu, 01 Jan 2015 01:02:03 -0700</pubDate>
+      
+      <guid>http://localhost:3333/post/first/</guid>
+      <description>
+
+&lt;h1 id=&#34;i-don-t-wanna-work:e8fb9c67eba912c72729806db31eaa1b&#34;&gt;I don&amp;rsquo;t wanna work.&lt;/h1&gt;
+
+&lt;h2 id=&#34;i-don-t-wanna-work-1:e8fb9c67eba912c72729806db31eaa1b&#34;&gt;I don&amp;rsquo;t wanna work.&lt;/h2&gt;
+
+&lt;h3 id=&#34;i-don-t-wanna-work-2:e8fb9c67eba912c72729806db31eaa1b&#34;&gt;I don&amp;rsquo;t wanna work.&lt;/h3&gt;
+
+&lt;p&gt;I just wanna bang on the drum all day.&lt;/p&gt;
+</description>
+    </item>
+    
+    <item>
+      <title>Gengar #94</title>
+      <link>http://localhost:3333/gengar/</link>
+      <pubDate>Wed, 25 Mar 2015 21:34:55 -0700</pubDate>
+      
+      <guid>http://localhost:3333/gengar/</guid>
+      <description>&lt;p&gt;== Everybody Loves Gengar&lt;/p&gt;
+
+&lt;p&gt;He&amp;rsquo;s a poisonous Ghost.&lt;/p&gt;
+</description>
+    </item>
+    
+    <item>
+      <title>Pikachu</title>
+      <link>http://localhost:3333/lame/pikachu/</link>
+      <pubDate>Wed, 25 Mar 2015 21:35:31 -0700</pubDate>
+      
+      <guid>http://localhost:3333/lame/pikachu/</guid>
+      <description>&lt;p&gt;== Why Evryone Hates Pikachu&lt;/p&gt;
+
+&lt;p&gt;caus he keeps saying his name.&lt;/p&gt;
+</description>
+    </item>
+    
+    <item>
+      <title>Site Map</title>
+      <link>http://localhost:3333/sitemap/</link>
+      <pubDate>Thu, 26 Mar 2015 14:15:19 -0700</pubDate>
+      
+      <guid>http://localhost:3333/sitemap/</guid>
+      <description>&lt;p&gt;Here is a list of all pages on this site:&lt;/p&gt;
+</description>
+    </item>
+    
+  </channel>
+</rss>

@@ -1,0 +1,44 @@
+{{ template "theme/_default/header.html" . }}
+
+<center><h1>The Church Of Gengar</h1></center>
+
+<center>
+  <p>
+    Home pages are special, like this frog:
+    <br>
+    <img src="img/frog.gif">
+    <br>
+    The source for the home page is in layout/index.html
+  </p>
+</center>
+
+
+<p>
+  The Church of Gengar is a simple demo web site
+  using the <a href="http://gohugo.io/">HUGO</a>
+  static site renderer and a demo theme "Boxturtle"
+  designed to demonstrate where to customize stuff. 
+</p>
+
+<p><center>
+<a href="http://theundecidedartist.deviantart.com/art/Shiny-Top-Hat-Gengar-296747033">
+<img src="/img/shiny_top_hat_gengar_by_theundecidedartist-d4wobh5.jpg">
+<br>
+Some rights reserved. This work is licensed under a 
+Creative Commons Attribution-Noncommercial-No Derivative Works 3.0 License.
+</a></center></p>
+
+<h2>List of All Pages:</h2>
+
+<ul>
+  {{range .Site.Pages.ByTitle}}
+    <li> <a href="{{.Permalink}}">{{.Title}}</a> [Section={{.Section}}]
+  {{end}}
+</ul>
+
+<h2>Menu Items:</h2>
+<ul>
+  {{range .Site.Menus.main}} <li> {{.Name}} ;; {{.Identifier}} ;; {{.URL}} ;;;;;; {{ printf "%#v" . }} {{end}}
+</ul>
+
+{{ template "theme/_default/footer.html" . }}

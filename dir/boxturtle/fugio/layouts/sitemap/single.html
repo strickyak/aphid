@@ -1,0 +1,13 @@
+{{ template "theme/_default/header.html" . }}
+
+{{.Content}}
+
+<ul>
+  {{range .Site.Pages.ByTitle}}
+      <li> <a href="{{.Permalink}}">{{.Title}}</a>
+           [Section = {{.Section}}]
+           [Date = {{ .Date.Format "Mon, Jan 2, 2006 at 3:04PM" }}]
+  {{end}}
+</ul>
+
+{{ template "theme/_default/footer.html" . }}

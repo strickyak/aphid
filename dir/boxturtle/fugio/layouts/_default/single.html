@@ -1,0 +1,42 @@
+<!--
+  This file "themes/boxturtle/layouts/default/single.html"
+  is used to render the content for any page except the home page.
+-->
+{{ template "theme/_default/header.html" . }}
+
+<H1> TITLE: {{ .Title }} </h1>
+
+<table border=1 cellpadding=10><tr><td>
+  BOXTURTLE CONTENT
+</td></tr><tr><td>
+  <div class="content">
+  {{ .Content }}
+  </div>
+</td></tr></table>
+
+<br>
+  <br>
+    <hr>
+  <br>
+<br>
+
+<!-- ============== DEBUG FOLLOWS ============ -->
+
+<table border=1 cellpadding=10><tr><td>
+  BOXTURTLE DEBUG SINGLE PAGE
+</td></tr><tr><td>
+  <div class="debug">
+    <ul>
+    <li> .Title == {{ .Title }}
+    <li> .Permalink == {{ .Permalink }}
+    <li> Date: {{ .Date.Format "Mon Jan 2, 2006" }}
+    <li> TOPICS: {{/* range .Params.topics */}} [{{ . }}] &nbsp; {{/* end */}}
+    <li> TAGS: {{/* range .Params.tags */}} [{{ . }}] &nbsp; {{/* end */}}
+
+    <li> EVERYTHING == {{ printf "%#v" . }}
+
+    </ul>
+  </div>
+</td></tr></table>
+
+{{ template "theme/_default/footer.html" . }}

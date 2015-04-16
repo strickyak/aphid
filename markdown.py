@@ -1,34 +1,44 @@
 from go import regexp
 from go import html/template
+from go import github.com/BurntSushi/toml
 from go import github.com/microcosm-cc/bluemonday
 from go import github.com/russross/blackfriday
 from lib import data
-from . import sonnet
+from . import sonnet, util
 
-FRONT_MATTER = regexp.MustCompile(`(?s)^({\s*\n.*?\n}\s*\n)(.*)$`)
+JS_FRONT_MATTER = regexp.MustCompile(`(?s)^({\s*\n.*?\n}\s*\n)(.*)$`)
+TOML_FRONT_MATTER = regexp.MustCompile(`(?s)^[+][+][+]\s*\n(.*?\n)[+][+][+]\s*\n(.*)$`)
 
-CRLF = regexp.MustCompile("\r")
+CR = regexp.MustCompile("\r")
 
-def Process(text):
-  text = CRLF.ReplaceAllString(text, "")
-  f = None
-  m = FRONT_MATTER.FindStringSubmatch(text)
-  if m:
-    _, front, text = m
-    say front, text
-    try:
-      js = sonnet.RunSnippet(front)
-      f = data.Eval(js)
-    except as ex:
-      print
-      say ex
-      print
-      raise ex
-    say front, text, f
-    
+def EvalJSonnet(s):
+  js = sonnet.RunSnippet(s)
+  f = data.Eval(js)
+  return f
+
+def EvalToml(s):
+  f = util.NativeMap(dict())
+  toml.Decode(s, f)
+  return f
+
+def TranslateMarkdown(s):
+  t = blackfriday.MarkdownCommon(s)
+  html = bluemonday.UGCPolicy().SanitizeBytes(t)
+  return go_cast(template.HTML, html)
+
+def ProcessWithFrontMatter(text):
   say text
-  unsafe = blackfriday.MarkdownCommon(text)
-  say unsafe
-  html = bluemonday.UGCPolicy().SanitizeBytes(unsafe)
-  say html
-  return f, go_cast(template.HTML, html)
+  text = CR.ReplaceAllString(text, "")
+  m1 = JS_FRONT_MATTER.FindStringSubmatch(text)
+  m2 = TOML_FRONT_MATTER.FindStringSubmatch(text)
+  f = None
+  if m1:
+    _, front, text = m1
+    f = EvalJSonnet(front)
+  elif m2:
+    _, front, text = m2
+    f = EvalToml(front)
+
+  h = TranslateMarkdown(text)
+  say f, h 
+  return f, h 

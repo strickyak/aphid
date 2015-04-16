@@ -1,0 +1,21 @@
+baseurl = "http://127.0.0.1:3333/"
+languageCode = "en-us"
+title = "Favemon Web Site"
+
+[[menu.main]]
+    name = "Home"
+    weight = -999
+    identifier = "home"
+    url = "/"
+
+[[menu.main]]
+    name = "News"
+    weight = 0
+    identifier = "post"
+    url = "/post/"
+
+[[menu.main]]
+    name = "Tags"
+    weight = 9999
+    identifier = "tags"
+    url = "/tags/"

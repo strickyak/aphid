@@ -1,0 +1,37 @@
+<br>
+<br>
+<hr>
+<br>
+<br>
+
+<table border=1><tr><th>
+	THIS IS THE BOXTURTLE FOOTER.
+</th></tr><tr><td>
+  DEBUG INFO:
+  <ul>
+    <li> Title == {{ .Title }}
+
+    <li> Permalink == {{ .Permalink }}
+
+    <li> Date == {{ .Date.Format "Mon Jan 2, 2006" }}
+
+    <li> TAGS == {{ range .Params.tags }} "{{ . }}", &nbsp; {{ end }}
+
+    <li> EVERYTHING == {{ printf "%#v" . }}
+
+{{/*
+    {{if .Next}}
+    <li> Next: {{.Next.Title}} == <a href="{{.Next.Permalink}}">{{.Next.Permalink}}</a>
+    {{end}}
+    {{if .Prev}}
+    <li> Prev: {{.Prev.Title}} == <a hre="{{.Prev.Permalink}}">{{.Prev.Permalink}}</a>
+    {{end}}
+*/}}
+
+  </ul>
+</td></tr></table>
+
+{{ template "theme/_default/analytics.html" . }}
+
+</body>
+</html>
