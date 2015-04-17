@@ -9,7 +9,6 @@ F = fmt.Sprintf
 Nav = util.Nav
 TIME_FORMAT = '2006-01-02T15:04:05-07:00'
 
-#J = P.Join
 def J(*vec):
   return P.Clean(P.Join(*vec))
 
@@ -298,14 +297,6 @@ type Site struct {
 
 ##############################################
 
-
-#from go import bufio, bytes, fmt, reflect, regexp, sort, time
-#from go import html/template, net/http, io/ioutil
-#from go import path as P
-#from . import A, atemplate, bundle
-#from . import adapt, basic, flag, util
-#from lib import data
-
 class Editor:
   def __init__(master, bname, bund, users=None):
     .master = master
@@ -424,150 +415,151 @@ class Editor:
             http.ServeContent(w, r, fname, adapt.UnixToTime(modTime), br)
           else:
             raise 'Cannot view empty or deleted file: %q' % fname
+    return
 
 EDITOR_TEMPLATES = `
-  {{define "HEAD"}}
-    <html><head>
-      <meta content="text/html; charset=UTF-8" http-equiv="Content-Type">
-      <title>{{.Title}}</title>
-      <style>
-        body {
-          background-color: #e5ccee;
-        }
-        .stuff {
-          background-color: white;
-          padding: 10px;
-        }
-        .floor {
-          padding: 10px;
-        }
-        .form {
-          background-color: yellow;
-          padding: 30px;
-        }
-      </style>
-    </head><body>
-      <table class="title-table" width=100% cellpadding=10><tr>
-        <td align=center> <h2 class="title"><tt>{{.Title}}</tt></h2>
-        <td align=right> <h2><tt>*Editor*</tt></h2>
-      </tr></table>
-      <div class="stuff">
-  {{end}}
-  {{define "TAIL"}}
-      </div>
+{{define "HEAD"}}
+        <html><head>
+          <meta content="text/html; charset=UTF-8" http-equiv="Content-Type">
+          <title>{{.Title}}</title>
+          <style>
+            body {
+              background-color: #e5ccee;
+            }
+            .stuff {
+              background-color: white;
+              padding: 10px;
+            }
+            .floor {
+              padding: 10px;
+            }
+            .form {
+              background-color: yellow;
+              padding: 30px;
+            }
+          </style>
+        </head><body>
+          <table class="title-table" width=100% cellpadding=10><tr>
+            <td align=center> <h2 class="title"><tt>{{.Title}}</tt></h2>
+            <td align=right> <h2><tt>*Editor*</tt></h2>
+          </tr></table>
+          <div class="stuff">
+{{end}}
+{{define "TAIL"}}
+          </div>
 
-      <br> <br> <br> <br>
-      <hr>
-      <tt>
-        <dl><dt>DEBUG:</dt>
-        <dd><dl>
-        {{ range (keys $) }}
-          <dt> <b>{{ printf "%s:" . }}</b>
-          <dd> {{ printf "%#v" (index $ .) }}
+          <br> <br> <br> <br>
+          <hr>
+          <tt>
+            <dl><dt>DEBUG:</dt>
+            <dd><dl>
+            {{ range (keys $) }}
+              <dt> <b>{{ printf "%s:" . }}</b>
+              <dd> {{ printf "%#v" (index $ .) }}
+            {{ end }}
+            </dl></dd></dl>
+          </tt>
+
+        </body></html>
+{{end}}
+{{define "DIR"}}
+        {{ template "HEAD" $ }}
+
+        <h3>Directories</h3>
+        <tt><ul>
+        {{ if $.up }}
+          <li> <a href="{{$.root}}*view?f={{ $.up }}">[up]</a>
         {{ end }}
-        </dl></dd></dl>
-      </tt>
+        {{ range $.dd | keys }}
+          <li> <a href="{{$.root}}*view?f={{ index $.dd . }}">{{ . }}</a>
+        {{ end }}
+        </ul></tt>
 
-    </body></html>
-  {{end}}
-  {{define "DIR"}}
-    {{ template "HEAD" $ }}
+        <h3>Files</h3>
+        <tt><ul>
+        {{ range $.ff | keys }}
+          <li> <a href="{{$.root}}*view?f={{ index $.ff . }}">{{ . }}</a>
+               &nbsp; &nbsp;
+               [<a href="{{$.root}}*edit?f={{ index $.ff . }}">edit</a>]
+        {{ end }}
+        </ul></tt>
 
-    <h3>Directories</h3>
-    <tt><ul>
-    {{ if $.up }}
-      <li> <a href="{{$.root}}*view?f={{ $.up }}">[up]</a>
-    {{ end }}
-    {{ range $.dd | keys }}
-      <li> <a href="{{$.root}}*view?f={{ index $.dd . }}">{{ . }}</a>
-    {{ end }}
-    </ul></tt>
+        {{ template "TAIL" $ }}
+{{end}}
+{{define "SITE"}}
+        {{ template "HEAD" $ }}
+        <tt><ul>
+          <li>Site Title = "{{.Title}}"
+          <li>Base URL = "{{.BaseURL}}"
+          <li>[<a href="{{.root}}*edit_site">Edit Site</a>]
+        </ul></tt>
 
-    <h3>Files</h3>
-    <tt><ul>
-    {{ range $.ff | keys }}
-      <li> <a href="{{$.root}}*view?f={{ index $.ff . }}">{{ . }}</a>
-           &nbsp; &nbsp;
-           [<a href="{{$.root}}*edit?f={{ index $.ff . }}">edit</a>]
-    {{ end }}
-    </ul></tt>
+        {{ template "TAIL" $ }}
+{{end}}
+{{define "EDIT_SITE"}}
+        {{ template "HEAD" $ }}
 
-    {{ template "TAIL" $ }}
-  {{end}}
-  {{define "SITE"}}
-    {{ template "HEAD" $ }}
-    <tt><ul>
-      <li>Site Title = "{{.Title}}"
-      <li>Base URL = "{{.BaseURL}}"
-      <li>[<a href="{{.root}}*edit_site">Edit Site</a>]
-    </ul></tt>
+        <table border=1><tr><td>
+        <form method="POST" action="{{.root}}*edit_site_submit">
+          <br><br>
+          Site Title: <input type=text size=60 name=title value={{.Title}}>
+          Base URL: <input type=text size=60 name=baseurl value={{.BaseURL}}>
+          <br><br>
+          <input type=submit name=submit value=Save> &nbsp; &nbsp;
+          <input type=reset> &nbsp; &nbsp;
+          <input type=submit name=submit value=Cancel> &nbsp; &nbsp;
+        </form>
+        </table>
 
-    {{ template "TAIL" $ }}
-  {{end}}
-  {{define "EDIT_SITE"}}
-    {{ template "HEAD" $ }}
+        {{ template "TAIL" $ }}
+{{end}}
+{{define "TEXT"}}
+        {{ template "HEAD" $ }}
+        <pre>{{.Text}}</pre>
+        </div>
+        <div class="floor">
+        [<a href="{{.Edit}}">EDIT</a>] &nbsp;
 
-    <table border=1><tr><td>
-    <form method="POST" action="{{.root}}*edit_site_submit">
-      <br><br>
-      Site Title: <input type=text size=60 name=title value={{.Title}}>
-      Base URL: <input type=text size=60 name=baseurl value={{.BaseURL}}>
-      <br><br>
-      <input type=submit name=submit value=Save> &nbsp; &nbsp;
-      <input type=reset> &nbsp; &nbsp;
-      <input type=submit name=submit value=Cancel> &nbsp; &nbsp;
-    </form>
-    </table>
-
-    {{ template "TAIL" $ }}
-  {{end}}
-  {{define "TEXT"}}
-    {{ template "HEAD" $ }}
-    <pre>{{.Text}}</pre>
-    </div>
-    <div class="floor">
-    [<a href="{{.Edit}}">EDIT</a>] &nbsp;
-
-    {{ template "TAIL" $ }}
-  {{end}}
-  {{define "EDIT"}}
-    {{ template "HEAD" $ }}
-    <form method="POST" action="{{.Submit}}">
-      <b>Title:</b> <input name=EditTitle size=80 value="{{.EditTitle}}">
-      <p>
-      <textarea name=Text wrap=virtual rows=30 cols=80 style="width: 95%; height: 80%"
-        >{{.Text}}</textarea>
-      <p>
-      <input type=submit value=Save> &nbsp;
-      <input type=reset>
-      <tt>&nbsp; <big>[<a href={{.Cancel}}>Cancel</a>]</big></tt>
-    </form>
-    {{ template "TAIL" $ }}
-  {{end}}
-  {{define "EDIT_CONFIG"}}
-    {{ template "HEAD" $ }}
-    <form method="POST" action="{{.Submit}}">
-      <b>Site Title:</b>
-      <input name=EditTitle size=80 value="{{.EditTitle}}">
-      <br>
-      <input type=submit value=Save> &nbsp; &nbsp;
-      <input type=reset> &nbsp; &nbsp;
-      <tt>&nbsp; <big>[<a href={{.Cancel}}>Cancel</a>]</big></tt>
-    </form>
-    {{ template "TAIL" $ }}
-  {{end}}
-  {{define "ATTACH"}}
-    {{ template "HEAD" $ }}
-    <form method="POST" action="{{.Subject}}" enctype="multipart/form-data">
-      <p>
-      Upload a new attachment:
-      <input type="file" name="file">
-      <p>
-      <input type=submit value=Save> &nbsp;
-      <input type=reset>
-      <tt>&nbsp; <big>[<a href={{.Cancel}}>Cancel</a>]</big></tt>
-    </form>
-    {{ template "TAIL" $ }}
-  {{end}}
+        {{ template "TAIL" $ }}
+{{end}}
+{{define "EDIT"}}
+        {{ template "HEAD" $ }}
+        <form method="POST" action="{{.Submit}}">
+          <b>Title:</b> <input name=EditTitle size=80 value="{{.EditTitle}}">
+          <p>
+          <textarea name=Text wrap=virtual rows=30 cols=80 style="width: 95%; height: 80%"
+            >{{.Text}}</textarea>
+          <p>
+          <input type=submit value=Save> &nbsp;
+          <input type=reset>
+          <tt>&nbsp; <big>[<a href={{.Cancel}}>Cancel</a>]</big></tt>
+        </form>
+        {{ template "TAIL" $ }}
+{{end}}
+{{define "EDIT_CONFIG"}}
+        {{ template "HEAD" $ }}
+        <form method="POST" action="{{.Submit}}">
+          <b>Site Title:</b>
+          <input name=EditTitle size=80 value="{{.EditTitle}}">
+          <br>
+          <input type=submit value=Save> &nbsp; &nbsp;
+          <input type=reset> &nbsp; &nbsp;
+          <tt>&nbsp; <big>[<a href={{.Cancel}}>Cancel</a>]</big></tt>
+        </form>
+        {{ template "TAIL" $ }}
+{{end}}
+{{define "ATTACH"}}
+        {{ template "HEAD" $ }}
+        <form method="POST" action="{{.Subject}}" enctype="multipart/form-data">
+          <p>
+          Upload a new attachment:
+          <input type="file" name="file">
+          <p>
+          <input type=submit value=Save> &nbsp;
+          <input type=reset>
+          <tt>&nbsp; <big>[<a href={{.Cancel}}>Cancel</a>]</big></tt>
+        </form>
+        {{ template "TAIL" $ }}
+{{end}}
 `
 pass
