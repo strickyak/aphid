@@ -1,6 +1,6 @@
-baseurl = "http://127.0.0.1:3333/"
+baseurl = "http://boxturtle.x:8180/"
 languageCode = "en-us"
-title = "Favemon Web Site"
+title = "Boxturtle Demo Web Site"
 
 [[menu.main]]
     name = "Home"

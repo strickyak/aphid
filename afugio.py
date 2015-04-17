@@ -16,7 +16,7 @@ def J(*vec):
 MatchStatic = regexp.MustCompile('^/+(css|js|img|media)/(.*)$').FindStringSubmatch
 MatchContent = regexp.MustCompile('^/+(([-A-Za-z0-9_]+)/)?([-A-Za-z0-9_]+)/*$').FindStringSubmatch
 MatchHome = regexp.MustCompile('^/+(index.html)?$').FindStringSubmatch
-MatchEditor = regexp.MustCompile('^/+([*]\\w+)$').FindStringSubmatch
+MatchEditor = regexp.MustCompile('^/+([*]\\w*)').FindStringSubmatch
 
 MatchMdDirName = regexp.MustCompile('^[a-z][-a-z0-9_]*$').FindString
 MatchMdFileName = regexp.MustCompile('^[a-z][-a-z0-9_]*[.]md$').FindString
@@ -33,6 +33,9 @@ class AFugioMaster:
     .bund = bund
     .users = users
     .editor = Editor(master=self, bname=bname, bund=bund, users=users)
+    .Reload()
+
+  def Reload():
     .ReloadTemplates()
     .ReloadPageMeta()
 
@@ -126,12 +129,20 @@ class AFugioMaster:
       menud[which_menu] = util.NativeSlice(menu2)
 
     # Construct the site.
+    try:
+      site_toml = bundle.ReadFile(.bund, '/fugio/config.toml', pw=None)
+      site_d = markdown.EvalToml(site_toml)
+    except as ex:
+      # TODO -- log error
+      site_d = dict()
+
     .paged = paged
     .site = go_new(Site) {
       Menus: util.NativeMap(menud),
       Pages: pages_by,
       Sections: util.NativeMap(menud),
-      Title: '(site-title)',
+      Title: site_d.get('title', '(this site needs a title)'),
+      BaseURL: site_d.get('baseurl', 'http://127.0.0.1/...FixTheBaseURL.../'),
     }
     for pname, p in paged.items():
       p.Site = .site
@@ -262,6 +273,7 @@ type PagesBy struct {
 
 type Site struct {
         Title          string
+        BaseURL        string
         Pages          *PagesBy
         // Files          []*source.File
         // Tmpl           tpl.Template
@@ -325,15 +337,41 @@ class Editor:
     query = util.ParseQuery(r)
     fname = query.get('f')
 
+    if cmd == '*':
+      cmd = '*site'
     switch cmd:
-        case '*':
-          .t.ExecuteTemplate(w, 'SITE', .master.site)
+        case '*site':
+          d = dict(
+              Title=.master.site.Title,
+              BaseURL=.master.site.BaseURL,
+              root=root,
+              )
+          .t.ExecuteTemplate(w, 'SITE', util.NativeMap(d))
+
+        case '*edit_site_submit':
+          if query['submit'] == 'Save':
+            d = dict(
+              title= query['title'], 
+              baseurl= query['baseurl'], 
+              )
+            toml = markdown.EncodeToml(util.NativeMap(d))
+            bundle.WriteFile(.bund, '/fugio/config.toml', toml, pw=None)
+            .master.Reload()
+          http.Redirect(w, r, "%s*site" % root, http.StatusTemporaryRedirect)
+
+        case '*edit_site':
+          d = dict(
+            Title=.master.site.Title,
+            BaseURL=.master.site.BaseURL,
+            root=root,
+            )
+          .t.ExecuteTemplate(w, 'EDIT_SITE', util.NativeMap(d))
 
         case '*edit_submit':
           text = query['Text']
           say 'bundle.WriteFile', fname, text
           bundle.WriteFile(.bund, fname, text, pw=None)
-          http.Redirect(w, r, "%s*view?f=%s" % (root, fname), http.StatusMovedPermanently)
+          http.Redirect(w, r, "%s*view?f=%s" % (root, fname), http.StatusTemporaryRedirect)
 
         case '*edit':
             text = bundle.ReadFile(.bund, fname, pw=None)
@@ -349,11 +387,13 @@ class Editor:
           x = dict(
               Title= query['EditTitle'],
               )
+          say x
           s = markdown.EncodeToml(x)
+          say s
           fname = '/fugio/config.toml'
           say 'bundle.WriteFile', fname, s
           bundle.WriteFile(.bund, fname, s, pw=None)
-          http.Redirect(w, r, "%s*view?f=%s" % (root, fname), http.StatusMovedPermanently)
+          http.Redirect(w, r, "%s*view?f=%s" % (root, fname), http.StatusTemporaryRedirect)
 
         case '*edit_config':
           s = bundle.ReadFile(.bund, fname, pw=None)
@@ -401,27 +441,31 @@ EDITOR_TEMPLATES = `
         .floor {
           padding: 10px;
         }
+        .form {
+          background-color: yellow;
+          padding: 30px;
+        }
       </style>
     </head><body>
       <table class="title-table" width=100% cellpadding=10><tr>
         <td align=center> <h2 class="title"><tt>{{.Title}}</tt></h2>
-        <td align=right> <h2><tt>Wedit</tt></h2>
+        <td align=right> <h2><tt>*Editor*</tt></h2>
       </tr></table>
       <div class="stuff">
   {{end}}
   {{define "TAIL"}}
       </div>
 
+      <br> <br> <br> <br>
       <hr>
-      <tt><h4>DEBUG:</h4>
-      <dl>
-      {{ range (keys $) }}
-        <dt> <b>{{ printf "%s:" . }}</b>
-        <dd> {{ printf "%#v" (index $ .) }}
-      {{ end }}
-      </dl>
-      <hr>
-          {{ printf "%#v" $ }}
+      <tt>
+        <dl><dt>DEBUG:</dt>
+        <dd><dl>
+        {{ range (keys $) }}
+          <dt> <b>{{ printf "%s:" . }}</b>
+          <dd> {{ printf "%#v" (index $ .) }}
+        {{ end }}
+        </dl></dd></dl>
       </tt>
 
     </body></html>
@@ -452,13 +496,28 @@ EDITOR_TEMPLATES = `
   {{end}}
   {{define "SITE"}}
     {{ template "HEAD" $ }}
+    <tt><ul>
+      <li>Site Title = "{{.Title}}"
+      <li>Base URL = "{{.BaseURL}}"
+      <li>[<a href="{{.root}}*edit_site">Edit Site</a>]
+    </ul></tt>
 
-    This is for the site:
-    <p>
-    <tt>{{ printf "%#v" $ }}</tt>
-    <p>
-    [<a href="TODO">TODO</a>] &nbsp;
-    <p>
+    {{ template "TAIL" $ }}
+  {{end}}
+  {{define "EDIT_SITE"}}
+    {{ template "HEAD" $ }}
+
+    <table border=1><tr><td>
+    <form method="POST" action="{{.root}}*edit_site_submit">
+      <br><br>
+      Site Title: <input type=text size=60 name=title value={{.Title}}>
+      Base URL: <input type=text size=60 name=baseurl value={{.BaseURL}}>
+      <br><br>
+      <input type=submit name=submit value=Save> &nbsp; &nbsp;
+      <input type=reset> &nbsp; &nbsp;
+      <input type=submit name=submit value=Cancel> &nbsp; &nbsp;
+    </form>
+    </table>
 
     {{ template "TAIL" $ }}
   {{end}}
@@ -479,7 +538,6 @@ EDITOR_TEMPLATES = `
       <textarea name=Text wrap=virtual rows=30 cols=80 style="width: 95%; height: 80%"
         >{{.Text}}</textarea>
       <p>
-      <input type=hidden name="c" value="edit"> &nbsp;
       <input type=submit value=Save> &nbsp;
       <input type=reset>
       <tt>&nbsp; <big>[<a href={{.Cancel}}>Cancel</a>]</big></tt>
@@ -492,7 +550,6 @@ EDITOR_TEMPLATES = `
       <b>Site Title:</b>
       <input name=EditTitle size=80 value="{{.EditTitle}}">
       <br>
-      <input type=hidden name="c" value="edit">
       <input type=submit value=Save> &nbsp; &nbsp;
       <input type=reset> &nbsp; &nbsp;
       <tt>&nbsp; <big>[<a href={{.Cancel}}>Cancel</a>]</big></tt>

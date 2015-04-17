@@ -22,9 +22,12 @@ def EvalToml(s):
   return f
 
 def EncodeToml(x):
+  say x
   b = go_new(bytes.Buffer)
-  s = toml.NewEncoder(b).Encode(x)
-  return s
+  toml.NewEncoder(b).Encode(x)
+  z = str(b)
+  say z
+  return z
 
 def TranslateMarkdown(s):
   t = blackfriday.MarkdownCommon(s)
