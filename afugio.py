@@ -31,7 +31,7 @@ class AFugioMaster:
     must bund
     .bund = bund
     .users = users
-    .editor = Editor(master=self, bname=bname, bund=bund, users=users)
+    .editor = Curator(master=self, bname=bname, bund=bund, users=users)
     .Reload()
 
   def Reload():
@@ -46,7 +46,7 @@ class AFugioMaster:
 
     fname = J('/fugio/content', '%s.md' % pname)
     md = bundle.ReadFile(.bund, fname, None)
-    meta, html = markdown.ProcessWithFrontMatter(md)
+    meta, _, html = markdown.ProcessWithFrontMatter(md)
     title = meta.get('title', pname) if meta else pname
     ts = meta.get('date') if meta else None
     ts = ts if ts else time.Unix(modTime, 0).Format(TIME_FORMAT)
@@ -297,7 +297,7 @@ type Site struct {
 
 ##############################################
 
-class Editor:
+class Curator:
   def __init__(master, bname, bund, users=None):
     .master = master
     .bname = bname
@@ -307,7 +307,7 @@ class Editor:
     .ReloadTemplates()
 
   def ReloadTemplates():
-    .t = template.New('Editor')
+    .t = template.New('Curator')
     .t.Funcs(util.TemplateFuncs())
     .t.Parse(EDITOR_TEMPLATES)
 
@@ -358,44 +358,82 @@ class Editor:
             )
           .t.ExecuteTemplate(w, 'EDIT_SITE', util.NativeMap(d))
 
-        case '*edit_submit':
-          text = query['Text']
+        case '*edit_page_submit':
+          say query
+          if query.get('submit') == 'Save':
+            edit_title = query['EditTitle'].strip()
+            edit_md = query['EditMd']
+            main_name = query['EditMainName'].strip()
+            main_weight = 0
+            try:
+              main_weight = int(query['EditMainWeight'].strip())
+            except:
+              pass
+            edit_menu = util.NativeMap(dict(main=util.NativeMap(dict(
+                name=main_name,
+                weigth=main_weight,
+                ))))
+            edit_aliases=util.NativeSlice(
+                [s.strip() for s in query['EditAliases'].strip().split(',')]
+                ),
+            toml = markdown.EncodeToml(util.NativeMap(dict(
+                title=edit_title,
+                aliases=edit_aliases,
+                menu=edit_menu,
+                )))
+            text = '+++\n' + toml + '\n+++\n' + edit_md
+            say 'bundle.WriteFile', fname, edit_title, edit_md, toml, text
+            bundle.WriteFile(.bund, J('/fugio/content', fname + '.md'), text, pw=None)
+          http.Redirect(w, r, "%s*view_page?f=%s" % (root, fname), http.StatusTemporaryRedirect)
+
+        case '*edit_page':
+          pname = fname
+          filename = J('/fugio/content', fname + '.md')
+
+          text = bundle.ReadFile(.bund, filename, pw=None)
+          meta, md, html = markdown.ProcessWithFrontMatter(text)
+
+          main_d = meta.get('menu', {}).get('main')
+          EditMainName = main_d.get('name', '') if main_d else ''
+          EditMainWeight = main_d.get('weight', 0) if main_d else 0
+
+          d = dict(Title='Edit Page %q' % fname,
+                   Submit='%s*edit_page_submit?f=%s' % (root, fname),
+                   Filepath=fname,
+                   EditMd=md,
+                   EditTitle=meta.get('title', 'Untitled'),
+                   EditAliases=','.join(meta.get('aliases', [])),
+                   EditMainName=EditMainName,
+                   EditMainWeight=EditMainWeight,
+                   DebugMeta=meta,
+                   )
+          .t.ExecuteTemplate(w, 'EDIT_PAGE', util.NativeMap(d))
+
+        case '*edit_text_submit':
+          ttl = query['EditTitle']
+          text = query['EditText']
           say 'bundle.WriteFile', fname, text
           bundle.WriteFile(.bund, fname, text, pw=None)
           http.Redirect(w, r, "%s*view?f=%s" % (root, fname), http.StatusTemporaryRedirect)
 
-        case '*edit':
-            text = bundle.ReadFile(.bund, fname, pw=None)
+        case '*edit_text':
+            edittext = bundle.ReadFile(.bund, fname, pw=None)
             d = dict(Title='VIEW TEXT: %q' % fname,
-                     Submit='%s*edit_submit?f=%s' % (root, fname),
+                     Submit='%s*edit_text_submit?f=%s' % (root, fname),
                      Filepath=fname,
-                     Text=text,
-                     EditTitle='Bogus Title for %q' % fname
+                     EditText=edittext,
                      )
-            .t.ExecuteTemplate(w, 'EDIT', util.NativeMap(d))
+            .t.ExecuteTemplate(w, 'EDIT_TEXT', util.NativeMap(d))
 
-        case '*edit_config_submit':
-          x = dict(
-              Title= query['EditTitle'],
-              )
-          say x
-          s = markdown.EncodeToml(x)
-          say s
-          fname = '/fugio/config.toml'
-          say 'bundle.WriteFile', fname, s
-          bundle.WriteFile(.bund, fname, s, pw=None)
-          http.Redirect(w, r, "%s*view?f=%s" % (root, fname), http.StatusTemporaryRedirect)
-
-        case '*edit_config':
-          s = bundle.ReadFile(.bund, fname, pw=None)
-          x = markdown.EvalToml(s)
-          fname = '/fugio/config.toml'
-          d = dict(Title='Edit Site Configuration',
-                   Submit='%s*edit_submit' % root,
-                   Text=text,
-                   EditTitle=x.get('Title')
-                   )
-          .t.ExecuteTemplate(w, 'EDIT', util.NativeMap(d))
+        case '*view_page':
+          filename = J('/fugio/content', fname + '.md')
+          isDir, modTime, fSize = .bund.Stat3(filename, pw=None)
+          say isDir, modTime, fSize
+          if fSize:
+            br = .bund.MakeReader(filename, pw=None, raw=False, rev=None)
+            http.ServeContent(w, r, filename, adapt.UnixToTime(modTime), br)
+          else:
+            raise 'Cannot view empty or deleted file: %q' % fname
 
         case '*view':
           isDir, modTime, fSize = .bund.Stat3(fname, pw=None)
@@ -438,10 +476,10 @@ EDITOR_TEMPLATES = `
               padding: 30px;
             }
           </style>
-        </head><body>
+        </head><body><tt>
           <table class="title-table" width=100% cellpadding=10><tr>
-            <td align=center> <h2 class="title"><tt>{{.Title}}</tt></h2>
-            <td align=right> <h2><tt>*Editor*</tt></h2>
+            <td align=center> <h2 class="title"><ttx>{{.Title}}</ttx></h2>
+            <td align=right> <h2><ttx>*Curator*</ttx></h2>
           </tr></table>
           <div class="stuff">
 {{end}}
@@ -450,7 +488,7 @@ EDITOR_TEMPLATES = `
 
           <br> <br> <br> <br>
           <hr>
-          <tt>
+          <ttx>
             <dl><dt>DEBUG:</dt>
             <dd><dl>
             {{ range (keys $) }}
@@ -458,41 +496,41 @@ EDITOR_TEMPLATES = `
               <dd> {{ printf "%#v" (index $ .) }}
             {{ end }}
             </dl></dd></dl>
-          </tt>
+          </ttx>
 
-        </body></html>
+        </tt></body></html>
 {{end}}
 {{define "DIR"}}
         {{ template "HEAD" $ }}
 
         <h3>Directories</h3>
-        <tt><ul>
+        <ttx><ul>
         {{ if $.up }}
           <li> <a href="{{$.root}}*view?f={{ $.up }}">[up]</a>
         {{ end }}
         {{ range $.dd | keys }}
           <li> <a href="{{$.root}}*view?f={{ index $.dd . }}">{{ . }}</a>
         {{ end }}
-        </ul></tt>
+        </ul></ttx>
 
         <h3>Files</h3>
-        <tt><ul>
+        <ttx><ul>
         {{ range $.ff | keys }}
           <li> <a href="{{$.root}}*view?f={{ index $.ff . }}">{{ . }}</a>
                &nbsp; &nbsp;
                [<a href="{{$.root}}*edit?f={{ index $.ff . }}">edit</a>]
         {{ end }}
-        </ul></tt>
+        </ul></ttx>
 
         {{ template "TAIL" $ }}
 {{end}}
 {{define "SITE"}}
         {{ template "HEAD" $ }}
-        <tt><ul>
+        <ttx><ul>
           <li>Site Title = "{{.Title}}"
           <li>Base URL = "{{.BaseURL}}"
           <li>[<a href="{{.root}}*edit_site">Edit Site</a>]
-        </ul></tt>
+        </ul></ttx>
 
         {{ template "TAIL" $ }}
 {{end}}
@@ -522,29 +560,49 @@ EDITOR_TEMPLATES = `
 
         {{ template "TAIL" $ }}
 {{end}}
-{{define "EDIT"}}
+{{define "EDIT_TEXT"}}
         {{ template "HEAD" $ }}
         <form method="POST" action="{{.Submit}}">
-          <b>Title:</b> <input name=EditTitle size=80 value="{{.EditTitle}}">
           <p>
-          <textarea name=Text wrap=virtual rows=30 cols=80 style="width: 95%; height: 80%"
-            >{{.Text}}</textarea>
+          <textarea name=EditText wrap=virtual rows=30 cols=80 style="width: 95%; height: 70%"
+            >{{.EditText}}</textarea>
           <p>
           <input type=submit value=Save> &nbsp;
           <input type=reset>
-          <tt>&nbsp; <big>[<a href={{.Cancel}}>Cancel</a>]</big></tt>
+          <ttx>&nbsp; <big>[<a href={{.Cancel}}>Cancel</a>]</big></ttx>
         </form>
         {{ template "TAIL" $ }}
 {{end}}
-{{define "EDIT_CONFIG"}}
+{{define "EDIT_PAGE"}}
         {{ template "HEAD" $ }}
         <form method="POST" action="{{.Submit}}">
           <b>Site Title:</b>
           <input name=EditTitle size=80 value="{{.EditTitle}}">
-          <br>
-          <input type=submit value=Save> &nbsp; &nbsp;
+          <br> <br>
+
+          <b>Page body, using Markdown syntax:</b>
+          <textarea name=EditMd wrap=virtual rows=30 cols=80 style="width: 95%; height: 70%"
+            >{{.EditMd}}</textarea>
+          <br> <br>
+
+          <input type=submit name=submit value=Save> &nbsp; &nbsp;
           <input type=reset> &nbsp; &nbsp;
-          <tt>&nbsp; <big>[<a href={{.Cancel}}>Cancel</a>]</big></tt>
+          <input type=submit name=submit value=Cancel> &nbsp; &nbsp;
+          <!-- <ttx>&nbsp; <big>[<a href={{.Cancel}}>Cancel</a>]</big></ttx> -->
+          <br> <br>
+
+          <dl><dt><b>Advanced Options:</b><dd>
+            Main Menu:
+            <input name=EditMainName size=40 value="{{.EditMainName}}">
+            &nbsp; &nbsp; Weight:
+            <input name=EditMainWeight size=6 value="{{.EditMainWeight}}">
+            <br> <br>
+
+            Aliases:
+            <input name=EditAliases size=80 value="{{.EditAliases}}">
+            <br> <br>
+
+          </dd></dl>
         </form>
         {{ template "TAIL" $ }}
 {{end}}
@@ -557,7 +615,7 @@ EDITOR_TEMPLATES = `
           <p>
           <input type=submit value=Save> &nbsp;
           <input type=reset>
-          <tt>&nbsp; <big>[<a href={{.Cancel}}>Cancel</a>]</big></tt>
+          <ttx>&nbsp; <big>[<a href={{.Cancel}}>Cancel</a>]</big></ttx>
         </form>
         {{ template "TAIL" $ }}
 {{end}}

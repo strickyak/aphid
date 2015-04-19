@@ -41,12 +41,12 @@ def ProcessWithFrontMatter(text):
   m2 = TOML_FRONT_MATTER.FindStringSubmatch(text)
   f = None
   if m1:
-    _, front, text = m1
+    _, front, md = m1
     f = EvalJSonnet(front)
   elif m2:
-    _, front, text = m2
+    _, front, md = m2
     f = EvalToml(front)
 
-  h = TranslateMarkdown(text)
-  say f, h 
-  return f, h 
+  h = TranslateMarkdown(md)
+  say f, md, h 
+  return f, md, h 
