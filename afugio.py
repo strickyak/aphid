@@ -49,6 +49,8 @@ class AFugioMaster:
     meta, _, html = markdown.ProcessWithFrontMatter(md)
     title = meta.get('title', pname) if meta else pname
     ts = meta.get('date') if meta else None
+    if modTime > 9999999999:
+      modTime = modTime // 1000
     ts = ts if ts else time.Unix(modTime, 0).Format(TIME_FORMAT)
     p = go_new(Page) {
         Title: title,
@@ -541,6 +543,7 @@ EDITOR_TEMPLATES = `
         <form method="POST" action="{{.root}}*edit_site_submit">
           <br><br>
           Site Title: <input type=text size=60 name=title value={{.Title}}>
+          <br><br>
           Base URL: <input type=text size=60 name=baseurl value={{.BaseURL}}>
           <br><br>
           <input type=submit name=submit value=Save> &nbsp; &nbsp;
