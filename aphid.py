@@ -44,7 +44,7 @@ class Aphid:
     .x_zones = .x['zones']
     .x_webs = .x['webs']
     .x_wikis = .x['wikis']
-    .x_fugio = .x['fugio']
+    .x_formic = .x['formic']
     .x_peers = .x['peers']
     .bus = pubsub.Bus(self)
 
@@ -115,15 +115,19 @@ class Aphid:
       .mux.HandleFunc('%s:%d/' % (wname, .p_http), obj.Handle2)
       .mux.HandleFunc('/@%s/' % wname, obj.Handle2)
       .mux.HandleFunc('/@%s@e' % wname, awedit.Master(self, bname, bund=bund).Handle2)
-    # Add fugio.
-    for wname, wx in .x_fugio.items():
-      bname = wx['bundle']
+    # Add formic.
+    for wname, config in .x_formic.items():
+      bname = config['bundle']
       bund = .bundles[bname]
-      obj = afugio.AFugioMaster(self, bname, bund=bund)
+      obj = afugio.FormicMaster(self, bname, bund=bund, config=config)
       .mux.HandleFunc('%s/' % wname, obj.Handle2)
       .mux.HandleFunc('%s:%d/' % (wname, .p_http), obj.Handle2)
       .mux.HandleFunc('/@%s/' % wname, obj.Handle2)
       .mux.HandleFunc('/@%s@e/' % wname, awedit.Master(self, bname, bund=bund).Handle2)
+      say ('%s/' % wname)
+      say ('%s:%d/' % (wname,  .p_http))
+      say ('/@%s/' % wname)
+      say ('/@%s@e/' % wname)
       say 'WEDIT', '/@%s@e/' % wname
     # Misc
     .mux.HandleFunc('/@@quit', lambda w, r: .quit.Put(1))

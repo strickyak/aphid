@@ -1,6 +1,7 @@
 from go import bufio, bytes, fmt, log, reflect, regexp, sort, time
 from go import html/template, net/http, io/ioutil
 from go import path as P
+from go import crypto/md5
 from . import A, atemplate, bundle, markdown, util
 from . import adapt, basic, flag
 from lib import data
@@ -15,23 +16,24 @@ def J(*vec):
 MatchStatic = regexp.MustCompile('^/+(css|js|img|media)/(.*)$').FindStringSubmatch
 MatchContent = regexp.MustCompile('^/+(([-A-Za-z0-9_]+)/)?([-A-Za-z0-9_]+)/*$').FindStringSubmatch
 MatchHome = regexp.MustCompile('^/+(index.html)?$').FindStringSubmatch
-MatchEditor = regexp.MustCompile('^/+([*]\\w*)').FindStringSubmatch
+MatchEditor = regexp.MustCompile('^/+([*]+\\w*)').FindStringSubmatch
 
 MatchMdDirName = regexp.MustCompile('^[a-z][-a-z0-9_]*$').FindString
 MatchMdFileName = regexp.MustCompile('^[a-z][-a-z0-9_]*[.]md$').FindString
+MatchMediaDirName = regexp.MustCompile('^[-A-Za-z0-9_{}]+$').FindString
+MatchMediaFileName = regexp.MustCompile('^[-A-Za-z0-9_.{}]+$').FindString
 
 def WeightedKey(x):
   return x.Weight, x.Name
 
-class AFugioMaster:
-  def __init__(aphid, bname, bund, users=None):
+class FormicMaster:
+  def __init__(aphid, bname, bund, config):
     .aphid = aphid
     must bname
     .bname = bname
     must bund
     .bund = bund
-    .users = users
-    .editor = Curator(master=self, bname=bname, bund=bund, users=users)
+    .curator = Curator(master=self, bname=bname, bund=bund, config=config)
     .Reload()
 
   def Reload():
@@ -49,9 +51,7 @@ class AFugioMaster:
     meta, _, html = markdown.ProcessWithFrontMatter(md)
     title = meta.get('title', pname) if meta else pname
     ts = meta.get('date') if meta else None
-    if modTime > 9999999999:
-      modTime = modTime // 1000
-    ts = ts if ts else time.Unix(modTime, 0).Format(TIME_FORMAT)
+    ts = ts if ts else modTime.Format(TIME_FORMAT)
     p = go_new(Page) {
         Title: title,
         Content: html,
@@ -62,11 +62,15 @@ class AFugioMaster:
         Slug: slug,
         Identifier: pname,
     }
+    p.Age = (time.Now().Unix() - p.Date.Unix()) / 86400.0
+    say p.Age, time.Now().Unix(), p.Date.Unix(), p.Date
     return p
 
   def WalkMdTreeMakingPages(dirname):
     say dirname
-    for name, isDir, mtime, sz in sorted(.bund.List4(J('/fugio/content', dirname), pw=None)):
+    for name, isDir, modTime, sz in sorted(.bund.List4(J('/fugio/content', dirname), pw=None)):
+      if modTime > 9999999999:
+        modTime = modTime // 1000
       if isDir and MatchMdDirName(name):
         for pair in .WalkMdTreeMakingPages(J(dirname, name)):
           say pair
@@ -74,27 +78,62 @@ class AFugioMaster:
       else:
         if sz > 0 and MatchMdFileName(name):
           pname = J(dirname, name[:-3])
-          p = .MakePage(pname, mtime, sz)
+          p = .MakePage(pname, time.Unix(0, modTime*1000000000), sz)
+          say pname, p
+          yield pname, p
+
+  def WalkMediaTree(dirname):
+    say dirname
+    for name, isDir, modTime, sz in sorted(.bund.List4(J('/fugio/static/media', dirname), pw=None)):
+      if modTime > 9999999999:
+        modTime = modTime // 1000
+      say name, isDir, modTime, sz
+      # Actually we don't upload into subdirs yet.
+      if isDir and MatchMediaDirName(name):
+        for pair in .WalkMediaTree(J(dirname, name)):
+          say pair
+          yield pair
+      else:
+        if sz > 0 and MatchMediaFileName(name):
+          pname = J(dirname, name)
+          p = go_new(MediaFile) {
+              Date: time.Unix(0, modTime*1000000000),
+              Size: sz,
+              Identifier: pname,
+              Slug: name,
+              Directory: dirname,
+              }
+          p.Age = (time.Now().Unix() - p.Date.Unix()) / 86400.0
+          say p.Age, time.Now().Unix(), p.Date.Unix(), p.Date, modTime
           say pname, p
           yield pname, p
 
   def ReloadPageMeta():
-    paged = dict(.WalkMdTreeMakingPages('/'))
-    print paged
-    page_list = paged.values()
+    page_d = dict(.WalkMdTreeMakingPages('/'))
+    print page_d
+    media_d = dict(.WalkMediaTree('/'))
+    print media_d
+    page_list = page_d.values()
     print page_list
+    media_list = media_d.values()
+    print media_list
 
     # Sort pages.
     pages_by = go_new(PagesBy) {
       ByTitle: util.NativeSlice(sorted(page_list, key=lambda x: x.Title)),
-      ByDate: util.NativeSlice(sorted(page_list, reverse=True, key=lambda x: x.Date)),
+      ByDate: util.NativeSlice(sorted(page_list, reverse=True, key=lambda x: x.Date.Unix())),
       ByURL: util.NativeSlice(sorted(page_list, key=lambda x: x.Permalink)),
+    }
+    # Sort media.
+    media_by = go_new(MediaBy) {
+      ByDate: util.NativeSlice(sorted(media_list, reverse=True, key=lambda x: x.Date.Unix())),
+      ByURL: util.NativeSlice(sorted(media_list, key=lambda x: x.Identifier)),
     }
 
     # Visit pages, to build tags & menus.
     menud = {}
     tags = {}
-    for pname, p in paged.items():
+    for pname, p in page_d.items():
       if p.Params:
         # Collect tags.
         taglist = p.Params.get('tags', [])
@@ -137,15 +176,18 @@ class AFugioMaster:
       # TODO -- log error
       site_d = dict()
 
-    .paged = paged
+    .page_d, .pages_by = page_d, pages_by
+    .media_d, .media_by = media_d, media_by
     .site = go_new(Site) {
       Menus: util.NativeMap(menud),
       Pages: pages_by,
       Sections: util.NativeMap(menud),
       Title: site_d.get('title', '(this site needs a title)'),
       BaseURL: site_d.get('baseurl', 'http://127.0.0.1/...FixTheBaseURL.../'),
+      Media: media_by,
     }
-    for pname, p in paged.items():
+    # Pages link back up to Site
+    for pname, p in page_d.items():
       p.Site = .site
 
   def ReloadTemplates():
@@ -195,7 +237,7 @@ class AFugioMaster:
           for t in .tpl.Templates():
             fmt.Fprintf(w, '  %#v\n', t)
         default:
-          .editor.Handle5(w, r, host=host, path=path, root=root)
+          .curator.Handle5(w, r, host=host, path=path, root=root)
       return
 
     m = MatchStatic(path)
@@ -213,11 +255,9 @@ class AFugioMaster:
     if m:
       _, _, section, base = m
       pname = J('/', section, base)
-      p = .paged.get(pname)
+      p = .page_d.get(pname)
       say 'MatchContent', path, section, base, pname, p
-      #say sorted(.paged)
-      #say .paged
-      assert p, (path, section, base, pname, sorted(.paged))
+      assert p, (path, section, base, pname, sorted(.page_d))
       w.Header().Set('Content-Type', 'text/html')
 
       .tpl.ExecuteTemplate(w, 'theme/_default/single.html', p)
@@ -241,6 +281,15 @@ type MenuEntry struct {
         // Children   Menu
 }
 
+type MediaFile struct {
+        Date            i_time.Time
+        Size            int64
+        Identifier      string
+        Slug            string
+        Directory       string
+        Age             float64
+}
+
 type Page struct {
         Params          i_util.NativeMap
         Content         i_template.HTML
@@ -260,6 +309,7 @@ type Page struct {
         Title           string
         Permalink       string
         Date            i_time.Time
+        Age             float64
         Site            *Site
         Section         string
         Slug            string
@@ -272,10 +322,17 @@ type PagesBy struct {
         ByURL           i_util.NativeSlice
 }
 
+type MediaBy struct {
+        ByTitle         i_util.NativeSlice
+        ByDate          i_util.NativeSlice
+        ByURL           i_util.NativeSlice
+}
+
 type Site struct {
         Title          string
         BaseURL        string
         Pages          *PagesBy
+        Media          *MediaBy
         // Files          []*source.File
         // Tmpl           tpl.Template
         // Taxonomies     TaxonomyList
@@ -300,48 +357,57 @@ type Site struct {
 ##############################################
 
 class Curator:
-  def __init__(master, bname, bund, users=None):
+  def __init__(master, bname, bund, config):
     .master = master
     .bname = bname
     must bund
     .bund = bund
-    .users = users
+    .config = config
+    .wantHash = config['md5pw']
     .ReloadTemplates()
 
   def ReloadTemplates():
     .t = template.New('Curator')
     .t.Funcs(util.TemplateFuncs())
-    .t.Parse(EDITOR_TEMPLATES)
-
-  def Handle2(w, r):
-    host, extra, path, root = util.HostExtraPathRoot(r)
-    say host, extra, path, root
-    try:
-      return .Handle5(w, r, host, path, root)
-    except as ex:
-      say 'EXCEPTION IN Handle5', ex
-      raise ex
+    .t.Parse(CURATOR_TEMPLATES)
 
   def Handle5(w, r, host, path, root):
-    if path == '/favicon.ico':
-      return
+    user_pw = basic.GetBasicPw(w, r, root)
+    if user_pw:
+      user, pw = user_pw
+    else:
+      return  # We demanded Basic Authorization.
+
+    hashed = '%x' % md5.Sum(pw)
+    say user, pw, hashed
+    if hashed != .wantHash or len(user) < 3:
+      w.Header().Set("WWW-Authenticate", 'Basic realm="%s"' % root)
+      w.WriteHeader(401)
+      print >>w, 'Wrong User or Password -- Hit RELOAD and try again.'
+
 
     cmd = P.Base(path)
     query = util.ParseQuery(r)
     fname = query.get('f')
 
     if cmd == '*':
-      cmd = '*site'
+      cmd = '*curate'
     switch cmd:
+        case '*curate':
+          d = dict(
+              Site=.master.site,
+              root=root,
+              )
+          .t.ExecuteTemplate(w, 'CURATE', util.NativeMap(d))
+
         case '*site':
           d = dict(
-              Title=.master.site.Title,
-              BaseURL=.master.site.BaseURL,
+              Site=.master.site,
               root=root,
               )
           .t.ExecuteTemplate(w, 'SITE', util.NativeMap(d))
 
-        case '*edit_site_submit':
+        case '**edit_site_submit':
           if query['submit'] == 'Save':
             d = dict(
               title= query['title'], 
@@ -352,10 +418,9 @@ class Curator:
             .master.Reload()
           http.Redirect(w, r, "%s*site" % root, http.StatusTemporaryRedirect)
 
-        case '*edit_site':
+        case '**edit_site':
           d = dict(
-            Title=.master.site.Title,
-            BaseURL=.master.site.BaseURL,
+            Site=.master.site,
             root=root,
             )
           .t.ExecuteTemplate(w, 'EDIT_SITE', util.NativeMap(d))
@@ -377,7 +442,7 @@ class Curator:
                 ))))
             edit_aliases=util.NativeSlice(
                 [s.strip() for s in query['EditAliases'].strip().split(',')]
-                ),
+                )
             toml = markdown.EncodeToml(util.NativeMap(dict(
                 title=edit_title,
                 aliases=edit_aliases,
@@ -386,7 +451,8 @@ class Curator:
             text = '+++\n' + toml + '\n+++\n' + edit_md
             say 'bundle.WriteFile', fname, edit_title, edit_md, toml, text
             bundle.WriteFile(.bund, J('/fugio/content', fname + '.md'), text, pw=None)
-          http.Redirect(w, r, "%s*view_page?f=%s" % (root, fname), http.StatusTemporaryRedirect)
+            .master.Reload()
+          http.Redirect(w, r, "%s%s" % (root, fname), http.StatusTemporaryRedirect)
 
         case '*edit_page':
           pname = fname
@@ -411,23 +477,24 @@ class Curator:
                    )
           .t.ExecuteTemplate(w, 'EDIT_PAGE', util.NativeMap(d))
 
-        case '*edit_text_submit':
+        case '**edit_text_submit':
           ttl = query['EditTitle']
           text = query['EditText']
           say 'bundle.WriteFile', fname, text
           bundle.WriteFile(.bund, fname, text, pw=None)
+          .master.Reload()
           http.Redirect(w, r, "%s*view?f=%s" % (root, fname), http.StatusTemporaryRedirect)
 
-        case '*edit_text':
+        case '**edit_text':
             edittext = bundle.ReadFile(.bund, fname, pw=None)
             d = dict(Title='VIEW TEXT: %q' % fname,
-                     Submit='%s*edit_text_submit?f=%s' % (root, fname),
+                     Submit='%s**edit_text_submit?f=%s' % (root, fname),
                      Filepath=fname,
                      EditText=edittext,
                      )
             .t.ExecuteTemplate(w, 'EDIT_TEXT', util.NativeMap(d))
 
-        case '*view_page':
+        case '**view_page':
           filename = J('/fugio/content', fname + '.md')
           isDir, modTime, fSize = .bund.Stat3(filename, pw=None)
           say isDir, modTime, fSize
@@ -437,7 +504,7 @@ class Curator:
           else:
             raise 'Cannot view empty or deleted file: %q' % fname
 
-        case '*view':
+        case '**view':
           isDir, modTime, fSize = .bund.Stat3(fname, pw=None)
           if isDir:
             dirs = .bund.ListDirs(fname, pw=None)
@@ -457,7 +524,7 @@ class Curator:
             raise 'Cannot view empty or deleted file: %q' % fname
     return
 
-EDITOR_TEMPLATES = `
+CURATOR_TEMPLATES = `
 {{define "HEAD"}}
         <html><head>
           <meta content="text/html; charset=UTF-8" http-equiv="Content-Type">
@@ -529,8 +596,8 @@ EDITOR_TEMPLATES = `
 {{define "SITE"}}
         {{ template "HEAD" $ }}
         <ttx><ul>
-          <li>Site Title = "{{.Title}}"
-          <li>Base URL = "{{.BaseURL}}"
+          <li>Site Title = "{{.Site.Title}}"
+          <li>Base URL = "{{.Site.BaseURL}}"
           <li>[<a href="{{.root}}*edit_site">Edit Site</a>]
         </ul></ttx>
 
@@ -542,9 +609,9 @@ EDITOR_TEMPLATES = `
         <table border=1><tr><td>
         <form method="POST" action="{{.root}}*edit_site_submit">
           <br><br>
-          Site Title: <input type=text size=60 name=title value={{.Title}}>
+          Site Title: <input type=text size=60 name=title value={{.Site.Title}}>
           <br><br>
-          Base URL: <input type=text size=60 name=baseurl value={{.BaseURL}}>
+          Base URL: <input type=text size=60 name=baseurl value={{.Site.BaseURL}}>
           <br><br>
           <input type=submit name=submit value=Save> &nbsp; &nbsp;
           <input type=reset> &nbsp; &nbsp;
@@ -609,17 +676,86 @@ EDITOR_TEMPLATES = `
         </form>
         {{ template "TAIL" $ }}
 {{end}}
+
 {{define "ATTACH"}}
         {{ template "HEAD" $ }}
-        <form method="POST" action="{{.Subject}}" enctype="multipart/form-data">
+        <form method="POST" action="{{.Action}}" enctype="multipart/form-data">
           <p>
           Upload a new attachment:
           <input type="file" name="file">
           <p>
-          <input type=submit value=Save> &nbsp;
-          <input type=reset>
-          <ttx>&nbsp; <big>[<a href={{.Cancel}}>Cancel</a>]</big></ttx>
+          <input type=submit value=Save> &nbsp; &nbsp;
+          <input type=reset> &nbsp; &nbsp;
+          <big>[<a href={{.Cancel}}>Cancel</a>]</big>
         </form>
+        {{ template "TAIL" $ }}
+{{end}}
+
+{{define "MEDIA_LIST"}}
+        {{ template "HEAD" $ }}
+        <a href={{.root}}*media_attach>Attach a new file</a>
+        <br><br>
+        Existing attachments:
+        <ul>
+          {{ range .List }}
+          <li><a href="{{.root}}media/{{.}}">media/{{.}}</a>
+          {{ end }}
+        </ul>
+
+        {{ template "TAIL" $ }}
+{{end}}
+
+{{define "CURATE"}}
+        {{ template "HEAD" $ }}
+        <h3>Site:</h3>
+        <ul>
+          <li>Site Title = "{{.Site.Title}}"
+          <li>Base URL = "{{.Site.BaseURL}}"
+        </ul>
+        <h3>Pages:</h3>
+        <ul>
+          {{ range .Site.Pages.ByDate }}
+            <li><a href="{{$.root}}*edit_page?f={{.Identifier}}">
+                {{.Identifier}} =
+                <b>"{{.Title}}";</b></a>
+                ({{printf "%.0f" .Age}} days ago: {{.Date.Format "Mon, 02-Jan-2006 15:04 MST"}})
+          {{ end }}
+        </ul>
+
+        <h3>Pages:</h3>
+        <table border=1 cellpadding=8>
+          <tr><th>Path<th>Title<th>Days Old<th>Date
+          {{ range .Site.Pages.ByDate }}
+            <tr>
+              <td><a href="{{$.root}}*edit_page?f={{.Identifier}}">{{.Identifier}}
+              <td>{{.Title}}
+              <td align=right>{{printf "%.0f" .Age}}
+              <td>{{.Date.Format "Mon, 02-Jan-2006 15:04 MST"}}
+          {{ end }}
+        </table>
+
+        <h3>Media:</h3>
+        <table border=1 cellpadding=8>
+          <tr><th>Path<th>Size<th>Days Old<th>Date
+          {{ range .Site.Pages.ByDate }}
+            <tr>
+              <td><a href="{{$.root}}media/{{.Identifier}}">{{.Identifier}}</a>
+              <td>{{.Size}}
+              <td align=right>{{printf "%.0f" .Age}}
+              <td>{{.Date.Format "Mon, 02-Jan-2006 15:04 MST"}}
+          {{ end }}
+        </table>
+
+        <h3>Media:</h3>
+        <ul>
+          {{ range .Site.Media.ByDate }}
+            <li><a href="{{$.root}}media/{{.Identifier}}">
+                {{.Identifier}} =
+                {{.Size}} bytes;</a>
+                ({{printf "%.0f" .Age}} days ago: {{.Date.Format "Mon, 02-Jan-2006 15:04 MST"}})
+          {{ end }}
+        </ul>
+
         {{ template "TAIL" $ }}
 {{end}}
 `
