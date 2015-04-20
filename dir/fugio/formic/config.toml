@@ -1,0 +1,9 @@
+baseurl = "http://fugio.x:8180/"
+languageCode = "en-us"
+title = "Fugio Demo Web Site"
+
+[[menu.main]]
+    name = "Home"
+    weight = -999
+    identifier = "home"
+    url = "/"
