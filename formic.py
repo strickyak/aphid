@@ -1,5 +1,5 @@
 from go import bufio, bytes, fmt, log, reflect, regexp, sort, time
-from go import html/template, net/http, io/ioutil
+from go import html/template, net/http, io, io/ioutil
 from go import path as P
 from go import crypto/md5
 from . import A, atemplate, bundle, markdown, util
@@ -16,12 +16,20 @@ def J(*vec):
 MatchStatic = regexp.MustCompile('^/+(css|js|img|media)/(.*)$').FindStringSubmatch
 MatchContent = regexp.MustCompile('^/+(([-A-Za-z0-9_]+)/)?([-A-Za-z0-9_]+)/*$').FindStringSubmatch
 MatchHome = regexp.MustCompile('^/+(index.html)?$').FindStringSubmatch
-MatchEditor = regexp.MustCompile('^/+([*]+\\w*)').FindStringSubmatch
+MatchCurator = regexp.MustCompile('^[-A-Za-z0-9_.{}/]*([*]+\\w*)').FindStringSubmatch
 
 MatchMdDirName = regexp.MustCompile('^[a-z][-a-z0-9_]*$').FindString
 MatchMdFileName = regexp.MustCompile('^[a-z][-a-z0-9_]*[.]md$').FindString
 MatchMediaDirName = regexp.MustCompile('^[-A-Za-z0-9_{}]+$').FindString
 MatchMediaFileName = regexp.MustCompile('^[-A-Za-z0-9_.{}]+$').FindString
+
+# For uploading attachments
+DOTFILE = regexp.MustCompile('(^[.]|[/][.])').FindString
+MATCH_FILENAME = regexp.MustCompile('.*filename="([^"]+)"').FindStringSubmatch
+
+RE_ABNORMAL_CHARS = regexp.MustCompile('[^-A-Za-z0-9_.]')
+def CurlyEncode(s):
+  return RE_ABNORMAL_CHARS.ReplaceAllStringFunc(s, lambda c: '{%d}' % ord(c))
 
 def WeightedKey(x):
   return x.Weight, x.Name
@@ -46,7 +54,7 @@ class FormicMaster:
     section = P.Dir(pname)
     section = '' if section == '.' else section
 
-    fname = J('/fugio/content', '%s.md' % pname)
+    fname = J('/formic/content', '%s.md' % pname)
     md = bundle.ReadFile(.bund, fname, None)
     meta, _, html = markdown.ProcessWithFrontMatter(md)
     title = meta.get('title', pname) if meta else pname
@@ -68,7 +76,7 @@ class FormicMaster:
 
   def WalkMdTreeMakingPages(dirname):
     say dirname
-    for name, isDir, modTime, sz in sorted(.bund.List4(J('/fugio/content', dirname), pw=None)):
+    for name, isDir, modTime, sz in sorted(.bund.List4(J('/formic/content', dirname), pw=None)):
       if modTime > 9999999999:
         modTime = modTime // 1000
       if isDir and MatchMdDirName(name):
@@ -79,12 +87,11 @@ class FormicMaster:
         if sz > 0 and MatchMdFileName(name):
           pname = J(dirname, name[:-3])
           p = .MakePage(pname, time.Unix(0, modTime*1000000000), sz)
-          say pname, p
           yield pname, p
 
   def WalkMediaTree(dirname):
     say dirname
-    for name, isDir, modTime, sz in sorted(.bund.List4(J('/fugio/static/media', dirname), pw=None)):
+    for name, isDir, modTime, sz in sorted(.bund.List4(J('/formic/static/media', dirname), pw=None)):
       if modTime > 9999999999:
         modTime = modTime // 1000
       say name, isDir, modTime, sz
@@ -95,7 +102,7 @@ class FormicMaster:
           yield pair
       else:
         if sz > 0 and MatchMediaFileName(name):
-          pname = J(dirname, name)
+          pname = J(dirname, name).strip('/')
           p = go_new(MediaFile) {
               Date: time.Unix(0, modTime*1000000000),
               Size: sz,
@@ -104,8 +111,7 @@ class FormicMaster:
               Directory: dirname,
               }
           p.Age = (time.Now().Unix() - p.Date.Unix()) / 86400.0
-          say p.Age, time.Now().Unix(), p.Date.Unix(), p.Date, modTime
-          say pname, p
+          say pname, p.Age, time.Now().Unix(), p.Date.Unix(), p.Date, modTime
           yield pname, p
 
   def ReloadPageMeta():
@@ -170,7 +176,7 @@ class FormicMaster:
 
     # Construct the site.
     try:
-      site_toml = bundle.ReadFile(.bund, '/fugio/config.toml', pw=None)
+      site_toml = bundle.ReadFile(.bund, '/formic/config.toml', pw=None)
       site_d = markdown.EvalToml(site_toml)
     except as ex:
       # TODO -- log error
@@ -195,18 +201,18 @@ class FormicMaster:
     tpl.Funcs(util.TemplateFuncs())
 
     try:
-      dnames = bundle.ListDirs(.bund, '/fugio/layouts')
+      dnames = bundle.ListDirs(.bund, '/formic/layouts')
     except:
       dnames = []
     for dname in dnames:
       try:
-        tnames = bundle.ListFiles(.bund, J('/fugio/layouts', dname))
+        tnames = bundle.ListFiles(.bund, J('/formic/layouts', dname))
       except:
         tnames = []
       for tname in tnames:
         if tname.endswith('.html'):
           name = J('theme', dname, tname)
-          guts = bundle.ReadFile(.bund, J('/fugio/layouts', dname, tname))
+          guts = bundle.ReadFile(.bund, J('/formic/layouts', dname, tname))
           tpl.New(name).Parse(guts)
     .tpl = tpl
 
@@ -217,38 +223,47 @@ class FormicMaster:
       return .Handle5(w, r, host, path, root)
     except as ex:
       say ex
+      print >>w, '<br><br>\n\n*** ERROR *** <br><br>\n\n*** %s ***\n\n***' % ex
       raise ex
+      return # raise ex
 
   def Handle5(w, r, host, path, root):
     if path == '/favicon.ico':
       return
 
     # Special Commands.
-    m = MatchEditor(path)
+    m = MatchCurator(path)
     if m:
       _, cmd = m
-      switch cmd:
-        case '*debug':
-          w.Header().Set('Content-Type', 'text/plain')
-          fmt.Fprintf(w, '## Front Matter ##\n')
-          for k, v in .metas.items():
-            fmt.Fprintf(w, '%s: %s\n', k, str(v))
-          fmt.Fprintf(w, '\n## Templates ##\n')
-          for t in .tpl.Templates():
-            fmt.Fprintf(w, '  %#v\n', t)
-        default:
-          .curator.Handle5(w, r, host=host, path=path, root=root)
+      say m, host, cmd, root
+      .curator.Handle5(w, r, host=host, path=cmd, root=root)
       return
 
-    m = MatchStatic(path)
-    if m:
-      _, flavor, path = m
-      say 'MatchStatic', flavor, path
-      rs, nanos, size = .bund.NewReadSeekerTimeSize('/fugio/static/%s/%s' % (flavor, path))
+    #m = MatchStatic(path)
+    #if m:
+    #  _, flavor, path = m
+    #  say 'MatchStatic', flavor, path
+    #  rs, nanos, size = .bund.NewReadSeekerTimeSize('/formic/static/%s/%s' % (flavor, path))
+    #  http.ServeContent(w, r, r.URL.Path, time.Unix(0, nanos), rs)
+    #  return
+
+    if DOTFILE(path):
+      raise 'Dotfile in path not allowed: %q' % path
+
+    isStatic = False
+    try:
+      isDir, modTime, fSize = .bund.Stat3(J('/formic/static', path), pw=None)
+      say isDir, modTime, fSize, path
+      isStatic = fSize and not isDir
+    except:
+      pass
+
+    if isStatic:
+      rs, nanos, size = .bund.NewReadSeekerTimeSize(J('/formic/static', path))
       http.ServeContent(w, r, r.URL.Path, time.Unix(0, nanos), rs)
       return
 
-    # If not static, it must be a page.
+    # If it is not a curator command and not a static file, it must be a page.
     m = MatchContent(path)
     if MatchHome(path):
       m = '/home', (), '', 'home'
@@ -257,13 +272,18 @@ class FormicMaster:
       pname = J('/', section, base)
       p = .page_d.get(pname)
       say 'MatchContent', path, section, base, pname, p
-      assert p, (path, section, base, pname, sorted(.page_d))
+
       w.Header().Set('Content-Type', 'text/html')
+      if not p:
+        # Page does not exist.
+        w.WriteHeader(404)
+        print >>w, '404 PAGE NOT FOUND.'
+        return
 
       .tpl.ExecuteTemplate(w, 'theme/_default/single.html', p)
       return
 
-    raise "fugio: Bad URL: %q %q" % (host, path)
+    raise "formic: Bad URL: %q %q" % (host, path)
 
 pass
 
@@ -377,14 +397,14 @@ class Curator:
       user, pw = user_pw
     else:
       return  # We demanded Basic Authorization.
+    say user, host, path, root
 
     hashed = '%x' % md5.Sum(pw)
-    say user, pw, hashed
-    if hashed != .wantHash or len(user) < 3:
+
+    if hashed != .wantHash or not len(user):
       w.Header().Set("WWW-Authenticate", 'Basic realm="%s"' % root)
       w.WriteHeader(401)
       print >>w, 'Wrong User or Password -- Hit RELOAD and try again.'
-
 
     cmd = P.Base(path)
     query = util.ParseQuery(r)
@@ -398,6 +418,7 @@ class Curator:
               Site=.master.site,
               root=root,
               )
+          say d
           .t.ExecuteTemplate(w, 'CURATE', util.NativeMap(d))
 
         case '*site':
@@ -410,11 +431,11 @@ class Curator:
         case '**edit_site_submit':
           if query['submit'] == 'Save':
             d = dict(
-              title= query['title'], 
-              baseurl= query['baseurl'], 
+              title= query['title'],
+              baseurl= query['baseurl'],
               )
             toml = markdown.EncodeToml(util.NativeMap(d))
-            bundle.WriteFile(.bund, '/fugio/config.toml', toml, pw=None)
+            bundle.WriteFile(.bund, '/formic/config.toml', toml, pw=None)
             .master.Reload()
           http.Redirect(w, r, "%s*site" % root, http.StatusTemporaryRedirect)
 
@@ -425,21 +446,82 @@ class Curator:
             )
           .t.ExecuteTemplate(w, 'EDIT_SITE', util.NativeMap(d))
 
+        case '*attach_media_submit':
+          say query
+
+          r.ParseMultipartForm(1024*1024)
+          say r.MultipartForm.File['file'][0].Header
+          cd = r.MultipartForm.File['file'][0].Header.Get('Content-Disposition')
+          say cd
+          match = MATCH_FILENAME(cd)
+          say match
+          f = match[1] if match else ''
+          if f:
+            fname = r.MultipartForm.File['file'][0].Filename
+            fpath = J('/formic/static/media', CurlyEncode(fname))
+            say fname, fpath
+
+            fd = r.MultipartForm.File['file'][0].Open()
+            br = bufio.NewReader(fd)
+            cr = bundle.ChunkReaderAdapter(br)
+            cw = .bund.MakeWriter(fpath, pw=None, mtime=0, raw=None)
+            bundle.CopyChunks(cw, cr)
+            cw.Close()
+            fd.Close()
+            .master.Reload()
+
+            http.Redirect(w, r, '*', http.StatusTemporaryRedirect)
+          else:
+            print >>w, 'No file was uploaded.  Go back and try again.'
+
+        case '*attach_media':
+          d = dict(Title='Upload Media Attachment',
+                   Action='%s*attach_media_submit' % root,
+                   )
+          .t.ExecuteTemplate(w, 'ATTACH', util.NativeMap(d))
+
         case '*edit_page_submit':
           say query
-          if query.get('submit') == 'Save':
+          if query.get('submit') != 'Save':
+            # Cancel; don't save.
+            http.Redirect(w, r, "%s%s" % (root, fname), http.StatusTemporaryRedirect)
+            return
+
+          edit_path = query.get('EditPath', '')
+          say edit_path
+          edit_path = edit_path.strip().lower() if edit_path else ''
+          say edit_path
+          if edit_path:
+            if MatchMdFileName('%s.md' % edit_path):
+              say edit_path
+              fname = edit_path
+            else:
+              raise 'Bad file path: %q' % edit_path
+
+          if not fname:
+            raise 'Error: No fname given'
+
+          edit_md = query['EditMd']
+          say query.get('DeletePage')
+          if query.get('DeletePage'):
+            # "Delete" the file, but writing empty file.
+            text = ''
+          else:
             edit_title = query['EditTitle'].strip()
-            edit_md = query['EditMd']
             main_name = query['EditMainName'].strip()
             main_weight = 0
             try:
               main_weight = int(query['EditMainWeight'].strip())
             except:
               pass
-            edit_menu = util.NativeMap(dict(main=util.NativeMap(dict(
-                name=main_name,
-                weigth=main_weight,
-                ))))
+            if main_name:
+              edit_menu = util.NativeMap(dict(main=util.NativeMap(dict(
+                  name=main_name,
+                  weigth=main_weight,
+                  ))))
+            else:
+              edit_menu = util.NativeMap(dict())
+
             edit_aliases=util.NativeSlice(
                 [s.strip() for s in query['EditAliases'].strip().split(',')]
                 )
@@ -449,14 +531,33 @@ class Curator:
                 menu=edit_menu,
                 )))
             text = '+++\n' + toml + '\n+++\n' + edit_md
+
             say 'bundle.WriteFile', fname, edit_title, edit_md, toml, text
-            bundle.WriteFile(.bund, J('/fugio/content', fname + '.md'), text, pw=None)
-            .master.Reload()
-          http.Redirect(w, r, "%s%s" % (root, fname), http.StatusTemporaryRedirect)
+          bundle.WriteFile(.bund, J('/formic/content', fname + '.md'), text, pw=None)
+          .master.Reload()
+          if text:
+            http.Redirect(w, r, "%s%s" % (root, fname), http.StatusTemporaryRedirect)
+          else:
+            http.Redirect(w, r, "%s*" % root, http.StatusTemporaryRedirect)
+          return
+
+        case '*new_page':
+          d = dict(Title='Create New Page',
+                   Submit='%s*edit_page_submit' % root,
+                   Filepath='',
+                   EditMd='[Enter the page content here.]',
+                   EditTitle='Untitled',
+                   EditAliases='',
+                   EditMainName='',
+                   EditMainWeight=0,
+                   DebugMeta='',
+                   new_page='1',  # True
+                   )
+          .t.ExecuteTemplate(w, 'EDIT_PAGE', util.NativeMap(d))
 
         case '*edit_page':
           pname = fname
-          filename = J('/fugio/content', fname + '.md')
+          filename = J('/formic/content', fname + '.md')
 
           text = bundle.ReadFile(.bund, filename, pw=None)
           meta, md, html = markdown.ProcessWithFrontMatter(text)
@@ -474,6 +575,7 @@ class Curator:
                    EditMainName=EditMainName,
                    EditMainWeight=EditMainWeight,
                    DebugMeta=meta,
+                   new_page='',  # Empty for False
                    )
           .t.ExecuteTemplate(w, 'EDIT_PAGE', util.NativeMap(d))
 
@@ -495,7 +597,7 @@ class Curator:
             .t.ExecuteTemplate(w, 'EDIT_TEXT', util.NativeMap(d))
 
         case '**view_page':
-          filename = J('/fugio/content', fname + '.md')
+          filename = J('/formic/content', fname + '.md')
           isDir, modTime, fSize = .bund.Stat3(filename, pw=None)
           say isDir, modTime, fSize
           if fSize:
@@ -522,6 +624,8 @@ class Curator:
             http.ServeContent(w, r, fname, adapt.UnixToTime(modTime), br)
           else:
             raise 'Cannot view empty or deleted file: %q' % fname
+        default:
+          raise 'Unknown command: %q' % cmd
     return
 
 CURATOR_TEMPLATES = `
@@ -643,10 +747,20 @@ CURATOR_TEMPLATES = `
         </form>
         {{ template "TAIL" $ }}
 {{end}}
+
+{{/***************************************************/}}
+
 {{define "EDIT_PAGE"}}
         {{ template "HEAD" $ }}
         <form method="POST" action="{{.Submit}}">
-          <b>Site Title:</b>
+          {{ if .new_page }}
+            <b>Page Name</b> (one word, all lowercase, also digits and dash, for the URL path):
+            <br>
+            <input name=EditPath size=40 value="{{.EditTitle}}">
+            <br> <br>
+          {{ end }}
+
+          <b>Page Title:</b>
           <input name=EditTitle size=80 value="{{.EditTitle}}">
           <br> <br>
 
@@ -658,10 +772,13 @@ CURATOR_TEMPLATES = `
           <input type=submit name=submit value=Save> &nbsp; &nbsp;
           <input type=reset> &nbsp; &nbsp;
           <input type=submit name=submit value=Cancel> &nbsp; &nbsp;
-          <!-- <ttx>&nbsp; <big>[<a href={{.Cancel}}>Cancel</a>]</big></ttx> -->
           <br> <br>
 
           <dl><dt><b>Advanced Options:</b><dd>
+            Check this box to delete the page:
+            <input type="checkbox" name=DeletePage value="1">
+            <br> <br>
+
             Main Menu:
             <input name=EditMainName size=40 value="{{.EditMainName}}">
             &nbsp; &nbsp; Weight:
@@ -691,39 +808,17 @@ CURATOR_TEMPLATES = `
         {{ template "TAIL" $ }}
 {{end}}
 
-{{define "MEDIA_LIST"}}
-        {{ template "HEAD" $ }}
-        <a href={{.root}}*media_attach>Attach a new file</a>
-        <br><br>
-        Existing attachments:
-        <ul>
-          {{ range .List }}
-          <li><a href="{{.root}}media/{{.}}">media/{{.}}</a>
-          {{ end }}
-        </ul>
-
-        {{ template "TAIL" $ }}
-{{end}}
-
 {{define "CURATE"}}
         {{ template "HEAD" $ }}
         <h3>Site:</h3>
-        <ul>
-          <li>Site Title = "{{.Site.Title}}"
-          <li>Base URL = "{{.Site.BaseURL}}"
-        </ul>
-        <h3>Pages:</h3>
-        <ul>
-          {{ range .Site.Pages.ByDate }}
-            <li><a href="{{$.root}}*edit_page?f={{.Identifier}}">
-                {{.Identifier}} =
-                <b>"{{.Title}}";</b></a>
-                ({{printf "%.0f" .Age}} days ago: {{.Date.Format "Mon, 02-Jan-2006 15:04 MST"}})
-          {{ end }}
-        </ul>
+        <table border=1 cellpadding=5>
+          <tr><th>Site Title<th>Base URL
+          <tr><td>"{{.Site.Title}}"<td>{{.Site.BaseURL}}
+        </table>
 
         <h3>Pages:</h3>
-        <table border=1 cellpadding=8>
+        [<a href="{{$.root}}*new_page">Create New Page</a>]
+        <table border=1 cellpadding=4>
           <tr><th>Path<th>Title<th>Days Old<th>Date
           {{ range .Site.Pages.ByDate }}
             <tr>
@@ -735,26 +830,17 @@ CURATOR_TEMPLATES = `
         </table>
 
         <h3>Media:</h3>
-        <table border=1 cellpadding=8>
+        <table border=1 cellpadding=4>
+          [<a href="{{$.root}}*attach_media">Upload New Media</a>]
           <tr><th>Path<th>Size<th>Days Old<th>Date
-          {{ range .Site.Pages.ByDate }}
+          {{ range .Site.Media.ByDate }}
             <tr>
               <td><a href="{{$.root}}media/{{.Identifier}}">{{.Identifier}}</a>
-              <td>{{.Size}}
+              <td align=right>{{.Size}}
               <td align=right>{{printf "%.0f" .Age}}
               <td>{{.Date.Format "Mon, 02-Jan-2006 15:04 MST"}}
           {{ end }}
         </table>
-
-        <h3>Media:</h3>
-        <ul>
-          {{ range .Site.Media.ByDate }}
-            <li><a href="{{$.root}}media/{{.Identifier}}">
-                {{.Identifier}} =
-                {{.Size}} bytes;</a>
-                ({{printf "%.0f" .Age}} days ago: {{.Date.Format "Mon, 02-Jan-2006 15:04 MST"}})
-          {{ end }}
-        </ul>
 
         {{ template "TAIL" $ }}
 {{end}}

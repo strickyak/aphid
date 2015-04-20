@@ -1,5 +1,5 @@
 from . import A, flag
-from . import among, aweber, awiki, awedit, azoner, afugio
+from . import among, aweber, awiki, awedit, azoner, formic
 from . import bundle, keyring, pubsub, rbundle
 
 from go import fmt, net/http, time
@@ -119,7 +119,7 @@ class Aphid:
     for wname, config in .x_formic.items():
       bname = config['bundle']
       bund = .bundles[bname]
-      obj = afugio.FormicMaster(self, bname, bund=bund, config=config)
+      obj = formic.FormicMaster(self, bname, bund=bund, config=config)
       .mux.HandleFunc('%s/' % wname, obj.Handle2)
       .mux.HandleFunc('%s:%d/' % (wname, .p_http), obj.Handle2)
       .mux.HandleFunc('/@%s/' % wname, obj.Handle2)

@@ -30,8 +30,10 @@ def EncodeToml(x):
   return z
 
 def TranslateMarkdown(s):
-  t = blackfriday.MarkdownCommon(s)
-  html = bluemonday.UGCPolicy().SanitizeBytes(t)
+  if s and s.strip():
+    t = blackfriday.MarkdownCommon(s)
+    html = bluemonday.UGCPolicy().SanitizeBytes(t)
+  html = html if html else ''
   return go_cast(template.HTML, html)
 
 def ProcessWithFrontMatter(text):
