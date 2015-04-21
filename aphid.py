@@ -32,7 +32,6 @@ class Aphid:
     .snippet = snippet
     .x = EvalFileOrSnippet(filename=filename, snippet=snippet, imports=imports)
     .x_me = .x['me']
-    .x_confname = .x['confname']
     .f_ip = .x['flags']['ip']
     .f_keyring = .x['flags']['keyring']
     .f_topdir = .x['flags']['topdir']
@@ -170,7 +169,7 @@ class Aphid:
 
 def LaunchConfigFiles(quit, filenames):
   for filename in filenames:
-    say 'CREATING', filename
+    say 'LAUNCHING', filename
     a = Aphid(quit, filename)
     say 'STARTING', filename
     a.StartAll()
