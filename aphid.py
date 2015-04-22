@@ -2,39 +2,39 @@ from . import A, flag
 from . import among, aweber, awiki, awedit, azoner, formic
 from . import bundle, keyring, pubsub, rbundle
 
-from go import fmt, net/http, time
-from go import path/filepath as F
+from go import bufio, fmt, net/http, os, time
+from go import path as P, path/filepath as F
 from go import github.com/strickyak/jsonnet_cgo as VM
 from lib import data
 import sys
 
-VmImports = {}
-def EvalFileOrSnippet(filename, snippet=None, imports=None):
+SEEDDIR = flag.String('seeddir', '', 'Directory containing bundle seed files')
+
+def PJ(*vec):
+  return P.Clean(P.Join(*vec))
+def FJ(*vec):
+  return F.Clean(F.Join(*vec))
+
+def EvalConfig(filename):
   vm = VM.Make()
   with defer vm.Destroy():
-    if snippet:
-      VmImports[filename] = snippet
-      vm.ImportCallback(lambda rel, name: VmImports.get(name, 'ERROR UKNOWN_IMPORT: %q' % name))
-      say filename
-      say snippet
-      js = vm.EvaluateSnippet(filename, snippet)
-      say js
-      return data.Eval(js)
-    else:
-      js = vm.EvaluateFile(filename)
-      say js
-      return data.Eval(js)
+    # Convert to JSON string.
+    js = vm.EvaluateFile(filename)
+    say js
+    # Eval the JSON into a Python value.
+    return data.Eval(js)
 
 class Aphid:
-  def __init__(quit, filename, snippet=None, imports=None):
+  def __init__(quit, filename):
     .quit = quit
     .filename = filename
-    .snippet = snippet
-    .x = EvalFileOrSnippet(filename=filename, snippet=snippet, imports=imports)
+
+    .x = EvalConfig(filename)
     .x_me = .x['me']
     .f_ip = .x['flags']['ip']
     .f_keyring = .x['flags']['keyring']
     .f_topdir = .x['flags']['topdir']
+    .f_domain = .x['flags'].get('domain', '')
     .p_dns = .x['ports']['dns']
     .p_http = .x['ports']['http']
     .p_https = .x['ports']['https']
@@ -49,6 +49,7 @@ class Aphid:
 
   def __str__():
     return 'Aphid{%q}' % .filename
+
   def __repr__():
     return .__str__()
 
@@ -80,8 +81,31 @@ class Aphid:
           .bundles[bname] = bundle.WebkeyBundle(
               self, bname, topdir=.f_topdir, suffix='0',
               webkeyid=keyid, webkey=key.b_sym, basekey=key.base)
+      if SEEDDIR.X:
+        .LoadBundleSeedFiles(bname, .bundles[bname], SEEDDIR.X)
 
     go rbundle.RBundleServer(self, '%s:%d' % (.f_ip, .p_rpc), .ring).ListenAndServe()
+
+  def LoadBundleSeedFiles(bname, bund, seeddir):
+    t = FJ(seeddir, bname)
+    def fn(path, info, err):
+      say path, info, err
+      if not info or info.IsDir():
+        return None  # No error.
+
+      assert path[:len(t)] == t
+      assert path[len(t)] == '/'
+      fpath = path[len(t)+1:]  # Remove prefix and one '/'
+  
+      fd = os.Open(path)
+      with defer fd.Close():
+        br = bufio.NewReader(fd)
+        cr = bundle.ChunkReaderAdapter(br)
+        cw = bund.MakeWriter(fpath, pw=None, mtime=0, raw=None)
+        bundle.CopyChunks(cw, cr)
+        cw.Close()
+      return None  # No error.
+    F.Walk(t, fn)
 
   def StartZones():
     .zones = {}
@@ -97,32 +121,35 @@ class Aphid:
     # Mux and Server.
     .mux = http.NewServeMux()
     # Add webs.
-    for wname, wx in .x_webs.items():
-      bname = wx['bundle']
+    for wname, config in .x_webs.items():
+      bname = config['bundle']
       bund = .bundles[bname]
       obj = aweber.BundDir(self, bname, bund=bund)
-      .mux.HandleFunc('%s/' % wname, obj.Handle2)
-      .mux.HandleFunc('%s:%d/' % (wname, .p_http), obj.Handle2)
-      .mux.HandleFunc('/@%s/' % wname, obj.Handle2)
-      .mux.HandleFunc('/@%s@e' % wname, awedit.Master(self, bname, bund=bund).Handle2)
+      if config.get('domainly'):
+        .mux.HandleFunc('%s/' % wname, obj.Handle2)
+        .mux.HandleFunc('%s:%d/' % (wname, .p_http), obj.Handle2)
+      .mux.HandleFunc('%s/@%s/' % (.f_domain, wname), obj.Handle2)
+      .mux.HandleFunc('%s/@%s@e' % (.f_domain, wname), awedit.Master(self, bname, bund=bund).Handle2)
     # Add wikis.
-    for wname, wx in .x_wikis.items():
-      bname = wx['bundle']
+    for wname, config in .x_wikis.items():
+      bname = config['bundle']
       bund = .bundles[bname]
       obj = awiki.AWikiMaster(self, bname, bund=bund)
-      .mux.HandleFunc('%s/' % wname, obj.Handle2)
-      .mux.HandleFunc('%s:%d/' % (wname, .p_http), obj.Handle2)
-      .mux.HandleFunc('/@%s/' % wname, obj.Handle2)
-      .mux.HandleFunc('/@%s@e' % wname, awedit.Master(self, bname, bund=bund).Handle2)
+      if config.get('domainly'):
+        .mux.HandleFunc('%s/' % wname, obj.Handle2)
+        .mux.HandleFunc('%s:%d/' % (wname, .p_http), obj.Handle2)
+      .mux.HandleFunc('%s/@%s/' % (.f_domain, wname), obj.Handle2)
+      .mux.HandleFunc('%s/@%s@e' % (.f_domain, wname), awedit.Master(self, bname, bund=bund).Handle2)
     # Add formic.
     for wname, config in .x_formic.items():
       bname = config['bundle']
       bund = .bundles[bname]
       obj = formic.FormicMaster(self, bname, bund=bund, config=config)
-      .mux.HandleFunc('%s/' % wname, obj.Handle2)
-      .mux.HandleFunc('%s:%d/' % (wname, .p_http), obj.Handle2)
-      .mux.HandleFunc('/@%s/' % wname, obj.Handle2)
-      .mux.HandleFunc('/@%s@e/' % wname, awedit.Master(self, bname, bund=bund).Handle2)
+      if config.get('domainly'):
+        .mux.HandleFunc('%s/' % wname, obj.Handle2)
+        .mux.HandleFunc('%s:%d/' % (wname, .p_http), obj.Handle2)
+      .mux.HandleFunc('%s/@%s/' % (.f_domain, wname), obj.Handle2)
+      .mux.HandleFunc('%s/@%s@e/' % (.f_domain, wname), awedit.Master(self, bname, bund=bund).Handle2)
       say ('%s/' % wname)
       say ('%s:%d/' % (wname,  .p_http))
       say ('/@%s/' % wname)

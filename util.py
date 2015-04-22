@@ -18,7 +18,7 @@ def HostExtraPathRoot(r):
   path = r.URL.Path
   m = MATCH_HOST_IN_PATH(path)
   if m:
-    return m[1], m[2], m[3], '/@%s%s' % (m[1], m[2])
+    return m[1], m[2], m[3], '/@%s%s/' % (m[1], m[2])
   return r.Host, '', path, '/'
 
 def ParseQuery(r):

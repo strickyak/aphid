@@ -26,6 +26,7 @@ MatchMediaFileName = regexp.MustCompile('^[-A-Za-z0-9_.{}]+$').FindString
 # For uploading attachments
 DOTFILE = regexp.MustCompile('(^[.]|[/][.])').FindString
 MATCH_FILENAME = regexp.MustCompile('.*filename="([^"]+)"').FindStringSubmatch
+MatchHrefOrSrc = regexp.MustCompile(" (href|src)=\"/.")
 
 RE_ABNORMAL_CHARS = regexp.MustCompile('[^-A-Za-z0-9_.]')
 def CurlyEncode(s):
@@ -60,9 +61,11 @@ class FormicMaster:
     title = meta.get('title', pname) if meta else pname
     ts = meta.get('date') if meta else None
     ts = ts if ts else modTime.Format(TIME_FORMAT)
+    ptype = meta.get('type', '') if meta else ''
     p = go_new(Page) {
         Title: title,
         Content: html,
+        Type: ptype,
         Permalink: pname,  # TODO -- host, extra
         Params: util.NativeMap(meta),
         Date: time.Parse(TIME_FORMAT, ts),
@@ -85,7 +88,7 @@ class FormicMaster:
           yield pair
       else:
         if sz > 0 and MatchMdFileName(name):
-          pname = J(dirname, name[:-3])
+          pname = J(dirname, name[:-3]).strip('/')
           p = .MakePage(pname, time.Unix(0, modTime*1000000000), sz)
           yield pname, p
 
@@ -269,7 +272,7 @@ class FormicMaster:
       m = '/home', (), '', 'home'
     if m:
       _, _, section, base = m
-      pname = J('/', section, base)
+      pname = J(section, base).strip('/')
       p = .page_d.get(pname)
       say 'MatchContent', path, section, base, pname, p
 
@@ -277,10 +280,30 @@ class FormicMaster:
       if not p:
         # Page does not exist.
         w.WriteHeader(404)
-        print >>w, '404 PAGE NOT FOUND.'
+        print >>w, '404 PAGE NOT FOUND.\n\n'
+        print >>w, 'pname = %q' % pname
         return
 
-      .tpl.ExecuteTemplate(w, 'theme/_default/single.html', p)
+      buf = bytes.NewBuffer(None)
+      ptype = p.Type
+      ptype = ptype if ptype else '_default'
+      .tpl.ExecuteTemplate(buf, J('theme', ptype, 'single.html'), p)
+      expansion = str(buf)
+
+      # Some things like
+      #    href="/css/sandbox.css"
+      # were not getting the root inserted, so this tweaks the template expansion.
+      def insertRootIfNeeded(s):
+        """Tweak s ending in ``="/C'' so that if C is not @, we insert the root."""
+        s = str(s)
+        if s.endswith('@'):
+          return s
+        elif root.endswith('/'):
+          return s[:-2] + root + s[-1]
+        else:
+          return s[:-2] + root + '/' + s[-1]
+      z = MatchHrefOrSrc.ReplaceAllFunc(expansion, insertRootIfNeeded)
+      w.Write(z)
       return
 
     raise "formic: Bad URL: %q %q" % (host, path)
@@ -399,12 +422,18 @@ class Curator:
       return  # We demanded Basic Authorization.
     say user, host, path, root
 
-    hashed = '%x' % md5.Sum(pw)
+    # Apply md5 twice.
+    say pw
+    hashed = '%x' % md5.Sum('%s\n' % pw)
+    say hashed
+    hashed2 = '%x' % md5.Sum('%s\n' % hashed)
+    say hashed2, .wantHash
 
-    if hashed != .wantHash or not len(user):
+    if hashed2 != .wantHash or not len(user):
       w.Header().Set("WWW-Authenticate", 'Basic realm="%s"' % root)
       w.WriteHeader(401)
       print >>w, 'Wrong User or Password -- Hit RELOAD and try again.'
+      return
 
     cmd = P.Base(path)
     query = util.ParseQuery(r)
@@ -421,7 +450,7 @@ class Curator:
           say d
           .t.ExecuteTemplate(w, 'CURATE', util.NativeMap(d))
 
-        case '*site':
+        case '**site':
           d = dict(
               Site=.master.site,
               root=root,
@@ -437,7 +466,7 @@ class Curator:
             toml = markdown.EncodeToml(util.NativeMap(d))
             bundle.WriteFile(.bund, '/formic/config.toml', toml, pw=None)
             .master.Reload()
-          http.Redirect(w, r, "%s*site" % root, http.StatusTemporaryRedirect)
+          http.Redirect(w, r, "%s**site" % root, http.StatusTemporaryRedirect)
 
         case '**edit_site':
           d = dict(
@@ -522,12 +551,15 @@ class Curator:
             else:
               edit_menu = util.NativeMap(dict())
 
-            edit_aliases=util.NativeSlice(
+            edit_type = query['EditType'].strip()
+
+            edit_aliases = util.NativeSlice(
                 [s.strip() for s in query['EditAliases'].strip().split(',')]
                 )
             toml = markdown.EncodeToml(util.NativeMap(dict(
                 title=edit_title,
                 aliases=edit_aliases,
+                type=edit_type,
                 menu=edit_menu,
                 )))
             text = '+++\n' + toml + '\n+++\n' + edit_md
@@ -548,6 +580,7 @@ class Curator:
                    EditMd='[Enter the page content here.]',
                    EditTitle='Untitled',
                    EditAliases='',
+                   EditType='',
                    EditMainName='',
                    EditMainWeight=0,
                    DebugMeta='',
@@ -571,6 +604,7 @@ class Curator:
                    Filepath=fname,
                    EditMd=md,
                    EditTitle=meta.get('title', 'Untitled'),
+                   EditType=meta.get('type', ''),
                    EditAliases=','.join(meta.get('aliases', [])),
                    EditMainName=EditMainName,
                    EditMainWeight=EditMainWeight,
@@ -580,12 +614,11 @@ class Curator:
           .t.ExecuteTemplate(w, 'EDIT_PAGE', util.NativeMap(d))
 
         case '**edit_text_submit':
-          ttl = query['EditTitle']
           text = query['EditText']
           say 'bundle.WriteFile', fname, text
           bundle.WriteFile(.bund, fname, text, pw=None)
           .master.Reload()
-          http.Redirect(w, r, "%s*view?f=%s" % (root, fname), http.StatusTemporaryRedirect)
+          http.Redirect(w, r, "%s**view?f=%s" % (root, fname), http.StatusTemporaryRedirect)
 
         case '**edit_text':
             edittext = bundle.ReadFile(.bund, fname, pw=None)
@@ -679,19 +712,19 @@ CURATOR_TEMPLATES = `
         <h3>Directories</h3>
         <ttx><ul>
         {{ if $.up }}
-          <li> <a href="{{$.root}}*view?f={{ $.up }}">[up]</a>
+          <li> <a href="{{$.root}}**view?f={{ $.up }}">[up]</a>
         {{ end }}
         {{ range $.dd | keys }}
-          <li> <a href="{{$.root}}*view?f={{ index $.dd . }}">{{ . }}</a>
+          <li> <a href="{{$.root}}**view?f={{ index $.dd . }}">{{ . }}</a>
         {{ end }}
         </ul></ttx>
 
         <h3>Files</h3>
         <ttx><ul>
         {{ range $.ff | keys }}
-          <li> <a href="{{$.root}}*view?f={{ index $.ff . }}">{{ . }}</a>
+          <li> <a href="{{$.root}}**view?f={{ index $.ff . }}">{{ . }}</a>
                &nbsp; &nbsp;
-               [<a href="{{$.root}}*edit?f={{ index $.ff . }}">edit</a>]
+               [<a href="{{$.root}}**edit_text?f={{ index $.ff . }}">edit</a>]
         {{ end }}
         </ul></ttx>
 
@@ -702,7 +735,7 @@ CURATOR_TEMPLATES = `
         <ttx><ul>
           <li>Site Title = "{{.Site.Title}}"
           <li>Base URL = "{{.Site.BaseURL}}"
-          <li>[<a href="{{.root}}*edit_site">Edit Site</a>]
+          <li>[<a href="{{.root}}**edit_site">Edit Site</a>]
         </ul></ttx>
 
         {{ template "TAIL" $ }}
@@ -711,7 +744,7 @@ CURATOR_TEMPLATES = `
         {{ template "HEAD" $ }}
 
         <table border=1><tr><td>
-        <form method="POST" action="{{.root}}*edit_site_submit">
+        <form method="POST" action="{{.root}}**edit_site_submit">
           <br><br>
           Site Title: <input type=text size=60 name=title value={{.Site.Title}}>
           <br><br>
@@ -779,15 +812,22 @@ CURATOR_TEMPLATES = `
             <input type="checkbox" name=DeletePage value="1">
             <br> <br>
 
-            Main Menu:
+            Name in Menu:
             <input name=EditMainName size=40 value="{{.EditMainName}}">
             &nbsp; &nbsp; Weight:
             <input name=EditMainWeight size=6 value="{{.EditMainWeight}}">
             <br> <br>
 
+            Type of Page (leave it blank if you do not know):
+            <input name=EditType size=20 value="{{.EditType}}">
+            <br> <br>
+
+            <!--
             Aliases:
             <input name=EditAliases size=80 value="{{.EditAliases}}">
             <br> <br>
+            -->
+            <input name=EditAliases type=hidden value="{{.EditAliases}}">
 
           </dd></dl>
         </form>
@@ -819,11 +859,11 @@ CURATOR_TEMPLATES = `
         <h3>Pages:</h3>
         [<a href="{{$.root}}*new_page">Create New Page</a>]
         <table border=1 cellpadding=4>
-          <tr><th>Path<th>Title<th>Days Old<th>Date
+          <tr><th>Path &amp; Edit Link<th>Title &amp; View Link<th>Days Old<th>Date
           {{ range .Site.Pages.ByDate }}
             <tr>
               <td><a href="{{$.root}}*edit_page?f={{.Identifier}}">{{.Identifier}}
-              <td>{{.Title}}
+              <td><a href="{{$.root}}{{.Identifier}}">{{.Title}}</a>
               <td align=right>{{printf "%.0f" .Age}}
               <td>{{.Date.Format "Mon, 02-Jan-2006 15:04 MST"}}
           {{ end }}
