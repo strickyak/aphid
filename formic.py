@@ -276,7 +276,7 @@ class FormicMaster:
       p = .page_d.get(pname)
       say 'MatchContent', path, section, base, pname, p
 
-      w.Header().Set('Content-Type', 'text/html')
+      w.Header().Set('Content-Type', 'text/html; charset=UTF-8')
       if not p:
         # Page does not exist.
         w.WriteHeader(404)
@@ -617,11 +617,12 @@ class Curator:
           .t.ExecuteTemplate(w, 'EDIT_PAGE', util.NativeMap(d))
 
         case '**edit_text_submit':
-          text = query['EditText']
-          say 'bundle.WriteFile', fname, text
-          bundle.WriteFile(.bund, fname, text, pw=None)
-          .master.Reload()
-          http.Redirect(w, r, "%s**view?f=%s" % (root, fname), http.StatusTemporaryRedirect)
+          if query['submit'] == 'Save':
+            text = query['EditText']
+            say 'bundle.WriteFile', fname, text
+            bundle.WriteFile(.bund, fname, text, pw=None)
+            .master.Reload()
+          http.Redirect(w, r, "%s**view?f=%s" % (root, P.Dir(fname)), http.StatusTemporaryRedirect)
 
         case '**edit_text':
           edittext = bundle.ReadFile(.bund, fname, pw=None)
@@ -646,6 +647,9 @@ class Curator:
             say d
             .t.ExecuteTemplate(w, 'DIR', util.NativeMap(d))
           elif fSize:
+            ct = query.get('ct')
+            if ct:
+              w.Header().Set('Content-Type', ct)
             br = .bund.MakeReader(fname, pw=None, raw=False, rev=None)
             http.ServeContent(w, r, fname, adapt.UnixToTime(modTime), br)
           else:
@@ -717,6 +721,8 @@ CURATOR_TEMPLATES = `
         {{ range $.ff | keys }}
           <li> <a href="{{$.root}}**view?f={{ index $.ff . }}">{{ . }}</a>
                &nbsp; &nbsp;
+               [<a href="{{$.root}}**view?f={{ index $.ff . }}&ct=text/plain">text/plain</a>]
+               &nbsp; &nbsp;
                [<a href="{{$.root}}**edit_text?f={{ index $.ff . }}">edit</a>]
         {{ end }}
         </ul></ttx>
@@ -767,9 +773,9 @@ CURATOR_TEMPLATES = `
           <textarea name=EditText wrap=virtual rows=30 cols=80 style="width: 95%; height: 70%"
             >{{.EditText}}</textarea>
           <p>
-          <input type=submit value=Save> &nbsp;
-          <input type=reset>
-          <ttx>&nbsp; <big>[<a href={{.Cancel}}>Cancel</a>]</big></ttx>
+          <input type=submit name=submit value=Save> &nbsp; &nbsp;
+          <input type=reset> &nbsp; &nbsp;
+          <input type=submit name=submit value=Cancel> &nbsp; &nbsp;
         </form>
         {{ template "TAIL" $ }}
 {{end}}
