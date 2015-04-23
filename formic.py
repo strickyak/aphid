@@ -437,10 +437,13 @@ class Curator:
 
     cmd = P.Base(path)
     query = util.ParseQuery(r)
-    fname = query.get('f')
+    fname = query.get('f', '/')
 
-    if cmd == '*':
-      cmd = '*curate'
+    switch cmd:
+      case '*':
+        cmd = '*curate'
+      case '**':
+        cmd = '**view'
     switch cmd:
         case '*curate':
           d = dict(
@@ -621,23 +624,13 @@ class Curator:
           http.Redirect(w, r, "%s**view?f=%s" % (root, fname), http.StatusTemporaryRedirect)
 
         case '**edit_text':
-            edittext = bundle.ReadFile(.bund, fname, pw=None)
-            d = dict(Title='VIEW TEXT: %q' % fname,
-                     Submit='%s**edit_text_submit?f=%s' % (root, fname),
-                     Filepath=fname,
-                     EditText=edittext,
-                     )
-            .t.ExecuteTemplate(w, 'EDIT_TEXT', util.NativeMap(d))
-
-        case '**view_page':
-          filename = J('/formic/content', fname + '.md')
-          isDir, modTime, fSize = .bund.Stat3(filename, pw=None)
-          say isDir, modTime, fSize
-          if fSize:
-            br = .bund.MakeReader(filename, pw=None, raw=False, rev=None)
-            http.ServeContent(w, r, filename, adapt.UnixToTime(modTime), br)
-          else:
-            raise 'Cannot view empty or deleted file: %q' % fname
+          edittext = bundle.ReadFile(.bund, fname, pw=None)
+          d = dict(Title='VIEW TEXT: %q' % fname,
+                   Submit='%s**edit_text_submit?f=%s' % (root, fname),
+                   Filepath=fname,
+                   EditText=edittext,
+                   )
+          .t.ExecuteTemplate(w, 'EDIT_TEXT', util.NativeMap(d))
 
         case '**view':
           isDir, modTime, fSize = .bund.Stat3(fname, pw=None)
@@ -656,7 +649,7 @@ class Curator:
             br = .bund.MakeReader(fname, pw=None, raw=False, rev=None)
             http.ServeContent(w, r, fname, adapt.UnixToTime(modTime), br)
           else:
-            raise 'Cannot view empty or deleted file: %q' % fname
+            raise 'Cannot view empty or deleted or nonexistant file: %q' % fname
         default:
           raise 'Unknown command: %q' % cmd
     return

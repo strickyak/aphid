@@ -43,7 +43,7 @@ class Aphid:
     .x_zones = .x['zones']
     .x_webs = .x['webs']
     .x_wikis = .x['wikis']
-    .x_formic = .x['formic']
+    .x_formics = .x['formics']
     .x_peers = .x['peers']
     .bus = pubsub.Bus(self)
 
@@ -140,23 +140,20 @@ class Aphid:
         .mux.HandleFunc('%s:%d/' % (wname, .p_http), obj.Handle2)
       .mux.HandleFunc('%s/@%s/' % (.f_domain, wname), obj.Handle2)
       .mux.HandleFunc('%s/@%s@e' % (.f_domain, wname), awedit.Master(self, bname, bund=bund).Handle2)
+
     # Add formic.
-    for wname, config in .x_formic.items():
+    for wname, config in .x_formics.items():
       bname = config['bundle']
       bund = .bundles[bname]
       obj = formic.FormicMaster(self, bname, bund=bund, config=config)
-      if config.get('domainly'):
-        .mux.HandleFunc('%s/' % wname, obj.Handle2)
-        .mux.HandleFunc('%s:%d/' % (wname, .p_http), obj.Handle2)
-      .mux.HandleFunc('%s/@%s/' % (.f_domain, wname), obj.Handle2)
-      .mux.HandleFunc('%s/@%s@e/' % (.f_domain, wname), awedit.Master(self, bname, bund=bund).Handle2)
-      say ('%s/' % wname)
-      say ('%s:%d/' % (wname,  .p_http))
-      say ('/@%s/' % wname)
-      say ('/@%s@e/' % wname)
-      say 'WEDIT', '/@%s@e/' % wname
-    # Misc
-    .mux.HandleFunc('/@@quit', lambda w, r: .quit.Put(1))
+      .mux.HandleFunc(wname, obj.Handle2)
+      say 'formic .mux.HandleFunc %q' % wname
+      for a in config.get('aliases'):
+        .mux.HandleFunc(a, obj.Handle2)
+        say 'formic .mux.HandleFunc %q' % a
+
+    ## Misc
+    #.mux.HandleFunc('/@@quit', lambda w, r: .quit.Put(1))
 
     def Otherwise(w, r):
       w.WriteHeader(http.StatusNotFound)
