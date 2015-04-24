@@ -8,18 +8,19 @@ from lib import data
 
 F = fmt.Sprintf
 Nav = util.Nav
-TIME_FORMAT = '2006-01-02T15:04:05-07:00'
+HUGO_TIME_FORMAT = '2006-01-02T15:04:05-07:00'
 
 def J(*vec):
   return P.Clean(P.Join(*vec))
 
 MatchStatic = regexp.MustCompile('^/+(css|js|img|media)/(.*)$').FindStringSubmatch
 MatchContent = regexp.MustCompile('^/+(([-A-Za-z0-9_]+)/)?([-A-Za-z0-9_]+)/*$').FindStringSubmatch
-MatchHome = regexp.MustCompile('^/+(index.html)?$').FindStringSubmatch
+MatchHome = regexp.MustCompile('^/+(index[.]html)?$').FindStringSubmatch
 MatchCurator = regexp.MustCompile('^[-A-Za-z0-9_.{}/]*([*]+\\w*)').FindStringSubmatch
 
 MatchMdDirName = regexp.MustCompile('^[a-z][-a-z0-9_]*$').FindString
 MatchMdFileName = regexp.MustCompile('^[a-z][-a-z0-9_]*[.]md$').FindString
+MatchMdEditName = regexp.MustCompile('^([a-z][-a-z0-9_]*/)?([a-z][-a-z0-9_]*)$').FindStringSubmatch
 MatchMediaDirName = regexp.MustCompile('^[-A-Za-z0-9_{}]+$').FindString
 MatchMediaFileName = regexp.MustCompile('^[-A-Za-z0-9_.{}]+$').FindString
 
@@ -60,7 +61,7 @@ class FormicMaster:
     meta, _, html = markdown.ProcessWithFrontMatter(md)
     title = meta.get('title', pname) if meta else pname
     ts = meta.get('date') if meta else None
-    ts = ts if ts else modTime.Format(TIME_FORMAT)
+    ts = ts if ts else modTime.Format(HUGO_TIME_FORMAT)
     ptype = meta.get('type', '') if meta else ''
     p = go_new(Page) {
         Title: title,
@@ -68,7 +69,7 @@ class FormicMaster:
         Type: ptype,
         Permalink: pname,  # TODO -- host, extra
         Params: util.NativeMap(meta),
-        Date: time.Parse(TIME_FORMAT, ts),
+        Date: time.Parse(HUGO_TIME_FORMAT, ts),
         Section: section,
         Slug: slug,
         Identifier: pname,
@@ -163,7 +164,7 @@ class FormicMaster:
               Identifier: pname,
               Menu: which_menu,
               Name: j_menu.get('name', pname),
-              URL: '%s' % pname,
+              URL: '/%s' % pname,
               Weight: j_menu.get('weight', 0),
               Pre: '', Post: '',
               }
@@ -242,14 +243,6 @@ class FormicMaster:
       .curator.Handle5(w, r, host=host, path=cmd, root=root)
       return
 
-    #m = MatchStatic(path)
-    #if m:
-    #  _, flavor, path = m
-    #  say 'MatchStatic', flavor, path
-    #  rs, nanos, size = .bund.NewReadSeekerTimeSize('/formic/static/%s/%s' % (flavor, path))
-    #  http.ServeContent(w, r, r.URL.Path, time.Unix(0, nanos), rs)
-    #  return
-
     if DOTFILE(path):
       raise 'Dotfile in path not allowed: %q' % path
 
@@ -284,26 +277,8 @@ class FormicMaster:
         print >>w, 'pname = %q' % pname
         return
 
-      buf = bytes.NewBuffer(None)
-      ptype = p.Type
-      ptype = ptype if ptype else '_default'
-      .tpl.ExecuteTemplate(buf, J('theme', ptype, 'single.html'), p)
-      expansion = str(buf)
-
-      # Some things like
-      #    href="/css/sandbox.css"
-      # were not getting the root inserted, so this tweaks the template expansion.
-      def insertRootIfNeeded(s):
-        """Tweak s ending in ``="/C'' so that if C is not @, we insert the root."""
-        s = str(s)
-        if s.endswith('@'):
-          return s
-        elif root.endswith('/'):
-          return s[:-2] + root + s[-1]
-        else:
-          return s[:-2] + root + '/' + s[-1]
-      z = MatchHrefOrSrc.ReplaceAllFunc(expansion, insertRootIfNeeded)
-      w.Write(z)
+      ptype = p.Type if p.Type else '_default'
+      .tpl.ExecuteTemplate(w, J('theme', ptype, 'single.html'), p)
       return
 
     raise "formic: Bad URL: %q %q" % (host, path)
@@ -524,11 +499,12 @@ class Curator:
           edit_path = edit_path.strip().lower() if edit_path else ''
           say edit_path
           if edit_path:
-            if MatchMdFileName('%s.md' % edit_path):
-              say edit_path
-              fname = edit_path
-            else:
+            m = MatchMdEditName(edit_path)
+            if not m:
               raise 'Bad file path: %q' % edit_path
+
+            _, section, slug = m
+            fname = J(section, slug).strip('/')
 
           if not fname:
             raise 'Error: No fname given'
@@ -709,21 +685,21 @@ CURATOR_TEMPLATES = `
         <h3>Directories</h3>
         <ttx><ul>
         {{ if $.up }}
-          <li> <a href="{{$.root}}**view?f={{ $.up }}">[up]</a>
+          <li> <a href="/**view?f={{ $.up }}">[up]</a>
         {{ end }}
         {{ range $.dd | keys }}
-          <li> <a href="{{$.root}}**view?f={{ index $.dd . }}">{{ . }}</a>
+          <li> <a href="/**view?f={{ index $.dd . }}">{{ . }}</a>
         {{ end }}
         </ul></ttx>
 
         <h3>Files</h3>
         <ttx><ul>
         {{ range $.ff | keys }}
-          <li> <a href="{{$.root}}**view?f={{ index $.ff . }}">{{ . }}</a>
+          <li> <a href="/**view?f={{ index $.ff . }}">{{ . }}</a>
                &nbsp; &nbsp;
-               [<a href="{{$.root}}**view?f={{ index $.ff . }}&ct=text/plain">text/plain</a>]
+               [<a href="/**view?f={{ index $.ff . }}&ct=text/plain">text/plain</a>]
                &nbsp; &nbsp;
-               [<a href="{{$.root}}**edit_text?f={{ index $.ff . }}">edit</a>]
+               [<a href="/**edit_text?f={{ index $.ff . }}">edit</a>]
         {{ end }}
         </ul></ttx>
 
@@ -734,7 +710,7 @@ CURATOR_TEMPLATES = `
         <ttx><ul>
           <li>Site Title = "{{.Site.Title}}"
           <li>Base URL = "{{.Site.BaseURL}}"
-          <li>[<a href="{{.root}}**edit_site">Edit Site</a>]
+          <li>[<a href="/**edit_site">Edit Site</a>]
         </ul></ttx>
 
         {{ template "TAIL" $ }}
@@ -743,7 +719,7 @@ CURATOR_TEMPLATES = `
         {{ template "HEAD" $ }}
 
         <table border=1><tr><td>
-        <form method="POST" action="{{.root}}**edit_site_submit">
+        <form method="POST" action="/**edit_site_submit">
           <br><br>
           Site Title: <input type=text size=60 name=title value={{.Site.Title}}>
           <br><br>
@@ -856,13 +832,13 @@ CURATOR_TEMPLATES = `
         </table>
 
         <h3>Pages:</h3>
-        [<a href="{{$.root}}*new_page">Create New Page</a>]
+        [<a href="/*new_page">Create New Page</a>]
         <table border=1 cellpadding=4>
           <tr><th>Path &amp; Edit Link<th>Title &amp; View Link<th>Days Old<th>Date
           {{ range .Site.Pages.ByDate }}
             <tr>
-              <td><a href="{{$.root}}*edit_page?f={{.Identifier}}">{{.Identifier}}
-              <td><a href="{{$.root}}{{.Identifier}}">{{.Title}}</a>
+              <td><a href="/*edit_page?f={{.Identifier}}">{{.Identifier}}
+              <td><a href="/{{.Identifier}}">{{.Title}}</a>
               <td align=right>{{printf "%.0f" .Age}}
               <td>{{.Date.Format "Mon, 02-Jan-2006 15:04 MST"}}
           {{ end }}
@@ -870,11 +846,11 @@ CURATOR_TEMPLATES = `
 
         <h3>Media:</h3>
         <table border=1 cellpadding=4>
-          [<a href="{{$.root}}*attach_media">Upload New Media</a>]
+          [<a href="/*attach_media">Upload New Media</a>]
           <tr><th>Path<th>Size<th>Days Old<th>Date
           {{ range .Site.Media.ByDate }}
             <tr>
-              <td><a href="{{$.root}}media/{{.Identifier}}">{{.Identifier}}</a>
+              <td><a href="/media/{{.Identifier}}">{{.Identifier}}</a>
               <td align=right>{{.Size}}
               <td align=right>{{printf "%.0f" .Age}}
               <td>{{.Date.Format "Mon, 02-Jan-2006 15:04 MST"}}
