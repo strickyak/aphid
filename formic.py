@@ -13,10 +13,10 @@ HUGO_TIME_FORMAT = '2006-01-02T15:04:05-07:00'
 def J(*vec):
   return P.Clean(P.Join(*vec))
 
-MatchStatic = regexp.MustCompile('^/+(css|js|img|media)/(.*)$').FindStringSubmatch
 MatchContent = regexp.MustCompile('^/+(([-A-Za-z0-9_]+)/)?([-A-Za-z0-9_]+)/*$').FindStringSubmatch
 MatchHome = regexp.MustCompile('^/+(index[.]html)?$').FindStringSubmatch
-MatchCurator = regexp.MustCompile('^[-A-Za-z0-9_.{}/]*([*]+\\w*)').FindStringSubmatch
+MatchCurator = regexp.MustCompile('^/+([*]+\\w*)').FindStringSubmatch
+MatchTaxonomy = regexp.MustCompile('^/+(tags)(?:/(\\w*)/?)?').FindStringSubmatch
 
 MatchMdDirName = regexp.MustCompile('^[a-z][-a-z0-9_]*$').FindString
 MatchMdFileName = regexp.MustCompile('^[a-z][-a-z0-9_]*[.]md$').FindString
@@ -141,15 +141,19 @@ class FormicMaster:
     }
 
     # Visit pages, to build tags & menus.
-    menud = {}
-    tags = {}
+    menud = {} ## which_menu -> pagename -> MenuEntry
+    tags = {}  ## tagname -> pagename -> p
     for pname, p in page_d.items():
       if p.Params:
         # Collect tags.
-        taglist = p.Params.get('tags', [])
-        for t in taglist:
+        say '@tags', p.Params.get('tags', [])
+        for t in p.Params.get('tags', []):
+          say '@tags', t
           d = Nav(tags, t)
-          d[pname] = True
+          d[pname] = p
+        say '==@tags', repr(tags)
+        say '==@tags', str(tags)
+        say '==@tags', (tags)
 
         # Collect menus.
         j_menus = p.Params.get('menu')
@@ -178,6 +182,17 @@ class FormicMaster:
       say 'sorted', menu2
       menud[which_menu] = util.NativeSlice(menu2)
 
+    # Sort pages for tags.
+    tags_pages_by = {}
+    for t, pmap in tags.items():
+      ## pmap :: pname -> p
+      page_list = pmap.values()
+      
+      tags_pages_by[t] = go_new(PagesBy) {
+        ByTitle: util.NativeSlice(sorted(page_list, key=lambda x: x.Title)),
+        ByDate: util.NativeSlice(sorted(page_list, reverse=True, key=lambda x: x.Date.Unix())),
+        ByURL: util.NativeSlice(sorted(page_list, key=lambda x: x.Permalink)),
+      }
     # Construct the site.
     try:
       site_toml = bundle.ReadFile(.bund, '/formic/config.toml', pw=None)
@@ -188,6 +203,7 @@ class FormicMaster:
 
     .page_d, .pages_by = page_d, pages_by
     .media_d, .media_by = media_d, media_by
+    .tags, .tags_pages_by = tags, tags_pages_by
     .site = go_new(Site) {
       Menus: util.NativeMap(menud),
       Pages: pages_by,
@@ -256,7 +272,36 @@ class FormicMaster:
       http.ServeContent(w, r, r.URL.Path, time.Unix(0, nanos), rs)
       return
 
-    # If it is not a curator command and not a static file, it must be a page.
+    # We hardwire the taxonomy "tags".
+    m = MatchTaxonomy(path)
+    if m:
+      _, tax, value = m
+      assert tax == 'tags', tax
+      if value:
+        raise 'TODO value %q' % value 
+        by = .tags_pages_by.get('value')
+        if by:
+          d = util.NativeMap(dict(
+            Data=util.NativeMap(dict(
+              Pages=by,
+              )),
+            Title='Pages with tag %q' % value,
+            ))
+          .tpl.ExecuteTemplate(w, J('theme', '_default', 'list.html'), d)
+        else:
+          print >>w, 'There are no pages with tag %q.' % value
+      else:
+        # Generate list.
+        print >>w, '<ul>'
+        for tag in .tags:
+          print >>w, '<li><a href="/tags/%s">%s</a>' % (tag, tag)
+        print >>w, '</ul>'
+      return
+          
+
+
+
+    # If it is not a curator command and not a static file and not a Taxonomy, it must be a page.
     m = MatchContent(path)
     if MatchHome(path):
       m = '/home', (), '', 'home'
