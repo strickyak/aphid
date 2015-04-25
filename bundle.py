@@ -33,8 +33,7 @@ def ListDirs(b, d, pw=None):
   return list([x for x, isDir, _, _ in b.List4(d, pw) if isDir])
 
 def ListFiles(b, d, pw=None):
-  say list([x for x, isDir, _, _ in b.List4(d, pw) if not isDir])
-  return list([x for x, isDir, _, _ in b.List4(d, pw) if not isDir])
+  return list([x for x, isDir, _, sz in b.List4(d, pw) if not isDir and sz])
 
 def osTailGlob(pattern):
   for x in TRY(lambda: F.Glob(pattern)):
@@ -81,7 +80,7 @@ class Base:
   def ListDirs(d, pw=None):
     return [x for x, isdir, _, _ in .List4(d, pw) if isdir]
   def ListFiles(d, pw=None):
-    return [x for x, isdir, _, _ in .List4(d, pw) if not isdir]
+    return [x for x, isdir, _, sz in .List4(d, pw) if not isdir and sz]
 
   #def ReadFile(path, pw=None, raw=None, rev=None):
   #  return ReadFile(self, path=path, pw=pw, raw=raw, rev=rev)
