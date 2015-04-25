@@ -232,9 +232,6 @@ class FormicMaster:
       return # raise ex
 
   def Handle5(w, r, host, path, root):
-    if path == '/favicon.ico':
-      return
-
     # Special Commands.
     m = MatchCurator(path)
     if m:
@@ -453,6 +450,20 @@ class Curator:
             )
           .t.ExecuteTemplate(w, 'EDIT_SITE', util.NativeMap(d))
 
+        case '**delete_file_submit':
+          delfile = query['delfile']
+          if query.get('DeleteFile'):
+            bundle.WriteFile(.bund, delfile, '', pw=None)
+          say P.Dir(delfile)
+          http.Redirect(w, r, '**view?f=%s' % P.Dir(delfile), http.StatusTemporaryRedirect)
+
+        case '**delete_file':
+          d = dict(Title='Upload Media Attachment',
+                   Action='/**delete_file_submit',
+                   fname=fname,
+                   )
+          .t.ExecuteTemplate(w, 'DELETE', util.NativeMap(d))
+
         case '*attach_media_submit':
           say query
 
@@ -465,8 +476,9 @@ class Curator:
           f = match[1] if match else ''
           if f:
             fname = r.MultipartForm.File['file'][0].Filename
-            fpath = J('/formic/static/media', CurlyEncode(fname))
-            say fname, fpath
+            editdir = r.MultipartForm.Value['EditDir'][0]
+            fpath = J(editdir, CurlyEncode(fname))
+            say editdir, fname, fpath
 
             fd = r.MultipartForm.File['file'][0].Open()
             br = bufio.NewReader(fd)
@@ -477,13 +489,26 @@ class Curator:
             fd.Close()
             .master.Reload()
 
-            http.Redirect(w, r, '*', http.StatusTemporaryRedirect)
+            if editdir == '/formic/static/media':
+              http.Redirect(w, r, '*', http.StatusTemporaryRedirect)
+            else:
+              http.Redirect(w, r, '**view?f=%s' % editdir, http.StatusTemporaryRedirect)
           else:
             print >>w, 'No file was uploaded.  Go back and try again.'
 
         case '*attach_media':
           d = dict(Title='Upload Media Attachment',
-                   Action='%s*attach_media_submit' % root,
+                   Action='/*attach_media_submit',
+                   EditDir='/formic/static/media',
+                   EditDirFixed='1',
+                   )
+          .t.ExecuteTemplate(w, 'ATTACH', util.NativeMap(d))
+
+        case '**attach_file':
+          d = dict(Title='Upload Media Attachment',
+                   Action='/*attach_media_submit',
+                   EditDir=query.get('dir', '/formic/static/media'),
+                   EditDirFixed='',
                    )
           .t.ExecuteTemplate(w, 'ATTACH', util.NativeMap(d))
 
@@ -491,7 +516,7 @@ class Curator:
           say query
           if query.get('submit') != 'Save':
             # Cancel; don't save.
-            http.Redirect(w, r, "%s%s" % (root, fname), http.StatusTemporaryRedirect)
+            http.Redirect(w, r, "/%s" % fname, http.StatusTemporaryRedirect)
             return
 
           edit_path = query.get('EditPath', '')
@@ -547,14 +572,14 @@ class Curator:
           bundle.WriteFile(.bund, J('/formic/content', fname + '.md'), text, pw=None)
           .master.Reload()
           if text:
-            http.Redirect(w, r, "%s%s" % (root, fname), http.StatusTemporaryRedirect)
+            http.Redirect(w, r, "/%s" % fname, http.StatusTemporaryRedirect)
           else:
-            http.Redirect(w, r, "%s*" % root, http.StatusTemporaryRedirect)
+            http.Redirect(w, r, "*", http.StatusTemporaryRedirect)
           return
 
         case '*new_page':
           d = dict(Title='Create New Page',
-                   Submit='%s*edit_page_submit' % root,
+                   Submit='/*edit_page_submit',
                    Filepath='',
                    EditMd='[Enter the page content here.]',
                    EditTitle='Untitled',
@@ -579,7 +604,7 @@ class Curator:
           EditMainWeight = main_d.get('weight', 0) if main_d else 0
 
           d = dict(Title='Edit Page %q' % fname,
-                   Submit='%s*edit_page_submit?f=%s' % (root, fname),
+                   Submit='/*edit_page_submit?f=%s' % fname,
                    Filepath=fname,
                    EditMd=md,
                    EditTitle=meta.get('title', 'Untitled'),
@@ -598,12 +623,12 @@ class Curator:
             say 'bundle.WriteFile', fname, text
             bundle.WriteFile(.bund, fname, text, pw=None)
             .master.Reload()
-          http.Redirect(w, r, "%s**view?f=%s" % (root, P.Dir(fname)), http.StatusTemporaryRedirect)
+          http.Redirect(w, r, "/**view?f=%s" % P.Dir(fname), http.StatusTemporaryRedirect)
 
         case '**edit_text':
           edittext = bundle.ReadFile(.bund, fname, pw=None)
           d = dict(Title='VIEW TEXT: %q' % fname,
-                   Submit='%s**edit_text_submit?f=%s' % (root, fname),
+                   Submit='/**edit_text_submit?f=%s' % fname,
                    Filepath=fname,
                    EditText=edittext,
                    )
@@ -618,7 +643,7 @@ class Curator:
             dd = dict([(d, J(fname, d)) for d in dirs if d])
             ff = dict([(f, J(fname, f)) for f in files if f])
             up = '/' if fname == '/' else J(fname, '..')
-            d = dict(Title=fname, root=root, dd=dd, ff=ff, up=up)
+            d = dict(Title=fname, dir=fname, dd=dd, ff=ff, up=up)
 
             say d
             .t.ExecuteTemplate(w, 'DIR', util.NativeMap(d))
@@ -683,25 +708,28 @@ CURATOR_TEMPLATES = `
         {{ template "HEAD" $ }}
 
         <h3>Directories</h3>
-        <ttx><ul>
+        <ul>
         {{ if $.up }}
           <li> <a href="/**view?f={{ $.up }}">[up]</a>
         {{ end }}
         {{ range $.dd | keys }}
           <li> <a href="/**view?f={{ index $.dd . }}">{{ . }}</a>
         {{ end }}
-        </ul></ttx>
+        </ul>
 
         <h3>Files</h3>
-        <ttx><ul>
+        [<a href="/**attach_file?dir={{.dir}}">Upload File</a>]
+        <ul>
         {{ range $.ff | keys }}
           <li> <a href="/**view?f={{ index $.ff . }}">{{ . }}</a>
                &nbsp; &nbsp;
                [<a href="/**view?f={{ index $.ff . }}&ct=text/plain">text/plain</a>]
                &nbsp; &nbsp;
                [<a href="/**edit_text?f={{ index $.ff . }}">edit</a>]
+               &nbsp; &nbsp;
+               [<a href="/**delete_file?f={{ index $.ff . }}">delete</a>]
         {{ end }}
-        </ul></ttx>
+        </ul>
 
         {{ template "TAIL" $ }}
 {{end}}
@@ -809,13 +837,34 @@ CURATOR_TEMPLATES = `
         {{ template "TAIL" $ }}
 {{end}}
 
+{{define "DELETE"}}
+        {{ template "HEAD" $ }}
+        <form method="POST" action="{{.Action}}">
+          <input type=hidden name=delfile value={{.fname}}>
+          <p>
+          Deleting file: <b>"{{.fname}}"</b>
+          <p>
+          <input type="checkbox" name=DeleteFile value="1"> &nbsp; Check to Confirm.
+          <br> <br>
+          <input type=submit value=Delete> &nbsp; &nbsp;
+        </form>
+        {{ template "TAIL" $ }}
+{{end}}
+
 {{define "ATTACH"}}
         {{ template "HEAD" $ }}
         <form method="POST" action="{{.Action}}" enctype="multipart/form-data">
           <p>
           Upload a new attachment:
           <input type="file" name="file">
-          <p>
+          <br> <br>
+          {{ if .EditDirFixed }}
+          <input type=hidden name=EditDir value={{.EditDir}}>
+          {{ else }}
+          Directory: <input type=text name=EditDir value={{.EditDir}} size=40> &nbsp; &nbsp;
+          <br> <br>
+          {{ end }}
+          <br> <br>
           <input type=submit value=Save> &nbsp; &nbsp;
           <input type=reset> &nbsp; &nbsp;
           <big>[<a href={{.Cancel}}>Cancel</a>]</big>
