@@ -187,7 +187,7 @@ class FormicMaster:
     for t, pmap in tags.items():
       ## pmap :: pname -> p
       page_list = pmap.values()
-      
+
       tags_pages_by[t] = go_new(PagesBy) {
         ByTitle: util.NativeSlice(sorted(page_list, key=lambda x: x.Title)),
         ByDate: util.NativeSlice(sorted(page_list, reverse=True, key=lambda x: x.Date.Unix())),
@@ -278,7 +278,7 @@ class FormicMaster:
       _, tax, value = m
       assert tax == 'tags', tax
       if value:
-        raise 'TODO value %q' % value 
+        raise 'TODO value %q' % value
         by = .tags_pages_by.get('value')
         if by:
           d = util.NativeMap(dict(
@@ -297,7 +297,7 @@ class FormicMaster:
           print >>w, '<li><a href="/tags/%s">%s</a>' % (tag, tag)
         print >>w, '</ul>'
       return
-          
+
 
 
 
