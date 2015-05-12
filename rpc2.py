@@ -95,7 +95,7 @@ class ServerConn:
   def WriteActor():
     while True:
       #say 'get'
-      tup = .resultQ.Take()
+      tup = .resultQ.Recv()
       #say 'got', tup
       if tup is None:
         break
@@ -108,7 +108,7 @@ class ServerConn:
 
   def ReadActor():
     r = bufio.NewReader(.conn)
-    with defer .resultQ.Put( None ):
+    with defer .resultQ.Send( None ):
       while True:
         toBreak = False
         try:
@@ -134,7 +134,7 @@ class ServerConn:
     except as ex:
       say ex
       err = ex
-    .resultQ.Put( (serial, result, err) )
+    .resultQ.Send( (serial, result, err) )
 
 
 def MutualKey(ring, clientId, serverId):
@@ -181,12 +181,12 @@ class Client:
 
   def WriteActor():
     while True:
-      req = .inQ.Take()
+      req = .inQ.Recv()
       if req is None:
         break
 
       # Allocate a serial, and remember the request.
-      req.serial = (ProcessNonce, TheSerial.Take())
+      req.serial = (ProcessNonce, TheSerial.Recv())
       .requests[req.serial] = req
 
       pay = rye_pickle( (req.serial, req.proc, req.args, req.kw) )
@@ -203,13 +203,13 @@ class Client:
       pay, ser = .sealer.Open(p)
       serial, result, err = rye_unpickle(pay)
       must serial == ser # TODO
-      .requests[serial].replyQ.Put( (result, err) )
+      .requests[serial].replyQ.Send( (result, err) )
 
 
   def Call(proc, *args, **kw):
     say 'SUN CALLING', proc, ArgsSummary(args, kw)
     req = Request(proc, args, kw)
-    .inQ.Put(req)
+    .inQ.Send(req)
     return Promise(req.replyQ)
 
   def Close():
@@ -224,7 +224,7 @@ class Promise:
     .chan = chan
 
   def Wait():
-    result, err = .chan.Take()
+    result, err = .chan.Recv()
     say 'SUN', AtMost(80, result), AtMost(80, err)
     if err:
       if str(err) == 'EOF':

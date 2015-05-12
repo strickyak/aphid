@@ -12,14 +12,15 @@ say ch
 def Count(n):
   for i in range(n):
     say i
-    ch.Put(A(n-i))
+    ch.Send(A(n-i))
   say 'close'
   ch.Close()  # After close, reads will be None.
 
 go Count(N)
 z = []
 while True:
-  x = ch.Take()
+  x = ch.Recv()
+  say x
   if x is None:   # On None.
     break
   z.append(x.a)

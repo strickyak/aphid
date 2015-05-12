@@ -205,5 +205,5 @@ def main(args):
   LaunchConfigFiles(quit=quit, filenames=args)
 
   say 'WAITING'
-  quit.Take()
+  quit.Recv()
   say 'QUITTING'
