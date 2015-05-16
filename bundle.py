@@ -692,7 +692,7 @@ class ChunkWriter:
     .mtime = mtime
     .raw = raw
     if .raw:
-      .tmp = F.Join(.bund.bundir, 'tmp.ChunkWriter.%d' % TheSerial.Take())
+      .tmp = F.Join(.bund.bundir, 'tmp.ChunkWriter.%d' % TheSerial.Recv())
       os.MkdirAll(F.Dir(.tmp), 0777)
       .fd = os.Create(.tmp)
       .w = bufio.NewWriter(.fd)

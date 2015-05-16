@@ -1,7 +1,7 @@
 from go import io, log, math/rand, regexp, time
 from . import A, bundle, pubsub, rbundle
 
-WATCHDOG_PERIOD = 300
+WATCHDOG_PERIOD = 300.0
 MAX_BACKOFF = 120
 
 class Among:
@@ -23,7 +23,7 @@ class Among:
 
   def Connect(peer_id, peer_loc):
     say 'Connect <<<', .my_id, peer_id, peer_loc
-    backoff = 1
+    backoff = 1.0
     while True:
       try:
         conn = Conn(self, peer_id, peer_loc)
@@ -35,7 +35,7 @@ class Among:
         pass
       say 'Connect === Backoff', .my_id, peer_id, peer_loc, backoff
       A.Sleep(backoff)
-      backoff = min(backoff, MAX_BACKOFF/2.0)
+      backoff = min(float(backoff), MAX_BACKOFF/2.0)
       backoff *= rand.Float64() + 1.0
 
   def BestEffortCallAllOthers(proc_name, *args, **kw):
@@ -105,10 +105,10 @@ class Conn:
   def Watchdog():
     # Stay in this loop until watchdog fails to ping.
     while True:
-      A.Sleep(WATCHDOG_PERIOD / 2.0)
+      A.Sleep(WATCHDOG_PERIOD / 2)
       say 'go .PingAndUpdate()'
       go .PingAndUpdate()
-      A.Sleep(WATCHDOG_PERIOD / 2.0)
+      A.Sleep(WATCHDOG_PERIOD / 2)
       if .lasttime < A.NowSecs() - WATCHDOG_PERIOD:
             break
 

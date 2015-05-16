@@ -65,6 +65,10 @@ TERMITE1 = '''{
     "termite2.wiki": { bundle: "termite2" },
     "termite3.wiki": { bundle: "termite3" },
   },
+
+  formics: {
+    // "termite3.formic": { bundle: "termite3" },
+  },
 }'''
 TERMITE2 = '''import "termite1.conf" {
   me: 12,
@@ -84,12 +88,15 @@ TERMITE2 = '''import "termite1.conf" {
   wikis: super.wikis {
     "extra.wiki.termite0.aphid.cc": { bundle: "termite0" },
   },
+
+  formics: super.formics {},
 }'''
 TERMITE3 = '''import "termite1.conf" {
   me: 13,
   zones: {},
   webs: {},
   wikis: {},
+  formics: {},
 }'''
 
 def Clear():

@@ -15,21 +15,43 @@ def PJ(*vec):
 def FJ(*vec):
   return F.Clean(F.Join(*vec))
 
-def EvalConfig(filename):
+SnippetMemory = {}
+def EvalConfig(filename, snippet=None):
   vm = VM.Make()
+
+  def importSnippet(base, rel):
+    importName = P.Clean(P.Join(base, rel))
+    if importName in SnippetMemory:
+      say base, rel, importName, SnippetMemory[importName]
+      #say SnippetMemory[importName][1700:]
+      #say SnippetMemory[importName][1790:]
+      return SnippetMemory[importName]
+    else:
+      say '????????????????????', False
+      return '????????????????????'
+  vm.ImportCallback(importSnippet)
+
   with defer vm.Destroy():
     # Convert to JSON string.
-    js = vm.EvaluateFile(filename)
+    if snippet:
+      say filename, snippet
+      js = vm.EvaluateSnippet(filename, snippet)
+      SnippetMemory[filename] = snippet  # For future use.
+    else:
+      js = vm.EvaluateFile(filename)
     say js
+    #print >>os.Stderr, js
+    #say js[1700:]
+    #say js[1730:]
     # Eval the JSON into a Python value.
     return data.Eval(js)
 
 class Aphid:
-  def __init__(quit, filename):
+  def __init__(quit, filename, snippet=None):
     .quit = quit
     .filename = filename
 
-    .x = EvalConfig(filename)
+    .x = EvalConfig(filename, snippet)
     .x_me = .x['me']
     .f_ip = .x['flags']['ip']
     .f_keyring = .x['flags']['keyring']

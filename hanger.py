@@ -55,7 +55,7 @@ class Hanger:
 
   def Hang(obj):
     "Hang the object on the hanger, and get an id for it."
-    id = .serial.Take()
+    id = .serial.Recv()
     .d[id] = Hung(self, id, obj)
     return id
 
