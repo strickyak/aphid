@@ -1,8 +1,8 @@
 from go import bytes, os, io, io/ioutil
-from go import net/http
+from go import mime/multipart, net/http
 from go import encoding/base64
 from go import path/filepath as FP
-from . import A, aphid, au, bundle, sym
+from . import A, aphid, au, bundle, sym, util
 
 Ring = None
 
@@ -162,19 +162,39 @@ def LoadTermite(i):
     if cmd == 'SPush':
       A.Sleep(1)
 
-def HttpGet(method, url, body='', pw=None):
+def HttpUpload(url, basename, params, r, pw=None):
+  # Thanks: http://matt.aimonetti.net/posts/2013/07/01/golang-multipart-file-upload-example/
+  body = go_new(bytes.Buffer)
+  writer = multipart.NewWriter(body)
+  part = writer.CreateFormFile('file', basename)
+  io.Copy(part, r)
+  for k, v in params.items():
+    writer.WriteField(k, v)
+  writer.Close()
+  say body.String()
+  req = http.NewRequest("POST", url, body)
+  say req
+  return HttpFinishReq(req, ct=writer.FormDataContentType(), pw=pw)
+
+def HttpMethod(method, url, body='', pw=None):
   client = go_new(http.Client)
   bb = bytes.NewBuffer(body)
   req = http.NewRequest(method, url, bb)
+  return HttpFinishReq(req, 'application/x-www-form-urlencoded' if method == 'POST' else None, pw=pw)
+
+def HttpFinishReq(req, ct, pw):
+  client = go_new(http.Client)
   if pw:
     encoded = base64.StdEncoding.EncodeToString('user:%s' % pw)
     req.Header.Add('Authorization', 'Basic %s' % encoded)
-  if method == 'POST':
-    req.Header.Add('Content-Type', 'application/x-www-form-urlencoded')
+  if ct:
+    req.Header.Add('Content-Type', ct)
+  say req.Header
   resp = client.Do(req)
-  z = ioutil.ReadAll(resp.Body)
+  z99 = ioutil.ReadAll(resp.Body)
   resp.Body.Close()
-  return z
+  say z99, resp
+  return z99
 
 def main(_):
   Clear()
@@ -241,20 +261,32 @@ def main(_):
     #Cmp(Glob1('__termite__termite13/b.termite%d/d.web/d.frog/f.index.html/r.*.13.*' % i),
     #    Glob1('__termite__termite12/b.termite%d/d.web/d.frog/f.index.html/r.*.13.*' % i))
 
-  if True:
-    # Push a page into Formic.
-    bodyD = dict(
-        submit='Save', EditPath='home', EditMd='HelloHomePage%0A',
-        EditTitle='HomePage', EditMainName='', EditMainWeight='0',
-        EditType='', EditAliases='')
-    say bodyD
-    body = '&'.join(['%s=%v' % (k, v) for k, v in bodyD.items()])
-    say body
-    z1 = HttpGet('POST', 'http://localhost:28180/@termite1.formic/*edit_page_submit?', body=body, pw='password')
-    say z1
-    A.Sleep(1)
-    z2 = HttpGet('GET', 'http://localhost:28180/@termite1.formic/home?', body='', pw='password')
-    say z2
-    # TODO: Continue.  *** ERROR *** <br><br>\n\n*** html/template: \"theme/_default/single.html\" is undefined
+  # Install a template for /formic/layouts/_default/single.html
+  buf = bytes.NewBuffer('Default Single Template\n')
+  z0 = HttpUpload(
+      url='http://localhost:28180/@termite1.formic/*attach_media_submit?',
+      basename='single.html',
+      params=dict(foo='bar', EditDir='/formic/layouts/_default'),
+      r=buf,
+      pw='password')
+  say z0
+
+  # Submit a home page.
+  body = util.ConstructQueryFromDict(dict(
+        submit='Save',
+        EditPath='home',
+        EditMd='HelloHomePage%0A',
+        EditTitle='HomePage',
+        EditMainName='',
+        EditMainWeight='0',
+        EditType='',
+        EditAliases=''))
+  z1 = HttpMethod('POST', 'http://localhost:28180/@termite1.formic/*edit_page_submit?', body=body, pw='password')
+  say z1
+
+  # Get the home page.
+  A.Sleep(1)
+  z2 = HttpMethod('GET', 'http://localhost:28180/@termite1.formic/home?', body='', pw='password')
+  say z2
 
   say "OKAY termite_test.py"

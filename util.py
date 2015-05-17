@@ -29,8 +29,10 @@ def ParseQuery(r):
     if len(v):
       # Assume single values.
       query[k] = v[0]
-      say "FORM", k, v[0]
   return query
+
+def ConstructQueryFromDict(d):
+  return '&'.join(['%s=%v' % (k, v) for k, v in d.items()])
 
 def TemplateFuncs():
   native:

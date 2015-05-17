@@ -1,8 +1,8 @@
-from go import bufio, bytes, fmt, log, reflect, regexp, sort, time
+from go import bufio, bytes, fmt, log, reflect, regexp, sort, sync, time
 from go import html/template, net/http, io, io/ioutil
 from go import path as P
 from go import crypto/md5
-from . import A, atemplate, bundle, markdown, util
+from . import A, atemplate, bundle, markdown, pubsub, util
 from . import adapt, basic, flag
 from lib import data
 
@@ -38,17 +38,30 @@ def WeightedKey(x):
 
 class FormicMaster:
   def __init__(aphid, bname, bund, config):
+    .mu = go_new(sync.Mutex)
     .aphid = aphid
+    .bus = aphid.bus
     must bname
     .bname = bname
     must bund
     .bund = bund
     .curator = Curator(master=self, bname=bname, bund=bund, config=config)
+
+    sub = pubsub.Sub(key1='WriteFile', re2=None, fn=.ReloadBecauseOfThing)
+    .bus.Subscribe(sub)
+
+    .Reload()
+
+  def ReloadBecauseOfThing(thing):
+    # TODO: use a channel for driving reload.
+    say thing
     .Reload()
 
   def Reload():
-    .ReloadTemplates()
-    .ReloadPageMeta()
+    .mu.Lock()
+    with defer .mu.Unlock():
+      .ReloadTemplates()
+      .ReloadPageMeta()
 
   def MakePage(pname, modTime, fileSize):
     say pname

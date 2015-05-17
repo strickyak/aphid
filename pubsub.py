@@ -12,12 +12,14 @@ class Bus:
     with defer .mu.Unlock():
       if sub.key1 not in .subs:
         .subs[sub.key1] = {}
-      .subs[sub.key1][str(sub)] = sub
+      .subs[sub.key1][id(sub)] = sub
+      say sub, .subs
 
   def Unsubscribe(sub):
     .mu.Lock()
     with defer .mu.Unlock():
-      del .subs[sub.key1][str(sub)]
+      del .subs[sub.key1][id(sub)]
+      say sub, .subs
 
   def Publish(thing):
     say thing
@@ -37,7 +39,7 @@ class Sub:
     .key1 = key1
     .re2 = regexp.MustCompile(re2) if re2 else None
     .fn = fn
-    .str = 'Sub{%q %q}' % (.key1, .re2)
+    .str = 'Sub{%q %q %v}' % (.key1, .re2, .fn)
 
   def __str__():
     return .str
