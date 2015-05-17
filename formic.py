@@ -239,6 +239,7 @@ class FormicMaster:
   def Handle2(w, r):
     host, extra, path, root = util.HostExtraPathRoot(r)
     say host, extra, path, root
+
     try:
       return .Handle5(w, r, host, path, root)
     except as ex:
@@ -452,7 +453,9 @@ class Curator:
       print >>w, 'Wrong User or Password -- Hit RELOAD and try again.'
       return
 
+    say path
     cmd = P.Base(path)
+    say cmd
     query = util.ParseQuery(r)
     fname = query.get('f', '/')
 
@@ -837,7 +840,7 @@ CURATOR_TEMPLATES = `
           {{ if .new_page }}
             <b>Page Name</b> (one word, all lowercase, also digits and dash, for the URL path):
             <br>
-            <input name=EditPath size=40 value="{{.EditTitle}}">
+            <input name=EditPath size=40 value="{{.EditTitle}}"> <!-- TODO: Is this right? -->
             <br> <br>
           {{ end }}
 

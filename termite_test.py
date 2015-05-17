@@ -1,6 +1,10 @@
-from go import os, io, io/ioutil
+from go import bytes, os, io, io/ioutil
+from go import net/http
+from go import encoding/base64
 from go import path/filepath as FP
 from . import A, aphid, au, bundle, sym
+
+Ring = None
 
 TERMITE1 = '''{
   me: 11,
@@ -49,7 +53,6 @@ TERMITE1 = '''{
   },
 
   webs: {
-    "127.0.0.1": { bundle: "termite0" },
     "termite0": { bundle: "termite0" },
     "termite1": { bundle: "termite1" },
     "termite2": { bundle: "termite2" },
@@ -57,7 +60,6 @@ TERMITE1 = '''{
   },
 
   wikis: {
-    "localhost": { bundle: "termite0" },
     "wiki": { bundle: "termite0" },
     "web": { bundle: "termite0" },
     "wiki.termite0.aphid.cc": { bundle: "termite0" },
@@ -67,7 +69,9 @@ TERMITE1 = '''{
   },
 
   formics: {
-    // "termite3.formic": { bundle: "termite3" },
+    local trivial_pw = "f5606220aa1e4ab012a6cc32cc980dd9", // "password"
+    "/@termite1.formic/": { bundle: "termite1", md5pw: trivial_pw },
+    "/@termite2.formic/": { bundle: "termite2", md5pw: trivial_pw },
   },
 }'''
 TERMITE2 = '''import "termite1.conf" {
@@ -144,7 +148,7 @@ def Glob1(*names):
 def LoadTermite(i):
   say i
   for cmd in ['BigLocalDir', 'BigRemoteDir', 'SPush', 'BigLocalDir', 'BigRemoteDir']:
-    say '@@@@@@@@@@@@@@@@@@@@@@@@@', i, cmd
+    say '@@@@@@@@@@@@@@@@@@@@@@@@@ Building:', i, cmd
     # bund = 'termite%d' % i if i<3 else 'termite%dpeek' % i
     bund = 'termite%d' % i
     pw = 'password' if i>2 else ''
@@ -152,11 +156,25 @@ def LoadTermite(i):
         '--bund=%s' % bund, '--dir=./__termite_local', '--server=127.0.0.1:28381',
         '--cid=91', '--sid=92', '--exit=0', '--pw=%s' % pw,
         cmd]
-    say '@@@@@@@@@@@@@@@@@@@@@@@@@', i, fullcmd
+    say '@@@@@@@@@@@@@@@@@@@@@@@@@ Running:', i, fullcmd
     au.main(fullcmd)
-    say '@@@@@@@@@@@@@@@@@@@@@@@@@', i
+    say '@@@@@@@@@@@@@@@@@@@@@@@@@ Ran:', i
     if cmd == 'SPush':
       A.Sleep(1)
+
+def HttpGet(method, url, body='', pw=None):
+  client = go_new(http.Client)
+  bb = bytes.NewBuffer(body)
+  req = http.NewRequest(method, url, bb)
+  if pw:
+    encoded = base64.StdEncoding.EncodeToString('user:%s' % pw)
+    req.Header.Add('Authorization', 'Basic %s' % encoded)
+  if method == 'POST':
+    req.Header.Add('Content-Type', 'application/x-www-form-urlencoded')
+  resp = client.Do(req)
+  z = ioutil.ReadAll(resp.Body)
+  resp.Body.Close()
+  return z
 
 def main(_):
   Clear()
@@ -168,9 +186,6 @@ def main(_):
   t3.StartAll()
   global Ring
   Ring = t3.ring
-  #say t3
-  #say t3.ring
-  #say Ring
 
   bt2 = t3.bundles['termite2']
   say bt2, bt2.bundir
@@ -225,5 +240,21 @@ def main(_):
     #    Glob1('__termite__termite11/b.termite%d/d.web/d.frog/f.index.html/r.*.13.*' % i))
     #Cmp(Glob1('__termite__termite13/b.termite%d/d.web/d.frog/f.index.html/r.*.13.*' % i),
     #    Glob1('__termite__termite12/b.termite%d/d.web/d.frog/f.index.html/r.*.13.*' % i))
+
+  if True:
+    # Push a page into Formic.
+    bodyD = dict(
+        submit='Save', EditPath='home', EditMd='HelloHomePage%0A',
+        EditTitle='HomePage', EditMainName='', EditMainWeight='0',
+        EditType='', EditAliases='')
+    say bodyD
+    body = '&'.join(['%s=%v' % (k, v) for k, v in bodyD.items()])
+    say body
+    z1 = HttpGet('POST', 'http://localhost:28180/@termite1.formic/*edit_page_submit?', body=body, pw='password')
+    say z1
+    A.Sleep(1)
+    z2 = HttpGet('GET', 'http://localhost:28180/@termite1.formic/home?', body='', pw='password')
+    say z2
+    # TODO: Continue.  *** ERROR *** <br><br>\n\n*** html/template: \"theme/_default/single.html\" is undefined
 
   say "OKAY termite_test.py"
