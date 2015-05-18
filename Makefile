@@ -1,41 +1,18 @@
-all: clean _build _queue_test _rpc _rpc2_test _laph_test _dns_ask _sym _fu_find_test.py _skiplist_test _dh_test _all_okay
+all: clean _build _dns_ask _sym test
 
 _build:
-	python ../rye/rye.py build au.py
 	python ../rye/rye.py build aphid.py
+	python ../rye/rye.py build au.py
 
-_queue_test:
-	python ../rye/rye.py run queue_test.py
-
-_rpc:
-	#python ../rye/rye.py run rpc.py
-	#python ../rye/rye.py build rfs.py
-	#python ../rye/rye.py build afs.py
-	#python ../rye/rye.py build fu.py
-
-_rpc2_test:
-	python ../rye/rye.py build rpc2_test.py
-
-_laph_test:
-	cd old1 && python ../../rye/rye.py run laph_test.py
+test:
+	set -ex; for x in *_test.py; do python ../rye/rye.py run $$x; done
+	echo All tests OKAY.
 
 _dns_ask:
 	cd old1 && python ../../rye/rye.py run dns_ask.py
 
 _sym:
 	python ../rye/rye.py run sym.py
-
-_fu_find_test.py:
-	#python ../rye/rye.py run fu_find_test.py
-
-_skiplist_test:
-	GOMAXPROCS=4 python ../rye/rye.py run skiplist_test.py --n=100
-
-_dh_test:
-	python ../rye/rye.py run dh_test.py
-
-_all_okay:
-	echo ALL OKAY.
 
 clean:
 	T=`find . -name ryemain.go` ; set -x ; for x in $$T ; do rm -f $$x ; rmdir `dirname $$x` ; done

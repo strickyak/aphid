@@ -2,36 +2,35 @@ from . import markdown
 from lib import data
 
 File1 = `{
-  'foo': 'bar',
+  "foo": "bar",
 }
 one
 two
 three
 `
 
-front, back = markdown.Process(File1)
-say front, back
+front, md, back = markdown.ProcessWithFrontMatter(File1)
+say front, md, back
 must front == dict(foo='bar')
 must str(back) == '<p>one\ntwo\nthree</p>\n'
 
-File2 = `
-           {
-  'foo': 'bar',
-           }
+File2 = `{
+  "foo": "bar",
+}
 one
 two
 three
 `
 
-front, back = markdown.Process(File2)
-say front, back
+front, md, back = markdown.ProcessWithFrontMatter(File2)
+say front, md, back
 must front == dict(foo='bar')
 must str(back) == '<p>one\ntwo\nthree</p>\n'
 
-File3 = `{nando}`
+File3 = `{nando}`  # Has no front matter.
 
-front, back = markdown.Process(File3)
-say front, back
+front, md, back = markdown.ProcessWithFrontMatter(File3)
+say front, md, back
 must front is None 
 must str(back) == '<p>{nando}</p>\n'
 

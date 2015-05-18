@@ -48,6 +48,9 @@ def ProcessWithFrontMatter(text):
   elif m2:
     _, front, md = m2
     f = EvalToml(front)
+  else:
+    md = text
+    f = None
 
   h = TranslateMarkdown(md)
   say f, md, h 

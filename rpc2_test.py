@@ -7,8 +7,11 @@ from . import rpc2 as RPC2
 
 def DemoSum(*args):
   z = 0.0
+  say args, z
   for a in args:
+    say a
     z += float(a)
+    say z
   return z
 
 def DemoSleepAndDouble(millis):
@@ -46,7 +49,7 @@ def main(args):
 
   time.Sleep(100 * time.Millisecond)
   cli = RPC2.Client('localhost:9999', ring1, '1', '2')
-  z = cli.Call('DemoSum', [100,200,300]).Wait()
+  z = cli.Call('DemoSum', *[100,200,300]).Wait()
   say z
   assert z == 600.0
   assert z == 600
@@ -54,7 +57,7 @@ def main(args):
 
   d = {}
   for i in range(5):
-    d[i] = cli.Call('DemoSleepAndDouble', [i * 100])
+    d[i] = cli.Call('DemoSleepAndDouble', *[i * 100])
     say i, d[i]
 
   for i in range(5):
