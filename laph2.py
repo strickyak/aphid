@@ -18,100 +18,113 @@ class Lex:
       i += 1
     return z
 
-class Pass1:
-  """Pass1 sets names on the nodes."""
-  def visitDerive(q, **kw):
-    q.name = kw['name']
-    q.up = kw['up']
-    q.root = kw['root']
-    q.diff.name = kw['name']
-    q.diff.up = kw['up']
-    q.diff.root = kw['root']
-    for k, v in sorted(q.diff.dic.items()):
-      kw2 = kw.copy()
-      kw2['name'] = P.Join(kw['name'], k)
-      kw2['up'] = self
-      v.visit(self, **kw2)
-  def visitTuple(q, **kw):
-    q.name = kw['name']
-    q.up = kw['up']
-    q.root = kw['root']
-    for k, v in sorted(q.dic.items()):
-      kw2 = kw.copy()
-      kw2['name'] = P.Join(kw['name'], k)
-      kw2['up'] = self
-      v.visit(self, **kw2)
-  def visitDollar(q, **kw):
-    pass
-  def visitBare(q, **kw):
-    pass
-  def visitParens(q, **kw):
-    pass
 
-class Pass2:
-  """Pass2 copies derived dictionaries."""
-  def visitDerive(q, **kw):
-    say q.name
-    for kk, ww in sorted(kw.items()):
-      say kk, ww
-    if q.dobj:
-      base = Find(q.dobj, q, q.root)
-      say base
+class Node:
+  def __init__(e, name, up, sup):
+    .e = e
+    .name = name
+    .up = up
+    .sup = sup
+
+class LazyEval:
+  def __init__(root):
+    .root = root
+    .memo = {}
+
+  def Eval(path, origin='/'):
+    if not path.startswith('/'):
+      path = P.Join('/', origin, path)
+      return .Eval(path)
+
+    say 'Eval:', (path, origin)
+    steps = [x for x in path.split('/') if x]
+
+    return .root.visit(self, past=[], future=steps)
+
+  def visitShadow(p, past, future, **kw):
+    past, future = past.copy(), future.copy()
+    say 'visitShadow:', past, future, p.name, kw
+    sup = kw.get('sup')
+    must sup, 'Cannot shadow if not derived', past, future, p.name, kw
+
+    if future:  # Going through us.
+      x = future[0]
+      if x in p.diff.dic:  # First try the local diffs.
+        x = future.pop(0)
+        past.append(x)
+
+        say 'Shadow/Uno', past, x, future
+        ret = p.diff.dic[x].visit(self, past=past, future=future, sup=P.Join(sup, x))
+        say ret
+        return ret
+      else:
+        ret = .Eval(P.Join(sup, x), P.Join('/', *past))
+        say ret
+        return ret
+        
+    else: # Terminating here.  Return list of things.
+      sup = kw.get('sup')
+      say 'Shadow/Tres', past, sup
+      must sup, (past, sup)
+      say sup, P.Join('/', *past)
+      subs = .Eval(sup, P.Join('/', *past))
+      say subs
+      z = dict([(e, True) for e in subs])
+      say z
+
+      say p.diff.dic
+      for k in p.diff.dic:
+        z[k] = True
+      return sorted(z.keys())
+
+  def visitDerive(p, past, future, **kw):
+    past, future = past.copy(), future.copy()
+    say 'visitDerive:', past, future, p.name, kw
+
+    if future:  # Going through us.
+      x = future[0]
+      if x in p.diff.dic:  # First try the local diffs.
+        x = future.pop(0)
+        past.append(x)
+
+        say 'Derive/Uno', past, x, future, p.template
+        ret = p.diff.dic[x].visit(self, past=past, future=future, sup=P.Join(p.template, x))
+        say ret
+        return ret
+      else:
+        say 'Derive/Dos', p.template, future, past
+        ret = .Eval(P.Join(p.template, *future), P.Join('/', *past))
+        say ret
+        return ret
+        
+    else: # Terminating here.  Return list of things.
+      sup = .Eval(p.template, P.Join('/', *past))
+      must type(sup) is list, (p.template, P.Join('/', *past))
+      z = dict([(e, True) for e in sup])
+
+      for k in p.diff.dic:
+        z[k] = True
+      return sorted(z.keys())
+
+  def visitTuple(p, past, future, **kw):
+    past, future = past.copy(), future.copy()
+    if future:
+      x = future.pop(0)
+      past.append(x)
+      say past, x, future
+      y = p.dic.get(x)
+      if y:
+        return y.visit(self, past=past, future=future)
+      else:
+        raise "Ain't no %q in Tuple %q" % (x, past)
     else:
-      base = kw['sup'].dic.get(q.dslot) if kw['sup'] else None
-      say base
-    q.base = base
-    say q.base
-
-    q.dic = {}
-    if base.dic:
-      for k, v in sorted(base.dic.items()):
-      TODO -- derive if Tuple?
-    
-    say q.dic
-    q.dic.update(q.diff.dic)
-    say q.dic
-    q.sup = base # TODO -- null _supper?
-
-    for k, v in sorted(q.dic.items()):
-      say k, v
-      kw2 = kw.copy()
-      kw2['name'] = P.Join(kw['name'], k)
-      kw2['up'] = False
-      kw2['sup'] = base.dic.get(k) if base else None
-      say k, v, kw
-      v.visit(self, **kw2)
-  def visitTuple(q, **kw):
-    kwsup = kw['sup']
-    for k, v in sorted(q.dic.items()):
-      if k == '_up' or k == '_super':
-        continue
-      kw2 = kw.copy()
-      kw2['up'] = False
-      kw2['name'] = P.Join(kw['name'], k)
-      kw2['sup'] = kwsup.dic.get(k) if kwsup else None
-      v.visit(self, **kw2)
-  def visitDollar(q, **kw):
-    pass
-  def visitBare(q, **kw):
-    pass
-  def visitParens(q, **kw):
-    pass
-
-class Eval:
-  def visitDerive(q, **kw):
-    return dict([(k, v.visit(self, **kw)) for k, v in sorted(q.dic.items()) if not k.startswith('_')])
-  def visitTuple(q, **kw):
-    return dict([(k, v.visit(self, **kw)) for k, v in sorted(q.dic.items()) if not k.startswith('_')])
-  def visitDollar(q, **kw):
-    return '$' + q.a
-  def visitBare(q, **kw):
-    return q.a
-  def visitParens(q, **kw):
-    return str(q.vec)
-
-def Name(p):
-  return p.name if p else '<None>'
+      return sorted(p.dic.keys())
+        
+  def visitBare(p, past, future, **kw):
+    if future:
+        raise "Ain't no %q in Scalar %q" % (future, past)
+    else:
+      return p.a
 
 def Find(k, local, root):
   p = root if k.startswith('/') else local
@@ -128,9 +141,8 @@ def Find(k, local, root):
   return p
 
 class Derive:  # Derive from a tuple.
-  def __init__(dobj, dslot, diff):
-    .dobj = dobj
-    .dslot = dslot
+  def __init__(template, diff):
+    .template = template
     .base = None
     .diff = diff
     .dic = {}
@@ -146,9 +158,18 @@ class Derive:  # Derive from a tuple.
     else:
       raise 'Cannot find slot %q in Tuple %q' % (k, .name)
   def __str__():
-    return '(Derive(%q): %v)' % (.dobj if .dobj else "~" + .dslot, .diff)
-  #def __repr__():
-  #  return '(Derive(%q): %v)' % (.dobj if .dobj else "~" + .dslot, .diff)
+    return '(Derive(%q): %v)' % (.template, .diff)
+
+class Shadow:  # Derive from a tuple.
+  def __init__(dslot, diff):
+    .dslot = dslot
+    .diff = diff
+    .name = None
+  def visit(w, **kw):
+    return w.visitShadow(self, **kw)
+  def __str__():
+    return '(Shadow(%q): %v)' % (.dslot, .diff)
+
 class Tuple: # Named tuple with {...}.
   def __init__(dic):
     .dic = dic
@@ -237,7 +258,7 @@ class Parse:
               case '{':
                 tup = .expr()
                 must type(tup) is Tuple
-                d[k] = Derive(None, k, tup)  # TODO
+                d[k] = Shadow(k, tup)  # TODO
           # end while
           .next()
           return Tuple(d)
@@ -254,7 +275,7 @@ class Parse:
       elif peek == '{':
         tup = .expr()
         must type(tup) is Tuple
-        return Derive(x, None, tup)
+        return Derive(x, tup)
       else:
         raise 'Bad Peek', .i, x, peek
 

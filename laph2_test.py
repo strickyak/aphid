@@ -1,10 +1,9 @@
 from . import laph2 as L
 
-
-p1 = '''{ a = {
+p1 = `{ a = {
   x = 5
   y = 10
-} }'''
+} }`
 l1 = L.Lex(p1)
 say l1.toks
 assert l1.toks ==  [
@@ -14,40 +13,36 @@ assert l1.toks ==  [
     ("}", 4), ("}", 4), (";", 4)
     ]
 
-say '####################################################'
-t1 = L.Parse(p1).expr()
-t1.visit(L.Pass1(), name='/', up=None, root=t1)
-say '####################################################'
-print t1
-say '####################################################'
 
-e = L.Eval() 
-z1 = t1.visit(e)
-say type(z1)
-say z1
-assert z1 == {"a": {"x": "5", "y": "10"}}
-
-##########################
-
-print '####################################'
-p2 = `{ a = { b = { x = 100 ; c = 5 } } ; d = /a/b { c = 8 } ; e = /a { p = { q = 9 } } }`
-t2 = L.Parse(p2).expr()
-t2.visit(L.Pass1(), name='/', up=None, root=t2, sup=None)
-t2.visit(L.Pass2(), name='/', up=None, root=t2, sup=None)
-print t2
-z2 = t2.visit(L.Eval())
-print z2
-assert z2 ==  {"a": {"b": {"c": "5", "x": "100"}}, "d": {"x": "100", "c": "8"}, "e": {"b": {"c": "5", "x": "100"}, "p": {"q": "9"}}}
-
-
-##########################
-
-print '####################################'
-p3 = `{ a = { b = { x = 100 ; c = 5 } } ; d = /a/b { c = 8 } ; e = /a { p = { q = 9 } ; b { x = 888 } } }`
-t3 = L.Parse(p3).expr()
-t3.visit(L.Pass1(), name='/', up=None, root=t3, sup=None)
-t3.visit(L.Pass2(), name='/', up=None, root=t3, sup=None)
-print t3
-z3 = t3.visit(L.Eval())
-print z3
-assert z3 == {"a": {"b": {"x": "100", "c": "5"}}, "d": {"c": "8", "x": "100"}, "e": {"b": {"c": "5", "x": "888"}, "p": {"q": "9"}}}
+prog3 = `{
+  a = {
+    b = { x = 100 ; y = 200 ; c = 5 }
+    bb = { x = 111 ; c = 555 }
+  } 
+  d = /a/b { c = 8 } 
+  e = /a {
+    p = { q = 9 } 
+    b { x = 888 }
+  }
+}`
+tree3 = L.Parse(prog3).expr()
+print '#############################################################'
+assert L.LazyEval(tree3).Eval('b/c', 'a') == '5'
+print '#############################################################'
+assert except L.LazyEval(tree3).Eval('b/c/x', 'a')
+print '#############################################################'
+assert ["b", "bb", "p"] == L.LazyEval(tree3).Eval('/e')
+print '#############################################################'
+assert ["c", "x"] == L.LazyEval(tree3).Eval('/e/bb')
+print '#############################################################'
+assert ["c", "x", "y"] == L.LazyEval(tree3).Eval('/e/b')
+print '#############################################################'
+assert "888" == L.LazyEval(tree3).Eval('/e/b/x')
+print '#############################################################'
+assert "100" == L.LazyEval(tree3).Eval('/a/b/x')
+print '#############################################################'
+assert "200" == L.LazyEval(tree3).Eval('/e/b/y')
+print '#############################################################'
+assert "200" == L.LazyEval(tree3).Eval('/d/y')
+print '#############################################################'
+assert "8" == L.LazyEval(tree3).Eval('/d/c')
