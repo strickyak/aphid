@@ -18,14 +18,6 @@ class Lex:
       i += 1
     return z
 
-
-class Node:
-  def __init__(e, name, up, sup):
-    .e = e
-    .name = name
-    .up = up
-    .sup = sup
-
 class LazyEval:
   def __init__(root):
     .root = root
@@ -125,20 +117,6 @@ class LazyEval:
         raise "Ain't no %q in Scalar %q" % (future, past)
     else:
       return p.a
-
-def Find(k, local, root):
-  p = root if k.startswith('/') else local
-  for x in k.split('/'):
-    switch x:
-      case '':
-        pass
-      case '_up':
-        p = p.up
-      case '_super':
-        p = p.sup
-      default:
-        p = p.find(x)
-  return p
 
 class Derive:  # Derive from a tuple.
   def __init__(template, diff):
