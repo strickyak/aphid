@@ -12,26 +12,46 @@ assert l1.toks ==  [
     ("}", 4), ("}", 4), (";", 4)
     ]
 #####################################
-prog3 = `{
+p = L.Compile(`{
   a = {
     b = { x = 100 ; y = 200 ; c = 5 }
     bb = { x = 111 ; c = 555 }
-  } 
-  d = /a/b { c = 8 ; z = ( ++ abc qrs xyz ) }
+  }
+  qrs = ?Nando!
+  d = /a/b { c = 8 ; z = ( ++ abc $../qrs xyz $x ) }
   e = /a {
     p = { q = 9 } 
     b { x = 888 }
   }
-}`
-tree3 = L.Parse(prog3).expr()
-assert L.LazyEval(tree3).Eval('b/c', 'a') == '5'
-assert except L.LazyEval(tree3).Eval('b/c/x', 'a')
-assert ["b", "bb", "p"] == L.LazyEval(tree3).Eval('/e')
-assert ["c", "x"] == L.LazyEval(tree3).Eval('/e/bb')
-assert ["c", "x", "y"] == L.LazyEval(tree3).Eval('/e/b')
-assert "888" == L.LazyEval(tree3).Eval('/e/b/x')
-assert "100" == L.LazyEval(tree3).Eval('/a/b/x')
-assert "200" == L.LazyEval(tree3).Eval('/e/b/y')
-assert "200" == L.LazyEval(tree3).Eval('/d/y')
-assert "8" == L.LazyEval(tree3).Eval('/d/c')
-assert "abcqrsxyz" == L.LazyEval(tree3).Eval('/d/z')
+}`)
+assert p.Eval('a/b/c') == '5'
+assert except p.Eval('a/b/c/x')
+assert ["b", "bb", "p"] == p.Keys('/e')
+assert ["c", "x"] == p.Keys('/e/bb')
+say p.Eval('/')
+say p.Eval('/e')
+say p.Eval('/e/b')
+assert ["c", "x", "y"] == p.Keys('/e/b')
+assert "888" == p.Eval('/e/b/x')
+assert "100" == p.Eval('/a/b/x')
+assert "200" == p.Eval('/e/b/y')
+assert "200" == p.Eval('/d/y')
+assert "8" == p.Eval('/d/c')
+assert "abc?Nando!xyz100" == p.Eval('/d/z')
+#---------------------------------
+p = L.Compile(`{
+  lib = {
+    xx = (* $x $x)
+    yy = (* $y $y )
+    hyp = (+ $xx $yy)
+  }
+  t1 = /lib {
+    x = 3
+    y = 4
+  }
+  result = $/t1/hyp
+}`)
+assert p.Keys('/lib') == ["hyp", "xx", "yy"]
+assert p.Keys('/t1') == ["hyp", "x", "xx", "y", "yy"]
+assert "3" == p.Eval('/t1/x')
+assert '25' == p.Eval('/result')
