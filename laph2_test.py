@@ -1,9 +1,9 @@
 from . import laph2 as L
 #####################################
-p1 = `{ a = {
-  x = 5
-  y = 10
-} }`
+p1 = `{ a = { #comment
+  x = 5 #comment
+  y = 10 #comment
+} } #comment `
 l1 = L.Lex(p1)
 assert l1.toks ==  [
     ("{", 1), ("a", 1), ("=", 1), ("{", 1), (";", 1),

@@ -28,7 +28,8 @@ class Compile:
 ###############################
 # Regular Expression Functions
 Special = regexp.MustCompile('^[][{}()=]$').FindString
-ReplaceGroupersAnywhere = regexp.MustCompile('([][{}()])').ReplaceAllString
+ReplaceSpecialsAnywhere = regexp.MustCompile('([][{}();])').ReplaceAllString
+ReplaceComment = regexp.MustCompile('[#].*').ReplaceAllString
 
 ###############################
 # Path Manipulation
@@ -50,17 +51,20 @@ def R(path, rel):
 
 ###############################
 # Lexical Analysis:
-#   -- Add spaces arund Groupers ( ) [ ] { }.
+#   -- Add spaces arund Specials ( ) [ ] { } ;
 #   -- split lines on white space.
 #   -- Add ';' to end of every line.
 #   -- Return list of token tuples (value, lineno).
 class Lex:
   def __init__(program):
-    .program = ReplaceGroupersAnywhere(program, ' $1 ')
+    .program = ReplaceSpecialsAnywhere(program, ' $1 ')
     say .program
     .toks = .lexProgram()
 
   def lexLine(line):
+    say line
+    line = ReplaceComment(line, '')
+    say line
     return [x for x in line.split() if x]
 
   def lexProgram():
