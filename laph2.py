@@ -1,5 +1,7 @@
 from go import path as P, regexp
 
+MAX_DELEGATION = 2  # Awful hack.  Should get feedback, if things fail.
+
 class Compile:
   def __init__(program):
     .program = program
@@ -8,10 +10,11 @@ class Compile:
     .src, .dst = {}, {}
 
     sv = SrcVisitor(.src)
-    .tree.visit(sv, path='/')
+    num_levels = 1 + .tree.visit(sv, path='/')
 
     dv = DstVisitor(.src, .dst)
-    .tree.visit(dv, spath='/', dpath='/')
+    for level in range(num_levels + MAX_DELEGATION):
+      .tree.visit(dv, spath='/', dpath='/', desired=level, level=0)
 
   def Eval(path):
     path = C(path)
@@ -268,6 +271,8 @@ def DstEval(dst, path, rel='/'):
   path = R(path, rel)
   say path
   p = dst.get(path)
+  say sorted(dst.items())
+  say sorted(dst.keys())
   must p, path
   switch type(p):
     case dict:
@@ -373,7 +378,6 @@ def ExecuteCommand(dst, p, path, **kw):
 
   raise 'No such Chucl command: %q (or wrong number of args: %d)' % (cmd, len(args))
 
-
 ###############################
 # Destination & Source visitors.
 
@@ -382,65 +386,89 @@ class DstVisitor:
     .src = src  # Source tree to be made.
     .dst = dst  # Destination tree to be made.
 
-  def visitTuple(p, spath, dpath, **kw):
-    say spath, dpath, kw
+  def visitTuple(p, spath, dpath, desired, level, **kw):
+    say spath, dpath, kw, desired, level
     d = dict(__name__=dpath, __src__=spath)
     .dst[dpath] = d
     for k, v in sorted(p.dic.items()):
-      say spath, dpath, kw, k, v
+      say spath, dpath, kw, k, v, desired, level
       spath2 = J(spath, k)
       dpath2 = J(dpath, k)
-      v.visit(self, spath=spath2, dpath=dpath2)
+      v.visit(self, spath=spath2, dpath=dpath2, desired=desired, level=level)
       d[k] = (spath2, dpath2)
 
-  def visitDerive(p, spath, dpath, **kw):
-    template = R(p.template, spath)
-    say spath, dpath, kw, template
+  def visitDerive(p, spath, dpath, desired, level, **kw):
+    template = R(p.template, D(spath))
+    say spath, dpath, kw, template, desired, level
     d = dict(__name__=dpath, __src__=spath, __template__=p.template)
     .dst[dpath] = d
+    level += 1
+    if level > desired:
+      return
 
     # TODO -- allow Derive & Enhance, as well as Tuple, as template.
     tp = .src.get(template)
-    must type(tp) == Tuple, 'Missing template %q for spath=%q dpath=%q, got %q' % (template, spath, dpath, repr(tp))
+    say tp, template
 
-    #td = .dst.get(template)  # TODO
-    #if not td:
-    #  must type(td) == dict
-    #  tp.visit(self, spath=template, dpath=template)  # Make sure we have already built template.
-    #  td = .dst.get(template)  # TODO
-    #  must type(td) == dict
+    if type(tp) is tuple:
+      spath8, dpath8 = tp
+      tp2 = .src.get(spath8)
+      say tp, tp2, spath8, dpath8
+      tp = tp2
+
+    switch type(tp):
+      case Tuple:
+        must type(tp) == Tuple, 'Missing template %q for spath=%q dpath=%q, got %q' % (template, spath, dpath, repr(tp))
+        dic = tp.dic
+      case Derive:
+        dic = tp.diff.dic
+        dic = dict([(k9,v9) for k9, v9 in .dst.get(template).items() if not k9.startswith('__')])
+      case Enhance:
+        dic = tp.diff.dic
+        dic = dict([(k9,v9) for k9, v9 in .dst.get(template).items() if not k9.startswith('__')])
+      default:
+        raise 'OH NO!', type(tp), tp
 
     # First the template.
-    for k, v in sorted(tp.dic.items()):
-      say spath, dpath, template, kw, k, v
+    for k, v in sorted(dic.items()):
+      say spath, dpath, template, kw, k, v, desired, level
       spath2 = J(spath, k)
       dpath2 = J(dpath, k)
       sup2 = J(template, k)
-      v.visit(self, spath=spath2, dpath=dpath2, sup=sup2)
+      if type(v) is str:
+        raise 'GOT STR', repr(v)
+      while type(v) is tuple:
+        spath8, dpath8 = v
+        v = .src.get(spath8)
+        if v is None:
+          v = .dst.get(spath8)
+      v.visit(self, spath=spath2, dpath=dpath2, sup=sup2, desired=desired, level=level)
       d[k] = (spath2, dpath2)
 
     # Then the diffs.
     for k, v in sorted(p.diff.dic.items()):
-      say spath, dpath, template, kw, k, v
+      say spath, dpath, template, kw, k, v, desired, level
       spath2 = J(spath, k)
       dpath2 = J(dpath, k)
       sup2 = J(template, k)
-      v.visit(self, spath=spath2, dpath=dpath2, sup=sup2)
+      v.visit(self, spath=spath2, dpath=dpath2, sup=sup2, desired=desired, level=level)
       d[k] = (spath2, dpath2)
 
-  def visitEnhance(p, spath, dpath, sup, **kw):
-    say spath, dpath, kw
+  def visitEnhance(p, spath, dpath, sup, desired, level, **kw):
+    say spath, dpath, kw, desired, level
     d = dict(__name__=dpath, __src__=spath, __slot__=p.dslot)
     .dst[dpath] = d
+    level += 1
+    if level > desired:
+      return
 
-    #sup = J(spath, '..')
-    say spath, dpath, kw, sup
+    say spath, dpath, kw, sup, desired, level
 
     td = .dst.get(sup)  # TODO
     if td:
       must type(td) == dict
       for k, v in sorted(td.items()):
-        say spath, dpath, kw, sup, td, k, v
+        say spath, dpath, kw, sup, td, k, v, desired, level
         spath2 = J(spath, k)
         dpath2 = J(dpath, k)
         # TODO
@@ -449,22 +477,22 @@ class DstVisitor:
 
     # Then the diffs.
     for k, v in sorted(p.diff.dic.items()):
-      say spath, dpath, kw, k, v
+      say spath, dpath, kw, k, v, desired, level
       spath2 = J(spath, k)
       dpath2 = J(dpath, k)
-      v.visit(self, spath=spath2, dpath=dpath2)
+      v.visit(self, spath=spath2, dpath=dpath2, desired=desired, level=level)
       d[k] = (spath2, dpath2)
 
-  def visitBare(p, spath, dpath, **kw):
-    say spath, dpath, kw
+  def visitBare(p, spath, dpath, desired, level, **kw):
+    say spath, dpath, kw, desired, level
     .dst[dpath] = p
 
-  def visitDollar(p, spath, dpath, **kw):
-    say spath, dpath, kw
+  def visitDollar(p, spath, dpath, desired, level, **kw):
+    say spath, dpath, kw, desired, level
     .dst[dpath] = p
 
-  def visitCommand(p, spath, dpath, **kw):
-    say spath, dpath, kw
+  def visitCommand(p, spath, dpath, desired, level, **kw):
+    say spath, dpath, kw, desired, level
     .dst[dpath] = p
 
 

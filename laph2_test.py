@@ -55,3 +55,14 @@ assert p.Keys('/lib') == ["hyp", "xx", "yy"]
 assert p.Keys('/t1') == ["hyp", "x", "xx", "y", "yy"]
 assert "3" == p.Eval('/t1/x')
 assert '25' == p.Eval('/result')
+p = L.Compile(`{
+  one = { a = 11 }
+  two = one { b = 22 }
+  three = two { c = 33 }
+  result = (+ $three/a $three/b $three/c )
+}`)
+assert p.Keys('one') == ['a']
+assert p.Keys('two') == ['a', 'b']
+assert p.Keys('three') == ['a', 'b', 'c']
+assert '66' == p.Eval('result')
+print 'OKAY laph2_test.py'
