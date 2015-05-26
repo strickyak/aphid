@@ -1,4 +1,5 @@
 from go import path as P, regexp
+from . import laph_chucl
 
 MAX_DELEGATION = 2  # Awful hack.  Should get feedback, if things fail.
 
@@ -77,8 +78,22 @@ class Lex:
 
 ###############################
 # Abstract Syntax Tree Nodes
+#  -- Bare:  a bare word, like x
+#  -- Dollar: a word starting with Dollar, like $x
+#  -- Command: a parenthesized nonempty list of words, like (+ $x 1)
+#  -- Tuple: a Named Tuple, like { a = foo ; b = 99 }
+#  -- Derive:  a Derived Tuple, like tmpl... in { ... ; x = tmpl { p = 80 } ; ... } 
+#  -- Enhance  an Enhanced Derived Tuple, like stuff... in { ... ; x = tmpl { stuff { another = 443 }  } ; ... } 
 
-class Derive:  # Enhance a derived subtuple.
+class AST:
+  def isBare():
+    return False
+  def isDollar():
+    return False
+  def isCommand():
+    return False
+
+class Derive(AST):  # Enhance a derived subtuple.
   def __init__(template, diff):
     .template = template
     .diff = diff
@@ -95,7 +110,7 @@ class Derive:  # Enhance a derived subtuple.
   def __str__():
     return '(Derive(%q): %v)' % (.template, .diff)
 
-class Enhance:  # Derive from a tuple.
+class Enhance(AST):  # Derive from a tuple.
   def __init__(dslot, diff):
     .dslot = dslot
     .diff = diff
@@ -106,7 +121,7 @@ class Enhance:  # Derive from a tuple.
   def __str__():
     return '(Enhance(%q): %v)' % (.dslot, .diff)
 
-class Tuple: # Named tuple with {...}.
+class Tuple(AST): # Named tuple with {...}.
   def __init__(dic):
     .dic = dic
   def visit2(w, **kw):
@@ -123,7 +138,7 @@ class Tuple: # Named tuple with {...}.
   def __repr__():
     return '{ %s }' % (' ; '.join(['%v = %v' % (k, v) for k, v in sorted(.dic.items())]))
 
-class Dollar: # Dollar substituted bareword.
+class Dollar(AST): # Dollar substituted bareword.
   def __init__(a):
     .a = a
   def visit2(w, **kw):
@@ -132,8 +147,10 @@ class Dollar: # Dollar substituted bareword.
     return w.visitDollar(self, **kw)
   def __str__():
     return '<$%v>' % .a
+  def isDollar():
+    return True
 
-class Bare:  # Bareword has its own value.
+class Bare(AST):  # Bareword has its own value.
   def __init__(a):
     .a = a
   def visit2(w, **kw):
@@ -142,8 +159,10 @@ class Bare:  # Bareword has its own value.
     return w.visitBare(self, **kw)
   def __str__():
     return '<%v>' % .a
+  def isBare():
+    return True
 
-class Command:  # Parenthesized command.
+class Command(AST):  # Parenthesized command.
   def __init__(vec):
     .vec = vec
   def visit2(w, **kw):
@@ -152,6 +171,8 @@ class Command:  # Parenthesized command.
     return w.visitCommand(self, **kw)
   def __str__():
     return '<( %v )>' % .vec
+  def isCommand():
+    return True
 
 ###############################
 # The Parser.
@@ -289,98 +310,7 @@ def DstEval(dst, path, rel='/'):
       say z
       return z
     case Command:
-      return ExecuteCommand(dst, p, D(path))
-
-def ExecuteCommand(dst, p, path, **kw):
-  vec = p.vec
-  say vec, path
-  must type(vec) is list
-  cmd = vec[0]
-  must type(cmd) is Bare, type(cmd), cmd
-  cmd = cmd.a
-  vec = vec[1:]
-
-  # First look for special forms.
-  switch cmd:
-    case 'if':
-      raise 'TODO'
-    case 'fn':
-      return p
-
-  args = []
-  for a in vec:
-    say 'ARG:', a
-    switch type(a):
-      case Bare:
-        say 'Bare', a.a
-        args.append(a.a)
-      case Dollar:
-        say 'Dollar', a.a, path
-        args.append(DstEval(dst, a.a, path))
-      default:
-        raise 'TODO', type(a), a, vec, path
-    say 'ARGS:', args
-
-  # Special code for the many binary operators.
-  if len(args) == 2:
-    x, y = args
-    switch cmd:
-      case '++':
-        return x + y
-      case '+':
-        return str(float(x) + float(y))
-      case '-':
-        return str(float(x) - float(y))
-      case '*':
-        return str(float(x) * float(y))
-      case '/':
-        return str(float(x) / float(y))
-      case '//':
-        return str(float(x) // float(y))
-      case '%':
-        return str(float(x) % float(y))
-      case '<':
-        return str(float(x) < float(y))
-      case '<=':
-        return str(float(x) <= float(y))
-      case '==':
-        return str(float(x) == float(y))
-      case '!=':
-        return str(float(x) != float(y))
-      case '>':
-        return str(float(x) > float(y))
-      case '>=':
-        return str(float(x) >= float(y))
-      case 'split':
-        return y.split(x)  # (split ch str)
-      case 'join':
-        return x.join(y)   # (join sep strs)
-
-      # String comparison
-      case 'lt':
-        return str(x < y)
-      case 'le':
-        return str(x <= y)
-      case 'eq':
-        return str(x == y)
-      case 'ne':
-        return str(x != y)
-      case 'gt':
-        return str(x > y)
-      case 'ge':
-        return str(x >= y)
-
-  # Fall through for other cases.
-  switch cmd:
-    case '++':
-      return ''.join([x for x in args])
-
-    case '+':
-      return str(sum([float(x) for x in args]))
-    case '*':
-      return reduce((lambda a,b: a*b), [float(x) for x in args])
-
-  raise 'No such Chucl command: %q (or wrong number of args: %d)' % (cmd, len(args))
+      return laph_chucl.Eval(p.vec, (lambda x: DstEval(dst, x, D(path))), (lambda vec: Command(vec)))
 
 ###############################
 # Destination & Source visitors.

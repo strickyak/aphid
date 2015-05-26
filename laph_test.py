@@ -1,4 +1,4 @@
-from . import laph2 as L
+from . import laph as L
 #####################################
 p1 = `{ a = { #comment
   x = 5 #comment
