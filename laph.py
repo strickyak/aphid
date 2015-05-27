@@ -17,13 +17,22 @@ class Compile:
     for level in range(num_levels + MAX_DELEGATION):
       .tree.visit(dv, spath='/', dpath='/', desired=level, level=0)
 
+    def lookup_fn(k):
+      say k
+      if k in .dst:
+        ret = .dst[k]
+        say k, ret
+        return ret
+      raise 'Cannot lookup %q', k
+    .chucl = laph_chucl.Evaluator(lookup_fn)
+
   def Eval(path):
     path = C(path)
-    return DstEval(.dst, path)
+    return .chucl.EvalPath(path)
 
   def Keys(path):
     path = C(path)
-    d = DstEval(.dst, path)
+    d = .chucl.EvalPath(path)
     return sorted([k for k in d if not k.startswith('_')])
 
 ###############################
@@ -288,29 +297,6 @@ def Get(dic, *vec):
   for k in vec:
     p = p[k]
   return p
-
-###############################
-# Evaluators
-
-def DstEval(dst, path, rel='/'):
-  path = R(path, rel)
-  say path
-  p = dst.get(path)
-  say sorted(dst.items())
-  say sorted(dst.keys())
-  must p, path
-  switch type(p):
-    case dict:
-      return p
-    case Bare:
-      return p.a
-    case Dollar:
-      say p.a, path
-      z = DstEval(dst, p.a, path)
-      say z
-      return z
-    case Command:
-      return laph_chucl.Eval(p.vec, (lambda x: DstEval(dst, x, D(path))), (lambda vec: Command(vec)))
 
 ###############################
 # Destination & Source visitors.
