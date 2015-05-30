@@ -67,4 +67,18 @@ assert p.Keys('two') == ['a', 'b']
 assert p.Keys('three') == ['a', 'b', 'c']
 assert '66' == p.Eval('result')
 #---------------------------------
+p = L.Compile(`{
+  double = (fn (x) (++ $x $x))
+  twice = (fn (x) (+ $x $x))
+  count = (range 10)
+  doublefoo = ($double foo)
+  twice1001 = ($twice 1001)
+  doubles = (map $double $count)
+  twices = (map $twice $count)
+}`)
+assert 'foofoo' == p.Eval('doublefoo')
+assert '2002' == p.Eval('twice1001')
+assert p.Eval('doubles') == ["00", "11", "22", "33", "44", "55", "66", "77", "88", "99"]
+assert p.Eval('twices') == ["0", "2", "4", "6", "8", "10", "12", "14", "16", "18"]
+#---------------------------------
 print 'OKAY laph2_test'

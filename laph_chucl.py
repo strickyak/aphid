@@ -24,15 +24,26 @@ class Binding:
     .value = value
     .next = next
 
-class Evaluator:
-  def __init__(lookup_fn):
-    .lookup_fn = lookup_fn
+def Simple(a):
+  if a.isCommand():
+    return a.vec
+  if a.isBare():
+    return a.a
+  if a.isDollar():
+    raise a
+  return a
 
-  def Lookup(k, dirpath, binding):
-    say k
+class Evaluator:
+  def __init__(lookup_fn, command_ctor):
+    .lookup_fn = lookup_fn
+    .command_ctor = command_ctor
+
+  def Lookup(raw_k, k, dirpath, binding):
     # First try looking in the binding.
     while binding:
-      if binding.key == k:
+      say binding.key, raw_k
+      if binding.key == raw_k:
+        say binding.value
         return binding.value
       binding = binding.next
     # Then use the provided lookup_fn.
@@ -61,7 +72,7 @@ class Evaluator:
 
     if p.isDollar():
       k = R(p.a, dirpath)
-      q = .Lookup(k, '/', binding)
+      q = .Lookup(p.a, k, '/', binding)
       dirpath2 = D(k)
       return .EvalNode(q, dirpath2, binding)
 
@@ -82,16 +93,19 @@ class Evaluator:
       cmd = .EvalNode(cmd, dirpath, binding)
 
     # If cmd is lambda expression:
-    if type(cmd) is list:
-      must len(cmd) == 3, vec
-      fn, formals, body = cmd
-      must fn == "fn", vec
-      must formals.isCommand(), vec # Actually, a vec of formal parameters.
-      must len(formals) == len(vec) - 1  # Correct number of args to formals.
+    #if type(cmd) is list:
+    if cmd.isCommand():
+      vec2 = cmd.vec
+      must len(vec2) == 3, vec2
+      fn, formals, body = vec2
+      must fn.isBare(), vec2
+      must fn.a == "fn", vec2
+      must formals.isCommand(), vec2  # Actually, a vec of formal parameters.
+      must len(formals.vec) == len(vec) - 1  # Correct number of args to formals.
 
       binding2 = binding
-      for f, v in zip(formals, vec[1:]):
-        binding2 = Binding(f, v, binding2)
+      for f, v in zip(formals.vec, vec[1:]):
+        binding2 = Binding(f.a, v, binding2)
       return .EvalNode(body, dirpath, binding2)
 
     must cmd.isBare(), type(cmd), cmd
@@ -101,7 +115,8 @@ class Evaluator:
     # Handle special forms.
     switch cmd:
       case 'if':
-        raise 'TODO'
+        must len(vec) == 3, vec
+        x, y, z = vec
       case 'fn':
         return p
 
@@ -115,6 +130,13 @@ class Evaluator:
       say 'Evaluated ARG:', a
 
     # Special code for the many binary operators.
+    if len(args) == 1:
+      x, = args
+      switch cmd:
+        case 'range':
+          x, = args
+          return [str(e) for e in range(int(x))]
+
     if len(args) == 2:
       x, y = args
       switch cmd:
@@ -163,6 +185,10 @@ class Evaluator:
         case 'ge':
           return str(x >= y)
 
+        case 'map':
+          # TODO -- the dirpath of the command x.
+          return [.EvalCommand(.command_ctor([x, e]), dirpath, binding) for e in y]
+
     # Fall through for other cases.
     switch cmd:
       case '++':
@@ -172,6 +198,8 @@ class Evaluator:
         return str(sum([float(x) for x in args]))
       case '*':
         return reduce((lambda a,b: a*b), [float(x) for x in args])
+      case 'list':
+        return args
 
     raise 'No such Chucl command: %q (or wrong number of args: %d)' % (cmd, len(args))
 

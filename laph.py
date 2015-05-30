@@ -24,7 +24,7 @@ class Compile:
         say k, ret
         return ret
       raise 'Cannot lookup %q', k
-    .chucl = laph_chucl.Evaluator(lookup_fn)
+    .chucl = laph_chucl.Evaluator(lookup_fn, Command)
 
   def Eval(path):
     path = C(path)
@@ -74,7 +74,6 @@ class Lex:
   def lexLine(line):
     say line
     line = ReplaceComment(line, '')
-    say line
     return [x for x in line.split() if x]
 
   def lexProgram():
@@ -203,13 +202,22 @@ class Parse:
     z = []
     while .p[.i][0] != ')':
       word, wordl = .p[.i]
-      must not Special(word), word
       if word.startswith('$'):
         z.append( Dollar(word[1:]) )
+      elif word.startswith('('):
+        .next()
+        zzz = .command()
+        say zzz, .p[.i]
+        z.append( zzz )
+        continue  # Do not throw away the next token.
       else:
+        must not Special(word), word
         z.append( Bare(word) )
       .next()
+    say '<<<', .p[.i:]
     .next()
+    say '>>>', .p[.i:]
+    say '>>>', z
     return Command(z)
 
   def tuple():
@@ -219,7 +227,7 @@ class Parse:
       .next()
       if k == ';':
         continue
-      must not Special(k)
+      must not Special(k), k, .p[.i:]
 
       op, ol = .p[.i]
       must Special(op), k, op, kl, ol
@@ -238,9 +246,7 @@ class Parse:
 
   def expr():
     .d += 1
-    #say '<<<', (.d, .i), .p[.i]
     z = .expr2()
-    #say '>>>', (.d, .i), .p[.i], str(z)
     .d -= 1
     return z
 
