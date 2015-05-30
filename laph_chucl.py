@@ -25,13 +25,20 @@ class Binding:
     .next = next
 
 def Simple(a):
+  switch type(a):
+    case str:
+      return a
+    case int:
+      return a
+    case list:
+      return a
   if a.isCommand():
     return a.vec
   if a.isBare():
     return a.a
   if a.isDollar():
-    raise a
-  return a
+    raise 'dollar?', a
+  raise 'what?', a
 
 class Evaluator:
   def __init__(lookup_fn, command_ctor):
@@ -134,8 +141,11 @@ class Evaluator:
       x, = args
       switch cmd:
         case 'range':
-          x, = args
           return [str(e) for e in range(int(x))]
+        case 'length':
+          z = str(len(Simple(x)))
+          say x, z
+          return z
 
     if len(args) == 2:
       x, y = args
