@@ -1,8 +1,9 @@
 from . import A, flag
 from . import among, aweber, awiki, awedit, azoner, formic
 from . import bundle, keyring, pubsub, rbundle
+from . import laph
 
-from go import bufio, fmt, net/http, os, time
+from go import bufio, fmt, io/ioutil, net/http, os, time
 from go import path as P, path/filepath as F
 from go import github.com/strickyak/jsonnet_cgo as VM
 from lib import data
@@ -51,13 +52,22 @@ class Aphid:
     .quit = quit
     .filename = filename
 
-    .x = EvalConfig(filename, snippet)
+    if filename.find('.laph:'):
+      laphfile, part = filename.split(':', 1)
+      laphexpr = ioutil.ReadFile(laphfile)
+      js = laph.Compile('{%s}' % laphexpr).ToJson(part)
+      .x = data.Eval(js)
+    else:
+      .x = EvalConfig(filename, snippet)
+
+    say .x
     .x_me = .x['me']
     .f_ip = .x['flags']['ip']
     .f_keyring = .x['flags']['keyring']
     .f_topdir = .x['flags']['topdir']
     .f_domain = .x['flags'].get('domain', '')
-    .p_dns = .x['ports']['dns']
+    say .x['ports']
+    .p_dns = .x['ports'].get('dns', 0)
     .p_http = .x['ports']['http']
     .p_https = .x['ports']['https']
     .p_rpc = .x['ports']['rpc']
@@ -127,17 +137,27 @@ class Aphid:
         bundle.CopyChunks(cw, cr)
         cw.Close()
       return None  # No error.
+    say '@@@ walking', t, fn
     F.Walk(t, fn)
 
   def StartZones():
-    .zones = {}
-    for zname, zx in .x_zones.items():
-      bund = .bundles[zx['bundle']]
-      body = bundle.ReadFile(bund, zx['zonefile'])
-      must body
-      azoner.ParseBody(.zones, body, zname, .f_ip)
+    if .p_dns:
+      .zones = {}
+      for zname, zx in .x_zones.items():
+        if zname == '*':
+          bund = .bundles[zx['bundle']]
+          zonedir = zx['zonedir']
+          for g in bund.ListFiles(zonedir):
+            body = bundle.ReadFile(bund, P.Join(zonedir, g))
+            must body
+            azoner.ParseBody(.zones, body, P.Base(g), .f_ip)
+        else:
+          bund = .bundles[zx['bundle']]
+          body = bundle.ReadFile(bund, zx['zonefile'])
+          must body
+          azoner.ParseBody(.zones, body, zname, .f_ip)
 
-    go azoner.Serve(.zones, '%s:%d' % (.f_ip, .p_dns))
+      go azoner.Serve(.zones, '%s:%d' % (.f_ip, .p_dns))
 
   def StartWebHandlers():
     # Mux and Server.

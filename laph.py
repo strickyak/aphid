@@ -1,7 +1,9 @@
-from go import path as P, regexp, io/ioutil
+from go import path as P, regexp, io/ioutil, strconv
 from . import laph_chucl
 
 MAX_DELEGATION = 2  # Awful hack.  Should get feedback, if things fail.
+
+MATCH_INTEGER = regexp.MustCompile('^-?[0-9]+$').FindString
 
 class Compile:
   def __init__(program):
@@ -57,6 +59,13 @@ class Compile:
         return repr(a)
       case str:
         #say '@@3', 'str', a
+        if MATCH_INTEGER(a):
+          return a
+        #try:
+        #  n = strconv.ParseInt(a, 10, 32)
+        #  return repr(n)
+        #except:
+        #  pass
         return repr(a)
       case list:
         #say '@@3', 'list', a

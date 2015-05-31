@@ -86,7 +86,7 @@ job:10 = _job_template {
   peers = {
     10 = { host = 127.0.0.1 ; port = 8181 ; name = test10 }
   }
-  ports = { _base = 8000 }
+  ports { _base = 8000; dns = 0 }
   formics = {
     # Nota Bene: We must use | instead of / in the following paths.
     _trivial_pw = f5606220aa1e4ab012a6cc32cc980dd9

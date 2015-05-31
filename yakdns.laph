@@ -1,0 +1,33 @@
+job:yakdns = {
+  me = 51
+  flags = {
+    ip =        127.0.0.1
+    topdir =    /tmp/yakdir.top
+    keyring =   prod.ring
+  }
+  peers = {
+    51 = { host = 127.0.0.1 ; port = 8081 ; name = job:yakdns }
+  }
+  ports = {
+    _base =  8000
+    _dnsoff =   53
+    _httpoff =  80
+    _httpsoff =  43
+    _rpcoff =   81
+
+    dns =   (+ $_base $_dnsoff)
+    http =  (+ $_base $_httpoff)
+    https = (+ $_base $_httpsoff)
+    rpc =   (+ $_base $_rpcoff)
+  }
+  bundles = {
+    yakdns = { kind = plain }
+  }
+  zones = {
+    # yak.net = { bundle = yakdns; zonefile = dns/yak.net }
+    * = { bundle = yakdns; zonedir = dns }
+  }
+  webs = { }
+  wikis = { }
+  formics = { }
+}
