@@ -1,4 +1,4 @@
-from go import path as P, regexp
+from go import path as P, regexp, io/ioutil
 from . import laph_chucl
 
 MAX_DELEGATION = 2  # Awful hack.  Should get feedback, if things fail.
@@ -18,11 +18,20 @@ class Compile:
       .tree.visit(dv, spath='/', dpath='/', desired=level, level=0)
 
     def lookup_fn(k):
-      say k
-      if k in .dst:
-        ret = .dst[k]
-        say k, ret
-        return ret
+      #say k
+      must k[0] == '/'
+      b = B(k)
+      d = D(k)
+      # Look up the tree, until you find it.
+      while True:
+        x = J(d, b)
+        if x in .dst:
+          ret = .dst[x]
+          #say k, ret
+          return ret
+        if d == '/':
+          break
+        d = D(d)  # Up to the parent directory.
       raise 'Cannot lookup %q', k
     .chucl = laph_chucl.Evaluator(lookup_fn, Command)
 
@@ -34,6 +43,34 @@ class Compile:
     path = C(path)
     d = .chucl.EvalPath(path)
     return sorted([k for k in d if not k.startswith('_')])
+
+  def ToJson(path='/'):
+    #say '@@1', path
+    a = .Eval(path)
+    #say '@@2', path, a
+    switch type(a):
+      case int:
+        #say '@@3', 'int', a
+        return repr(a)
+      case float:
+        #say '@@3', 'float', a
+        return repr(a)
+      case str:
+        #say '@@3', 'str', a
+        return repr(a)
+      case list:
+        #say '@@3', 'list', a
+        vec = [.ToJson(J(path, e)) for e in a]
+        #say '@@4', 'list', a, vec
+        return '[%s]' % ','.join(vec)
+      case dict:
+        #say '@@3', 'dict', a
+        vec = [(k, .ToJson(J(path, k))) for k, v in sorted(a.items()) if not k.startswith('_')]
+        #say '@@4', 'dict', a, vec
+        return '{%s}' % ', '.join(['%s:%s' % (repr(k), v) for k, v in vec if not k.startswith('_')])
+      default:
+        #say '@@3', 'default', type(a), a
+        raise 'ToJson: Strange Value', type(a), a
 
 ###############################
 # Regular Expression Functions
@@ -68,11 +105,11 @@ def R(path, rel):
 class Lex:
   def __init__(program):
     .program = ReplaceSpecialsAnywhere(program, ' $1 ')
-    say .program
+    #say .program
     .toks = .lexProgram()
 
   def lexLine(line):
-    say line
+    #say line
     line = ReplaceComment(line, '')
     return [x for x in line.split() if x]
 
@@ -207,17 +244,17 @@ class Parse:
       elif word.startswith('('):
         .next()
         zzz = .command()
-        say zzz, .p[.i]
+        #say zzz, .p[.i]
         z.append( zzz )
         continue  # Do not throw away the next token.
       else:
         must not Special(word), word
         z.append( Bare(word) )
       .next()
-    say '<<<', .p[.i:]
+    #say '<<<', .p[.i:]
     .next()
-    say '>>>', .p[.i:]
-    say '>>>', z
+    #say '>>>', .p[.i:]
+    #say '>>>', z
     return Command(z)
 
   def tuple():
@@ -313,11 +350,11 @@ class DstVisitor:
     .dst = dst  # Destination tree to be made.
 
   def visitTuple(p, spath, dpath, desired, level, **kw):
-    say spath, dpath, kw, desired, level
+    #say spath, dpath, kw, desired, level
     d = dict(__name__=dpath, __src__=spath)
     .dst[dpath] = d
     for k, v in sorted(p.dic.items()):
-      say spath, dpath, kw, k, v, desired, level
+      #say spath, dpath, kw, k, v, desired, level
       spath2 = J(spath, k)
       dpath2 = J(dpath, k)
       v.visit(self, spath=spath2, dpath=dpath2, desired=desired, level=level)
@@ -325,7 +362,7 @@ class DstVisitor:
 
   def visitDerive(p, spath, dpath, desired, level, **kw):
     template = R(p.template, D(spath))
-    say spath, dpath, kw, template, desired, level
+    #say spath, dpath, kw, template, desired, level
     d = dict(__name__=dpath, __src__=spath, __template__=p.template)
     .dst[dpath] = d
     level += 1
@@ -334,12 +371,12 @@ class DstVisitor:
 
     # TODO -- allow Derive & Enhance, as well as Tuple, as template.
     tp = .src.get(template)
-    say tp, template
+    #say tp, template
 
     if type(tp) is tuple:
       spath8, dpath8 = tp
       tp2 = .src.get(spath8)
-      say tp, tp2, spath8, dpath8
+      #say tp, tp2, spath8, dpath8
       tp = tp2
 
     switch type(tp):
@@ -357,7 +394,7 @@ class DstVisitor:
 
     # First the template.
     for k, v in sorted(dic.items()):
-      say spath, dpath, template, kw, k, v, desired, level
+      #say spath, dpath, template, kw, k, v, desired, level
       spath2 = J(spath, k)
       dpath2 = J(dpath, k)
       sup2 = J(template, k)
@@ -373,7 +410,7 @@ class DstVisitor:
 
     # Then the diffs.
     for k, v in sorted(p.diff.dic.items()):
-      say spath, dpath, template, kw, k, v, desired, level
+      #say spath, dpath, template, kw, k, v, desired, level
       spath2 = J(spath, k)
       dpath2 = J(dpath, k)
       sup2 = J(template, k)
@@ -381,20 +418,20 @@ class DstVisitor:
       d[k] = (spath2, dpath2)
 
   def visitEnhance(p, spath, dpath, sup, desired, level, **kw):
-    say spath, dpath, kw, desired, level
+    #say spath, dpath, kw, desired, level
     d = dict(__name__=dpath, __src__=spath, __slot__=p.dslot)
     .dst[dpath] = d
     level += 1
     if level > desired:
       return
 
-    say spath, dpath, kw, sup, desired, level
+    #say spath, dpath, kw, sup, desired, level
 
     td = .dst.get(sup)  # TODO
     if td:
       must type(td) == dict
       for k, v in sorted(td.items()):
-        say spath, dpath, kw, sup, td, k, v, desired, level
+        #say spath, dpath, kw, sup, td, k, v, desired, level
         spath2 = J(spath, k)
         dpath2 = J(dpath, k)
         # TODO
@@ -403,22 +440,22 @@ class DstVisitor:
 
     # Then the diffs.
     for k, v in sorted(p.diff.dic.items()):
-      say spath, dpath, kw, k, v, desired, level
+      #say spath, dpath, kw, k, v, desired, level
       spath2 = J(spath, k)
       dpath2 = J(dpath, k)
       v.visit(self, spath=spath2, dpath=dpath2, desired=desired, level=level)
       d[k] = (spath2, dpath2)
 
   def visitBare(p, spath, dpath, desired, level, **kw):
-    say spath, dpath, kw, desired, level
+    #say spath, dpath, kw, desired, level
     .dst[dpath] = p
 
   def visitDollar(p, spath, dpath, desired, level, **kw):
-    say spath, dpath, kw, desired, level
+    #say spath, dpath, kw, desired, level
     .dst[dpath] = p
 
   def visitCommand(p, spath, dpath, desired, level, **kw):
-    say spath, dpath, kw, desired, level
+    #say spath, dpath, kw, desired, level
     .dst[dpath] = p
 
 
@@ -434,7 +471,7 @@ class SrcVisitor:
       path2 = J(path, k)
       Set(v, .src, path2)
       z = max(z, z + v.visit(self, path=path2))
-    print '@@@', z, path
+    #say '@@@', z, path
     return z
 
   def visitDerive(p, path, **kw):
@@ -444,7 +481,7 @@ class SrcVisitor:
       path2 = J(path, k)
       Set(v, .src, path2)
       z = max(z, z + v.visit(self, path=path2))
-    print '@@@', z, path
+    #say '@@@', z, path
     return z
 
   def visitEnhance(p, path, **kw):
@@ -455,7 +492,7 @@ class SrcVisitor:
       path2 = J(path, k)
       Set(v, .src, path2)
       z = max(z, z + v.visit(self, path=path2))
-    print '@@@', z, path
+    #say '@@@', z, path
     return z
 
   def visitBare(p, path, **kw):
@@ -470,4 +507,12 @@ class SrcVisitor:
     Set(p, .src, path)
     return 0
 
-pass
+def main(argv):
+  s = '{ %s }' % ioutil.ReadFile('/dev/stdin')
+  c = Compile(s)
+  if len(argv) == 0:
+    print c.ToJson()
+  else:
+    for a in argv:
+      print '# %s', a
+      print c.ToJson(a)

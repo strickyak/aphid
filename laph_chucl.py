@@ -48,23 +48,23 @@ class Evaluator:
   def Lookup(raw_k, k, dirpath, binding):
     # First try looking in the binding.
     while binding:
-      say binding.key, raw_k
+      #say binding.key, raw_k
       if binding.key == raw_k:
-        say binding.value
+        #say binding.value
         return binding.value
       binding = binding.next
     # Then use the provided lookup_fn.
-    say k, dirpath, (R(k, dirpath))
+    #say k, dirpath, (R(k, dirpath))
     return .lookup_fn(R(k, dirpath))
 
   def EvalPath(path, rel='/', binding=None):
-    say path
+    #say path
     path = R(path, rel)
     p = .lookup_fn(path)
     return .EvalNode(p, D(path), binding)
 
   def EvalNode(p, dirpath, binding):
-    say p, dirpath, binding
+    #say p, dirpath, binding
 
     switch type(p):
       case dict:
@@ -121,20 +121,31 @@ class Evaluator:
 
     # Handle special forms.
     switch cmd:
+      case 'fn':
+        return p  # Lambda exprs eval to themselves.
       case 'if':
         must len(vec) == 3, vec
         x, y, z = vec
-      case 'fn':
-        return p
+        #say x, y, v
+        xv = Simple(.EvalNode(x, dirpath, binding))
+        #say xv
+        if xv and xv!='False':
+          # True branch.
+          #say 'True', y
+          return .EvalNode(y, dirpath, binding)
+        else:
+          # False branch.
+          #say 'False', z
+          return .EvalNode(z, dirpath, binding)
 
     # Handle other builtins.
     args = []
-    for a in vec:
-      say 'Raw ARG:', a
+    #for a in vec:
+    #  #say 'Raw ARG:', a
 
     args = [.EvalNode(a, dirpath, binding) for a in vec]
-    for a in args:
-      say 'Evaluated ARG:', a
+    #for a in args:
+    #  #say 'Evaluated ARG:', a
 
     # Special code for the many binary operators.
     if len(args) == 1:
@@ -144,7 +155,7 @@ class Evaluator:
           return [str(e) for e in range(int(x))]
         case 'length':
           z = str(len(Simple(x)))
-          say x, z
+          #say x, z
           return z
 
     if len(args) == 2:

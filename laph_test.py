@@ -25,7 +25,7 @@ p = L.Compile(`{
   }
 }`)
 assert p.Eval('a/b/c') == '5'
-assert except p.Eval('a/b/c/x')
+assert except p.Eval('a/b/c/xyzzy')
 assert ["b", "bb", "p"] == p.Keys('/e')
 assert ["c", "x"] == p.Keys('/e/bb')
 say p.Eval('/')
@@ -76,11 +76,18 @@ p = L.Compile(`{
   doubles = (map $double $count)
   twices = (map $twice $count)
   len2 = (length $twices)
+  one = (++ (if (<  10 (length $twices)) Is IsNot) < 10)
+  two = (++ (if (>= 10 (length $twices)) Is IsNot) >= 10)
+  factorial = (fn (n) (if (< $n 2) 1 (* $n ($factorial (- $n 1)))))
+  twenty = ($factorial 4)
 }`)
 assert 'foofoo' == p.Eval('doublefoo')
 assert '2002' == p.Eval('twice1001')
 assert p.Eval('doubles') == ["00", "11", "22", "33", "44", "55", "66", "77", "88", "99"]
 assert p.Eval('twices') == ["0", "2", "4", "6", "8", "10", "12", "14", "16", "18"]
 assert p.Eval('len2') == "10"
+assert p.Eval('one') == "IsNot<10"
+assert p.Eval('two') == "Is>=10"
+#NOT YET# assert p.Eval('twenty') == "20"
 #---------------------------------
 print 'OKAY laph2_test'
