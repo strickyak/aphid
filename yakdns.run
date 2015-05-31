@@ -1,0 +1,7 @@
+cd /opt/aphid-yakdns
+
+while true
+do
+  ./aphid  --seeddir=yakdns.seed/  yakdns.laph:job:yakdns:lid1 >/tmp/yakdns.log 2>&1
+  sleep 60
+done

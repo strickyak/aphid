@@ -1,12 +1,12 @@
 job:yakdns = {
-  me = 51
+  me = 91
   flags = {
     ip =        127.0.0.1
     topdir =    /tmp/yakdir.top
-    keyring =   prod.ring
+    keyring =   test.ring
   }
   peers = {
-    51 = { host = 127.0.0.1 ; port = 8081 ; name = job:yakdns }
+    91 = { host = 127.0.0.1 ; port = 8081 ; name = job:yakdns }
   }
   ports = {
     _base =  8000
@@ -30,4 +30,16 @@ job:yakdns = {
   webs = { }
   wikis = { }
   formics = { }
+}
+
+job:yakdns:lid1 = job:yakdns {
+  me = 51
+  flags {
+    ip = 208.68.37.161
+    keyring = prod.ring
+  }
+  ports { _base = 0 }
+  peers = {
+    51 = { host = $/job:yakdns:lid1/flags/ip ; port = 81 ; name = job:yakdns:lid1 }
+  }
 }

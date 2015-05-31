@@ -1,0 +1,14 @@
+set -ex
+
+case $1 in
+  *.yak.net ) : okay ;;
+  * ) exit 13 ;;
+esac
+
+D=root@$1:/opt/aphid-yakdns
+
+rsync -av  aphid/aphid $D/aphid
+rsync -av yakdns.seed/ $D/yakdns.seed/
+rsync -av  yakdns.laph $D/yakdns.laph
+rsync -av  yakdns.push $D/yakdns.push
+rsync -av  yakdns.run $D/yakdns.run
