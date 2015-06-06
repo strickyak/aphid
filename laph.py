@@ -152,8 +152,6 @@ class Derive(AST):  # Enhance a derived subtuple.
     .template = template
     .diff = diff
     .dic = {}
-  def visit2(w, **kw):
-    return w.visit2Derive(self, **kw)
   def visit(w, **kw):
     return w.visitDerive(self, **kw)
   def find(k):
@@ -168,8 +166,6 @@ class Enhance(AST):  # Derive from a tuple.
   def __init__(dslot, diff):
     .dslot = dslot
     .diff = diff
-  def visit2(w, **kw):
-    return w.visit2Enhance(self, **kw)
   def visit(w, **kw):
     return w.visitEnhance(self, **kw)
   def __str__():
@@ -178,8 +174,6 @@ class Enhance(AST):  # Derive from a tuple.
 class Tuple(AST): # Named tuple with {...}.
   def __init__(dic):
     .dic = dic
-  def visit2(w, **kw):
-    return w.visit2Tuple(self, **kw)
   def visit(w, **kw):
     return w.visitTuple(self, **kw)
   def find(k):
@@ -195,8 +189,6 @@ class Tuple(AST): # Named tuple with {...}.
 class Dollar(AST): # Dollar substituted bareword.
   def __init__(a):
     .a = a
-  def visit2(w, **kw):
-    return w.visit2Dollar(self, **kw)
   def visit(w, **kw):
     return w.visitDollar(self, **kw)
   def __str__():
@@ -207,8 +199,6 @@ class Dollar(AST): # Dollar substituted bareword.
 class Bare(AST):  # Bareword has its own value.
   def __init__(a):
     .a = a
-  def visit2(w, **kw):
-    return w.visit2Bare(self, **kw)
   def visit(w, **kw):
     return w.visitBare(self, **kw)
   def __str__():
@@ -219,8 +209,6 @@ class Bare(AST):  # Bareword has its own value.
 class Command(AST):  # Parenthesized command.
   def __init__(vec):
     .vec = vec
-  def visit2(w, **kw):
-    return w.visit2Command(self, **kw)
   def visit(w, **kw):
     return w.visitCommand(self, **kw)
   def __str__():

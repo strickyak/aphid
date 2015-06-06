@@ -52,7 +52,7 @@ class Aphid:
     .quit = quit
     .filename = filename
 
-    if filename.find('.laph:'):
+    if filename.find('.laph:') > 0:
       laphfile, part = filename.split(':', 1)
       laphexpr = ioutil.ReadFile(laphfile)
       js = laph.Compile('{%s}' % laphexpr).ToJson(part)
