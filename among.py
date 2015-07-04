@@ -6,6 +6,7 @@ MAX_BACKOFF = 120
 
 class Among:
   def __init__(aphid, my_id, all_ids_map):
+    my_id = str(my_id)
     .aphid = aphid
     .ring = .aphid.ring
     .bus = .aphid.bus
@@ -18,6 +19,7 @@ class Among:
 
   def Start():
     for peer_id, peer_loc in .all_ids_map.items():
+      #if str(peer_id) != str(.my_id):
       if peer_id != .my_id:
         go .Connect(peer_id, peer_loc)
 

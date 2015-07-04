@@ -29,7 +29,7 @@ class idRemoteReader(idRemoteBase):
     say 'Close'
     with defer .Advance():
       .cli.RInvoke(.id, .seq, 'Close').Wait()
-    say 'Closeed'
+    say 'Closed'
 native:
   `
     func (self *C_idRemoteReader) Read(p []byte) (n int, err error) {

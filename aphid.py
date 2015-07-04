@@ -1,5 +1,5 @@
 from . import A, flag
-from . import among, aweber, awiki, awedit, azoner, formic
+from . import among, aweber, awiki, awedit, azoner, formic, smilax4
 from . import bundle, keyring, pubsub, rbundle
 from . import laph
 
@@ -72,10 +72,11 @@ class Aphid:
     .p_https = .x['ports']['https']
     .p_rpc = .x['ports']['rpc']
     .x_bundles = .x['bundles']
-    .x_zones = .x['zones']
-    .x_webs = .x['webs']
-    .x_wikis = .x['wikis']
-    .x_formics = .x['formics']
+    .x_zones = .x.get('zones', {})
+    .x_webs = .x.get('webs', {})
+    .x_wikis = .x.get('wikis', {})
+    .x_formics = .x.get('formics', {})
+    .x_smilax4 = .x.get('smilax4', {})
     .x_peers = .x['peers']
     .bus = pubsub.Bus(self)
 
@@ -191,8 +192,19 @@ class Aphid:
       .mux.HandleFunc(wname, obj.Handle2)
       say 'formic .mux.HandleFunc %q' % wname
       for a in config.get('aliases'):
-        .mux.HandleFunc(a, obj.Handle2)
+        .mux.HandleFunc(a.replace('|', '/'), obj.Handle2)
         say 'formic .mux.HandleFunc %q' % a
+
+    # Add smilax4.
+    for wname, config in .x_smilax4.items():
+      bname = config['bundle']
+      bund = .bundles[bname]
+      obj = smilax4.Smilax4Master(self, bname, bund=bund, config=config)
+      .mux.HandleFunc(wname, obj.Handle2)
+      say 'smilax4 .mux.HandleFunc %q' % wname
+      for a in config.get('aliases'):
+        .mux.HandleFunc(a.replace('|', '/'), obj.Handle2)
+        say 'smilax4 .mux.HandleFunc %q' % a
 
     ## Misc
     #.mux.HandleFunc('/@@quit', lambda w, r: .quit.Put(1))

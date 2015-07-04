@@ -30,6 +30,7 @@ _job_template = {
 
   bundles = {
     one = { kind = plain }
+    demo4 = { kind = plain }
     fugio = { kind = plain }
     temp1 = { kind = plain }
     temp2 = { kind = sym ; key = YAK }
@@ -55,7 +56,7 @@ _job_template = {
   }
 
   wikis = {
-    localhost = { bundle = one }
+    # localhost = { bundle = one }
     wiki = { bundle = one }
     web = { bundle = one }
     wiki.one.aphid.cc = { bundle = one }
@@ -66,6 +67,10 @@ _job_template = {
 
   fugio = {
     fugio = { bundle = fugio }
+  }
+
+  smilax4 = {
+    demo4 = { bundle = demo4; aliases = { |@demo4| = 1 } }
   }
 }
 
@@ -91,8 +96,8 @@ job:10 = _job_template {
     # Nota Bene: We must use | instead of / in the following paths.
     _trivial_pw = f5606220aa1e4ab012a6cc32cc980dd9
     fugio.x:8080| = { bundle = fugio; md5pw = $_trivial_pw }
-    boxturtle.x:8080| = { bundle = boxturtle; md5pw = $_trivial_pw }
-    newt.x:8080| = { bundle = newt; md5pw = $_trivial_pw }
-    newt.x| = { bundle = newt; md5pw = $_trivial_pw }
+    # boxturtle.x:8080| = { bundle = boxturtle; md5pw = $_trivial_pw }
+    # newt.x:8080| = { bundle = newt; md5pw = $_trivial_pw }
+    # newt.x| = { bundle = newt; md5pw = $_trivial_pw }
   }
 }
