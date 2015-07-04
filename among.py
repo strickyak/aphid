@@ -19,7 +19,6 @@ class Among:
 
   def Start():
     for peer_id, peer_loc in .all_ids_map.items():
-      #if str(peer_id) != str(.my_id):
       if peer_id != .my_id:
         go .Connect(peer_id, peer_loc)
 
