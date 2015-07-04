@@ -6,10 +6,14 @@ hanger.TIMEOUT = 2
 class Zebra:
   def __init__():
     .i = 0
+    .disposed = False
   def incr(x):
     .i += x
   def get():
     return .i
+  def Dispose():
+    say 'Disposing', self
+    .disposed = True
 
 def main(_):
   h = hanger.Hanger()
@@ -23,3 +27,4 @@ def main(_):
   A.Sleep(5.0)
   must except h.Invoke(id, 21, 'get')
   say 'OKAY: hanger_test.py'
+  must z.disposed
