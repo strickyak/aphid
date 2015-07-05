@@ -36,12 +36,12 @@ class Smilax4Master:
     s = 'list Smilax Four For {%s}' % path
     print >>w, .fr.Eval(chirp.MkString(str(s)))
 
-    #fr = .fr.NewFrame()
-    fr = .fr.G.Clone().Fr
+    fr = .fr.NewFrame()
+    #fr = .fr.G.Clone().Fr
     fr.Cred = dict(
         r=chirp.MkValue(reflect.ValueOf(r)),
         w=chirp.MkValue(reflect.ValueOf(w)),
-        url=chirp.MkString(r.URL.Path),
+        path=chirp.MkString(r.URL.Path),
         form=chirp.MkValue(reflect.ValueOf([(k, v) for k, v in r.Form.items()])),
         )
     say ";;;;;;;;", fr.Cred
