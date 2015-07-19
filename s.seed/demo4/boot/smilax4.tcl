@@ -1,3 +1,13 @@
+say TCL-Bund $Bund
+foreach cname [rycall $ListFiles $Bund "/chunks"] {
+  say TCL-cname $cname
+  if {[string match *.tcl $cname]} {
+    set x [rycall $ReadFile $Bund "/chunks/$cname"]
+    say TCL-YES $cname [string length $x]
+    eval $x
+  }
+}
+
 proc @HandleWikiUrl {} {
   global Path Query Form
 

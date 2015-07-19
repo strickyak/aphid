@@ -30,6 +30,12 @@ def WriteFile(bund, path, body, pw=None, mtime=0, raw=None):
   r.Close()
 
 def ListDirs(b, d, pw=None):
+  say 'YAK-ListDirs', b
+  say 'YAK-ListDirs', str(b)
+  say 'YAK-ListDirs', repr(b)
+  say 'YAK-ListDirs', type(b)
+  say 'YAK-ListDirs', d
+  say 'YAK-ListDirs', pw
   return list([x for x, isDir, _, _ in b.List4(d, pw) if isDir])
 
 def ListFiles(b, d, pw=None):
