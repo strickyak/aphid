@@ -1,5 +1,5 @@
 from go import github.com/yak-labs/chirp-lang as chirp
-from go import bufio, os, reflect
+from go import bufio, os, reflect, regexp
 
 from go import github.com/yak-labs/chirp-lang/goapi/default as _
 from go import github.com/yak-labs/chirp-lang/http as _
@@ -10,11 +10,14 @@ from go import github.com/yak-labs/chirp-lang/ryba as _
 
 from . import bundle, util
 
-native: `
-  func ListDirsFunc(bundle_p P, pathname_p P, pw_p P) P {
-    return i_bundle.G_3_ListDirs(bundle_p, pathname_p, pw_p)
-  }
-`
+FUNCTIONS = [
+  bundle.ListDirs,
+  bundle.ListFiles,
+  bundle.ReadFile,
+  bundle.WriteFile,
+]
+NonAlfa = regexp.MustCompile('[^A-Za-z0-9_]+')
+
 class Smilax4Master:
   def __init__(aphid, bname, bund, config):
     .aphid = aphid
@@ -29,16 +32,25 @@ class Smilax4Master:
     say chirp.MkString(.bname)
     say chirp.MkT(.bund)
 
-    .fr.SetVar('BundName', chirp.MkString(.bname))
-    .fr.SetVar('Bund', chirp.MkT(.bund))
-    .fr.SetVar('ListDirs', chirp.MkT(bundle.ListDirs))
-    .fr.SetVar('ListDirs', chirp.MkT((bundle.ListDirs)))
-    .fr.SetVar('ListFiles', chirp.MkT((bundle.ListFiles)))
-    .fr.SetVar('ReadFile', chirp.MkT((bundle.ReadFile)))
-    .fr.SetVar('WriteFile', chirp.MkT((bundle.WriteFile)))
+    for f in FUNCTIONS:
+      fname = NonAlfa.ReplaceAllString(str(f), ' ').split()[-1]
+      say fname, f
+      .fr.SetVar(fname, chirp.MkT(f))
+      
+    kv = dict(BundName=.bname,
+              Bund=.bund,
+              ).items()
+    for k, v in kv:
+      .fr.SetVar(k, chirp.MkT(v))
 
-    boot = bundle.ReadFile(.bund, "boot/smilax4.tcl")
+    boot = bundle.ReadFile(.bund, "/boot/smilax4.tcl")
+    say boot
     .fr.Eval(chirp.MkString(str(boot)))
+
+    for cf in bundle.ListFiles(.bund, "/chunks"):
+      src = bundle.ReadFile(.bund, "/chunks/%s" % cf)
+      say cf, src
+      .fr.Eval(chirp.MkString(str(src)))
 
   def Handle2(w, r):
     host, extra, path, root = util.HostExtraPathRoot(r)

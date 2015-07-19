@@ -4,7 +4,7 @@ foreach cname [rycall $ListFiles $Bund "/chunks"] {
   if {[string match *.tcl $cname]} {
     set x [rycall $ReadFile $Bund "/chunks/$cname"]
     say TCL-YES $cname [string length $x]
-    eval $x
+    #eval $x
   }
 }
 
