@@ -20,7 +20,7 @@ proc @HandleWikiUrl {} {
 
 }
 
-proc @Out {args} {
+proc @e {args} {
   upvar 2 Buf buf
   set sep ""
   foreach a $args {
@@ -29,13 +29,31 @@ proc @Out {args} {
     set sep " "
   }
 }
+proc @ListFiles {args} { ListFiles {*}$args }
+proc @ReadFile {args} { ReadFile {*}$args }
 
 set Zygote [interp]
-$Zygote Alias <frame> Out @Out
+$Zygote Alias <frame> e @e
+$Zygote Alias <frame> ListFiles @ListFiles
+$Zygote Alias <frame> ReadFile @ReadFile
 
 $Zygote Eval {
   list
 }
+
+proc EvalMixinsInZygote {} {
+  foreach fname [ListFiles $Bund "/mixins"] {
+    say TCL-mixin $fname
+    if {[string match *.tcl $fname]} {
+      set mname [lindex [split $fname "."] end]
+      say TCL-mname $mname
+      set x [ReadFile $Bund "/mixins/$fname"]
+      say TCL-MIXIN-LEN $fname $mname [string length $x]
+      $Zygote Eval "mixin $mname { $x }"
+    }
+  }
+}
+EvalMixinsInZygote
 
 proc HandleWiki {clone} {
   if {[regexp {^/(@[-a-z0-9_]+)?/*([0-9]+)[.]?([-a-z0-9_]+)?[.]?([^ +/@]+)?[ +/@]?(.*)$} [cred path] - site page verb object filename]} {
@@ -46,11 +64,13 @@ proc HandleWiki {clone} {
     $clone Eval [list set Filename $filename]
 
     $clone Eval {
-      Out Frodo One Two Three * $Site * $Page * $Verb * $Object * $Filename
+      e Frodo One Two Three * $Site * $Page * $Verb * $Object * $Filename
+      e <p>
+      Action/$Verb
     }
   } else {
     $clone Eval {
-      Out NO MATCH -- [cred path]
+      e NO MATCH -- [cred path]
     }
   }
 }
