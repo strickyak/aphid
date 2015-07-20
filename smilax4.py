@@ -10,13 +10,18 @@ from go import github.com/yak-labs/chirp-lang/ryba as _
 
 from . import bundle, util
 
-FUNCTIONS = [
+# Rye Functions to be exported into smilax4.
+RYBA_FUNCTIONS = [
   bundle.ListDirs,
   bundle.ListFiles,
   bundle.ReadFile,
   bundle.WriteFile,
 ]
+
 NonAlfa = regexp.MustCompile('[^A-Za-z0-9_]+')
+def SimpleFunctionName(f):
+  """Returns the final alphanumeric part of str(f)."""
+  return NonAlfa.ReplaceAllString(str(f), ' ').split()[-1]
 
 class Smilax4Master:
   def __init__(aphid, bname, bund, config):
@@ -26,31 +31,38 @@ class Smilax4Master:
     .config = config
     .fr = chirp.NewInterpreter()
 
-    #go_addr(.fr).SetVar('BundName', chirp.MkString(.bname))
-    #go_addr(.fr).SetVar('Bund', chirp.MkT(.bund))
-
     say chirp.MkString(.bname)
     say chirp.MkT(.bund)
 
-    for f in FUNCTIONS:
-      fname = NonAlfa.ReplaceAllString(str(f), ' ').split()[-1]
-      say fname, f
-      .fr.SetVar(fname, chirp.MkT(f))
-      
     kv = dict(BundName=.bname,
               Bund=.bund,
               ).items()
     for k, v in kv:
       .fr.SetVar(k, chirp.MkT(v))
 
+    for f in RYBA_FUNCTIONS:
+      fname = SimpleFunctionName(f)
+      say str(f), fname, f
+      .fr.SetVar('Ryba_' + fname, chirp.MkT(f))
+      .fr.EvalString('macro %s ARGS { rycall $Ryba_%s {*}$ARGS }' % (fname, fname))
+    say .fr.EvalString("info globals").String()
+    say .fr.EvalString("info commands").String()
+    say .fr.EvalString("info macros").String()
+      
     boot = bundle.ReadFile(.bund, "/boot/smilax4.tcl")
     say boot
-    .fr.Eval(chirp.MkString(str(boot)))
+    .fr.EvalString(boot)
+    say .fr.EvalString("info globals").String()
+    say .fr.EvalString("info commands").String()
+    say .fr.EvalString("info macros").String()
 
     for cf in bundle.ListFiles(.bund, "/chunks"):
+      say cf
       src = bundle.ReadFile(.bund, "/chunks/%s" % cf)
-      say cf, src
-      .fr.Eval(chirp.MkString(str(src)))
+      .fr.EvalString(src)
+      say .fr.EvalString("info globals").String()
+      say .fr.EvalString("info commands").String()
+      say .fr.EvalString("info macros").String()
 
   def Handle2(w, r):
     host, extra, path, root = util.HostExtraPathRoot(r)
