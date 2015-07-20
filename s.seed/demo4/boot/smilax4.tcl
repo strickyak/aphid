@@ -1,19 +1,4 @@
-proc Hello {} {
-  say [info locals]
-  say [info globals]
-  say [info commands]
-  say [info macros]
-  say TCL-Bund $Bund
-  foreach cname [ListFiles $Bund "/chunks"] {
-    say TCL-cname $cname
-    if {[string match *.tcl $cname]} {
-      set x [ReadFile $Bund "/chunks/$cname"]
-      say TCL-YES $cname [string length $x]
-      #eval $x
-    }
-  }
-}
-Hello
+# smilax4.tcl
 
 proc @HandleWikiUrl {} {
   global Path Query Form
@@ -90,20 +75,20 @@ proc Handle {} {
 
   case $e in {
     0 {
-          [[cred w] Header] Set Content-Type text/html
-          say NANDO_Get [[[cred w] Header] Get Content-Type]
-          [cred w] WriteString [[$clone Eval {set Buf}] String]
-          say NANDO_9
-          list OKAY-NANDO-000
+      [[cred w] Header] Set Content-Type text/html
+      say NANDO_Get [[[cred w] Header] Get Content-Type]
+      [cred w] WriteString [[$clone Eval {set Buf}] String]
+      say NANDO_9
+      list OKAY-NANDO-000
     }
     307 {
-                  set url [lindex [split $what "\n"] 0]
-                  set rh [/net/http/RedirectHandler $url 307]
-                  $rh ServeHTTP [cred w] [cred r]
+      set url [lindex [split $what "\n"] 0]
+      set rh [/net/http/RedirectHandler $url 307]
+      $rh ServeHTTP [cred w] [cred r]
     }
     default {
-                  # TODO: something better.
-                  [cred w] Write [[ht cat "***ERROR***  $e: $what  ***ERROR***"] Html]
+      # TODO: something better.
+      [cred w] Write [[ht cat "***ERROR***  $e: $what  ***ERROR***"] Html]
     }
   }
 }
