@@ -16,12 +16,42 @@ RYBA_FUNCTIONS = [
   bundle.ListFiles,
   bundle.ReadFile,
   bundle.WriteFile,
+  ReadWikiHeadersAndLines,
+  SplitWikiHeadersAndLines,
 ]
 
 NonAlfa = regexp.MustCompile('[^A-Za-z0-9_]+')
 def SimpleFunctionName(f):
   """Returns the final alphanumeric part of str(f)."""
   return NonAlfa.ReplaceAllString(str(f), ' ').split()[-1]
+
+def ReadWikiHeadersAndLines(bund, path):
+  return SplitWikiHeadersAndLines(bundle.ReadFile(bund, path))
+
+def SplitWikiHeadersAndLines(contents):
+  state = True
+  headers = {}
+  lines = []
+  for line in str(contents).split('\n'):
+    if state:
+      kv = line.split(' ', 1)
+      say kv, line
+      switch len(kv):
+        case 1:
+          k, = kv
+          if k:
+            headers[k] = ''
+          else:
+            state = False
+        case 2:
+          k, v = kv
+          headers[k] = v
+        default:
+          raise 'Fail', len(kv)
+    else:
+      lines.append(line)
+  return headers, lines 
+
 
 class Smilax4Master:
   def __init__(aphid, bname, bund, config):

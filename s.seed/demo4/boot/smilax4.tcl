@@ -14,25 +14,27 @@ proc @e {args} {
     set sep " "
   }
 }
-proc @ListFiles {args} { ListFiles {*}$args }
-proc @ReadFile {args} { ReadFile {*}$args }
+proc @ListFiles {args} { ListFiles $Bund {*}$args }
+proc @ReadFile {args} { ReadFile $Bund {*}$args }
+proc @ReadWikiHeadersAndLines {filename} { ReadWikiHeadersAndLines $Bund $filename }
 
 set Zygote [interp]
 $Zygote Alias <frame> e @e
 $Zygote Alias <frame> ListFiles @ListFiles
 $Zygote Alias <frame> ReadFile @ReadFile
+$Zygote Alias <frame> ReadWikiHeadersAndLines @ReadWikiHeadersAndLines
 
 $Zygote Eval {
   list
 }
 
 proc EvalMixinsInZygote {} {
-  foreach fname [ListFiles $Bund "/mixins"] {
+  foreach fname [@ListFiles "/mixins"] {
     say TCL-mixin $fname
     if {[string match *.tcl $fname]} {
       set mname [lindex [split $fname "."] end]
       say TCL-mname $mname
-      set x [ReadFile $Bund "/mixins/$fname"]
+      set x [@ReadFile "/mixins/$fname"]
       say TCL-MIXIN-LEN $fname $mname [string length $x]
       $Zygote Eval "mixin $mname { $x }"
     }
