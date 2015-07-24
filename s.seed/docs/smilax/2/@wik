@@ -1,0 +1,12 @@
+title Page Using Markdown
+user strick
+ip 127.1.2.3
+markup md
+
+# Heading 1
+text 1
+## Heading 2
+text 2
+### Heading 3
+text 3
+alpha `nando` omega

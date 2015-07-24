@@ -8,7 +8,7 @@ from go import github.com/yak-labs/chirp-lang/posix as _
 from go import github.com/yak-labs/chirp-lang/rpc as _
 from go import github.com/yak-labs/chirp-lang/ryba as _
 
-from . import bundle, util
+from . import bundle, markdown, util
 
 # Rye Functions to be exported into smilax4.
 RYBA_FUNCTIONS = [
@@ -18,6 +18,7 @@ RYBA_FUNCTIONS = [
   bundle.WriteFile,
   ReadWikiHeadersAndLines,
   SplitWikiHeadersAndLines,
+  markdown.TranslateMarkdown,
 ]
 
 NonAlfa = regexp.MustCompile('[^A-Za-z0-9_]+')
@@ -87,12 +88,13 @@ class Smilax4Master:
     say .fr.EvalString("info macros").String()
 
     for cf in bundle.ListFiles(.bund, "/chunks"):
-      say cf
-      src = bundle.ReadFile(.bund, "/chunks/%s" % cf)
-      .fr.EvalString(src)
-      say .fr.EvalString("info globals").String()
-      say .fr.EvalString("info commands").String()
-      say .fr.EvalString("info macros").String()
+      if cf.endswith('.tcl'):
+        say cf
+        src = bundle.ReadFile(.bund, "/chunks/%s" % cf)
+        .fr.EvalString(src)
+        say .fr.EvalString("info globals").String()
+        say .fr.EvalString("info commands").String()
+        say .fr.EvalString("info macros").String()
 
   def Handle2(w, r):
     host, extra, path, root = util.HostExtraPathRoot(r)

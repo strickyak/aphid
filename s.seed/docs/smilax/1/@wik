@@ -1,0 +1,14 @@
+title Documentation for Aphid, Rye, Chirp, Smilax, Laph, etc.
+user strick
+ip 127.1.2.3
+markup slash
+
+Normal
+/b bold
+/i italics
+/tt teletype
+one.
+
+Two.
+
+Three.
