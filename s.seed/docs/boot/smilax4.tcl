@@ -16,7 +16,7 @@ proc @e {args} {
 proc @ListFiles {args} { ListFiles $Bund {*}$args }
 proc @ReadFile {args} { ReadFile $Bund {*}$args }
 proc @ReadWikiHeadersAndLines {filename} { ReadWikiHeadersAndLines $Bund $filename }
-proc Reify x { $x riefy }
+proc @Reify x { $x reify }
 
 set Zygote [interp]
 $Zygote Alias <frame> e @e
@@ -24,7 +24,7 @@ $Zygote Alias <frame> ListFiles @ListFiles
 $Zygote Alias <frame> ReadFile @ReadFile
 $Zygote Alias <frame> ReadWikiHeadersAndLines @ReadWikiHeadersAndLines
 $Zygote Alias <frame> TranslateMarkdown TranslateMarkdown
-$Zygote Alias <frame> Reify Reify
+$Zygote Alias <frame> Reify @Reify
 
 $Zygote Eval {
   proc uproc {name varz body} {
@@ -92,6 +92,7 @@ proc Handle {} {
     default {
       # TODO: something better.
       [cred w] Write [[ht cat "***ERROR***  $e: $what  ***ERROR***"] Html]
+      [cred w] Write "\n\n\n***ERROR***  $e: $what  ***ERROR***"
     }
   }
 }
