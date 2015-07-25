@@ -1,15 +1,15 @@
 package aphid
 
 import (
-  // External requirements.
-  _ "github.com/microcosm-cc/bluemonday"
-  _ "github.com/russross/blackfriday"
-  _ "github.com/gdamore/mangos"
+	// External requirements.
+	_ "github.com/gdamore/mangos"
+	_ "github.com/microcosm-cc/bluemonday"
+	_ "github.com/russross/blackfriday"
 )
 
 import (
-  // Internal requirements.
-  _ "github.com/strickyak/rye"
+	// Internal requirements.
+	_ "github.com/strickyak/rye"
 )
 
 import (
