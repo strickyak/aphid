@@ -32,6 +32,7 @@ _job_template = {
     one = { kind = plain }
     demo4 = { kind = plain }
     docs = { kind = plain }
+    stash1 = { kind = plain }
     fugio = { kind = plain }
     temp1 = { kind = plain }
     temp2 = { kind = sym ; key = YAK }
@@ -73,6 +74,10 @@ _job_template = {
   smilax4 = {
     demo4 = { bundle = demo4; aliases = { |@demo4| = 1 } }
     docs = { bundle = docs; aliases = { |@docs| = 1 } }
+  }
+
+  stash = {
+    stash1 = { bundle = stash1; aliases = { |@stash1| = 1 } }
   }
 }
 

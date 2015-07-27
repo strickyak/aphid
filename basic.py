@@ -31,19 +31,21 @@ def GetBasicPw(w, r, realm):
   say realm
   try:
     a = r.Header.Get('Authorization')
-    say a
     if not a:
       raise 'Missing Authorization'
     style, encoded = a.split(' ', 1)
     must style == 'Basic'
     decoded = str(base64.StdEncoding.DecodeString(encoded))
     user, pw = decoded.split(':', 1)
-    say user, pw
     return user, pw
   except:
-    say 401
+    Fails(w, r, realm)
+    return None
+
+def Fails(w, r, realm):
+    say 401, realm
     w.Header().Set("WWW-Authenticate", 'Basic realm="%s"' % realm)
     w.WriteHeader(401)
     w.Write('401 Unauthorized\n')
-    return None
 
+pass

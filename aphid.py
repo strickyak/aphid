@@ -1,5 +1,5 @@
 from . import A, flag
-from . import among, aweber, awiki, awedit, azoner, formic, smilax4
+from . import among, aweber, awiki, awedit, azoner, formic, smilax4, stash
 from . import bundle, keyring, pubsub, rbundle
 from . import laph
 
@@ -77,6 +77,7 @@ class Aphid:
     .x_wikis = .x.get('wikis', {})
     .x_formics = .x.get('formics', {})
     .x_smilax4 = .x.get('smilax4', {})
+    .x_stash = .x.get('stash', {})
     .x_peers = .x['peers']
     .bus = pubsub.Bus(self)
 
@@ -205,6 +206,17 @@ class Aphid:
       for a in config.get('aliases'):
         .mux.HandleFunc(a.replace('|', '/'), obj.Handle2)
         say 'smilax4 .mux.HandleFunc %q' % a
+
+    # Add stash.
+    for wname, config in .x_stash.items():
+      bname = config['bundle']
+      bund = .bundles[bname]
+      obj = stash.StashMaster(self, bname, bund=bund, config=config)
+      .mux.HandleFunc(wname, obj.Handle2)
+      say 'stash name %q' % wname
+      for a in config.get('aliases'):
+        .mux.HandleFunc(a.replace('|', '/'), obj.Handle2)
+        say 'stash alias %q' % a
 
     ## Misc
     #.mux.HandleFunc('/@@quit', lambda w, r: .quit.Put(1))

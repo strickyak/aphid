@@ -34,18 +34,37 @@ def ParseQuery(r):
 def ConstructQueryFromDict(d):
   return '&'.join(['%s=%v' % (k, v) for k, v in d.items()])
 
-def TemplateFuncs():
-  native:
-    `
-      m := make(i_template.FuncMap)
-      m["keys"] = func (a interface{}) []string {
+native: `
+  type KeyVal struct { K string; V interface{} }
+
+   func Func_KV(a interface{}) []KeyVal {
+        var z []string
+        for _, k := range reflect.ValueOf(a).MapKeys() {
+          z = append(z, k.Interface().(string))
+        }
+        i_sort.Strings(z)
+        var zz []KeyVal
+        for _, k := range z {
+          zz = append(zz, KeyVal{ K: k, V: reflect.ValueOf(a).MapIndex(reflect.ValueOf(k)).Interface() })
+        }
+        return zz
+    }
+    func Func_keys(a interface{}) []string {
         var z []string
         for _, k := range reflect.ValueOf(a).MapKeys() {
           z = append(z, k.Interface().(string))
         }
         i_sort.Strings(z)
         return z
-      }
+    }
+`
+
+def TemplateFuncs():
+  native:
+    `
+      m := make(i_template.FuncMap)
+      m["KV"] = Func_KV
+      m["keys"] = Func_keys
       return MkGo(m)
     `
 
