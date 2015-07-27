@@ -74,9 +74,8 @@ class StashHandler:
                 R=r, Host=host, Path=path, Base=base,
                 Title='Stash of Files')
 
-    .d['All'] = repr(.d)
-
     realm = 'Stash-%s' % master.bund.bname
+    username = '?'
     if path != '/':
       try:
         username, pw = basic.GetBasicPw(w, r, realm)
@@ -85,9 +84,9 @@ class StashHandler:
         if ('%x' % h) != u['pw']:
           raise 'Bad username %q or password %q' % (username, h)
         .d['User'] = username
-
+        pass
       except as ex:
-        log.Printf("BASIC AUTH: %v", ex)
+        log.Printf("BASIC AUTH: %q %v", username, ex)
         return basic.Fails(w, r, realm)
 
     switch path:
@@ -109,6 +108,7 @@ class StashHandler:
         .Emit('VIEW')
 
   def Emit(tname):
+    .d['All'] = repr(.d)
     .master.t.ExecuteTemplate(.w, tname, util.NativeMap(.d))
 
 TEMPLATES = `
