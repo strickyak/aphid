@@ -1,10 +1,45 @@
 from go import bufio, bytes, fmt, log, reflect, regexp, sort, sync, time
 from go import html/template, net/http, io, io/ioutil
 from go import path as P
-from go import crypto/sha256
+from go import crypto/sha256, crypto/aes, crypto/rand, crypto/cipher
+from go import github.com/golang/crypto/scrypt
+from go import encoding/base64
 from . import A, atemplate, bundle, dh, markdown, pubsub, util
 from . import adapt, basic, flag
 from lib import data
+
+E = base64.URLEncoding
+
+def Seal(key, nonce, plaintext, extra):
+  c = cipher.NewGCM(aes.NewCipher(key))
+  return c.Seal('', nonce, plaintext, extra)
+
+def Open(key, nonce, ciphertext, extra):
+  c = cipher.NewGCM(aes.NewCipher(key))
+  return c.Open('', nonce, ciphertext, extra)
+
+def Encrypt(key, src):
+  key = byt(key)
+  must len(key) == 32
+  src = byt(src)
+  must len(src) == 32
+  c = aes.NewCipher(key)
+  dst = mkbyt(32)
+  c.Encrypt(dst, src)
+  return dst
+
+def Decrypt(key, src):
+  key = byt(key)
+  must len(key) == 32
+  src = byt(src)
+  must len(src) == 32
+  c = aes.NewCipher(key)
+  dst = mkbyt(32)
+  c.Decrypt(dst, src)
+  return dst
+
+def SCrypt(pw, salt, flavor):
+  return scrypt.Key(byt(pw), byt(salt) + byt(flavor), 16384, 8, 1, 32)
 
 def Strip(s):
   return str(s).strip(' \t\n\r')
@@ -145,24 +180,35 @@ class StashHandler:
         say '%v' % .r.PostForm
         say .r.PostForm.keys()
         say .r.PostForm.items()
-        u2 = MustUserName(Strip(.r.PostForm['new_user_name'][0]))
-        f2 = MustAsciiSpace(Strip(.r.PostForm['new_full_name'][0]))
-        p2 = MustAsciiSpace(Strip(.r.PostForm['new_passwd'][0]))
-        a2 = MustAscii(Strip(.r.PostForm['new_admin'][0]))
-        h2 = '%x' % sha256.Sum256(p2)
-        dh2 = dh.Forge(u2, f2, dh.GROUP)
+        newuser = MustUserName(Strip(.r.PostForm['new_user_name'][0]))
+        newname = MustAsciiSpace(Strip(.r.PostForm['new_full_name'][0]))
+        newpw = MustAsciiSpace(Strip(.r.PostForm['new_passwd'][0]))
+        newadmin = MustAscii(Strip(.r.PostForm['new_admin'][0]))
+
+        salt = mkbyt(12)
+        n = rand.Read(salt)
+        must n == 12
+        nonce = mkbyt(12)
+        n = rand.Read(nonce)
+        must n == 12
+        pwhash = SCrypt(newpw, salt, "pwhash")
+        symhash = SCrypt(newpw, salt, "symhash")
+        dh2 = dh.Forge(newuser, newname, dh.GROUP)
 
         j = repr(dict(
-                 fullname=f2,
-                 pw=h2,
-                 admin=a2.lower().startswith('y'),
+                 fullname=newname,
+                 salt='%x' % salt,
+                 nonce='%x' % nonce,
+                 pwhash='%x' % pwhash,
+                 symhash='%x' % symhash,
+                 admin=newadmin.lower().startswith('y'),
                  public=dh2.Public(),
-                 secret=dh2.Secret()
+                 secret=E.EncodeToString(Seal(symhash, nonce, dh2.Secret(), newuser))
                  ))
-        if .master.users.get(u2):
-          raise 'User %q already exists.' % u2
+        if .master.users.get(newuser):
+          raise 'User %q already exists.' % newuser
 
-        bundle.WriteFile(.master.bund, '/stash/user.%s' % u2, j)
+        bundle.WriteFile(.master.bund, '/stash/user.%s' % newuser, j)
         .master.Reload()
         http.Redirect(w, r, '%s/list' % .base, http.StatusTemporaryRedirect)
 
