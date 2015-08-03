@@ -94,6 +94,7 @@ class User:
     dh1 = dh.DhSecret("bogus1", "bogus2", dh.GROUP, dh.Big(.public), dh.Big(.Secret(pw)))
     must type(otherUser.public) == str, '%T' % .public
     mutKey = dh1.MutualKey(str(otherUser.public))
+    return mutKey
 
   def SealKeyToSelf(pw, curlyname, now, plainkey):
     scrypt2 = SCrypt(pw, .salt, '')
