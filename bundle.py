@@ -25,7 +25,7 @@ def WriteFile(bund, path, body, pw=None, mtime=0, raw=None):
   r = ioutil.NopCloser(bytes.NewReader(byt(body)))
   w = bund.MakeWriter(path, pw=None, mtime=0, raw=None)
   io.Copy(w, r)
-  say bund, path, body, pw, raw
+  say bund, path, len(body), pw
   w.Close()
   r.Close()
 
