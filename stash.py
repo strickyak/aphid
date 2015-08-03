@@ -276,6 +276,8 @@ class StashHandler:
         log.Printf("BASIC AUTH: %q %v", .username, ex)
         return basic.Fails(w, r, realm)
 
+    .d['Username'] = .username
+
     .r.ParseForm()
     say '%v' % .r.Form
     say '%v' % .r.PostForm
@@ -481,10 +483,10 @@ class StashHandler:
 TEMPLATES = `
 {{define "HEAD"}}
   <html><head>
-    <title>{{.TItle}}</title>
+    <title>{{.Title}} [{{$.Username}}]</title>
   </head><body>
-    <h2>{{.Title}}</h2>
-    {{/* <p>ALL = {{.All}} */}}
+    <h2>{{.Title}} [{{$.Username}}]</h2>
+    {{/* <p>ALL = {{$}} */}}
     <p>
 {{end}}
 
