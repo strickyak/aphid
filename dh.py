@@ -6,7 +6,7 @@ E = base64.URLEncoding
 
 def Big(s):
   must s
-  must type(s) == str
+  must type(s) == str, '%v' % type(s), '%T' % s
   return big.NewInt(0).SetBytes(E.DecodeString(s))
 
 def String(x):
@@ -44,6 +44,8 @@ def Forge(id, name, group):
 
 class DhSecret:
   def __init__(id, name, group, pub, sec):
+    must type(pub) != str, '%T' % pub
+    must type(sec) != str, '%T' % sec
     .id = id
     .name = name
     .sz, .g, .m = group
