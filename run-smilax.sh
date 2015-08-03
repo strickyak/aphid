@@ -2,4 +2,4 @@
 
 #    http://localhost:8080/@docs/2
 
-pp rye run aphid.py --seeddir=s.seed test11.laph:job:10
+pp rye run aphid.py --seeddir=s.seed $MORE test11.laph:job:10
