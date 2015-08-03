@@ -144,11 +144,11 @@ def MutualKey(ring, clientId, serverId):
   must cli.kind == 'dh'
   must svr.kind == 'dh'
   if cli.sec:
-    secret = dh.DhSecret(cli.num, cli.name, dh.GROUP, cli.pub, dh.Big(cli.sec))
+    secret = dh.DhSecret(cli.num, cli.name, dh.GROUP, dh.Big(cli.pub), dh.Big(cli.sec))
     #say 'C', secret.MutualKey(svr.pub)
     return secret.MutualKey(svr.pub)
   if svr.sec:
-    secret = dh.DhSecret(svr.num, svr.name, dh.GROUP, svr.pub, dh.Big(svr.sec))
+    secret = dh.DhSecret(svr.num, svr.name, dh.GROUP, dh.Big(svr.pub), dh.Big(svr.sec))
     #say 'S', secret.MutualKey(cli.pub)
     return secret.MutualKey(cli.pub)
   raise 'MISSING SECRET KEY'
