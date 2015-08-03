@@ -109,7 +109,7 @@ class User:
     mutual_key = dh3.MutualKey(rcpt.public)
     nonce3 = RandomBytes(12)
     extra3 = 'for_others:%d:%s:%s:%s' % (now.Unix(), .username, rcpt.username, curly)
-    ekey = str(Seal(mutual_key, nonce3, plainkey, extra3)),
+    ekey = str(Seal(mutual_key, nonce3, plainkey, extra3))
     return dict(ekey=ekey, nonce=nonce3, extra=extra3)
 
 def RandomBytes(n):
