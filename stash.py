@@ -131,7 +131,14 @@ def Seal(key, nonce, plaintext, extra):
   return z
 
 def Unseal(key, nonce, ciphertext, extra):
+  say '%T'%key, '%T'%nonce, extra, '%T'%ciphertext, 'UnsealDebug->........'
+  key = byt(key)
+  nonce = byt(nonce)
+  ciphertext = byt(ciphertext)
+  extra = byt(extra)
+  key, nonce, ciphertext, extra = byt(key), byt(nonce), byt(ciphertext), byt(extra)
   c = cipher.NewGCM(aes.NewCipher(key))
+  say '%T'%key, '%T'%nonce, extra, '%T'%ciphertext, 'UnsealDebug->........'
   say '%x'%key[:6], '%x'%nonce[:6], extra, '%x'%ciphertext[:6], 'UnsealDebug->........'
   z = c.Open(None, nonce, ciphertext, extra)
   say '%x'%key[:6], '%x'%nonce[:6], extra, '%x'%ciphertext[:6], 'UnsealDebug->', '%x'%(z[:6])

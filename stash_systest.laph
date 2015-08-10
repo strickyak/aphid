@@ -1,0 +1,31 @@
+_job_template = {
+  me = (To_Be_Overridden)
+  confname = (++ stash_systest_ $me)
+  flags = {
+    ip =        127.0.0.1
+    topdir =    (++ __tmp__ $confname)
+    keyring =   test.ring
+  }
+  peers = {
+    10 = { host = 127.0.0.1 ; port = (+ $../../ports/_base $../../ports/_rpcoff); name = $../../confname }
+  }
+  ports { 
+    _base =  (* $../me 1000)
+    _dnsoff =   53
+    _httpoff =  80
+    _httpsoff =  43
+    _rpcoff =   81
+    dns =   (+ $_base $_dnsoff)
+    http =  (+ $_base $_httpoff)
+    https = (+ $_base $_httpsoff)
+    rpc =   (+ $_base $_rpcoff)
+    debug = (+ $_base 99)
+  }
+}
+
+job:systest10 = _job_template {
+  me = 10
+  flags { verbose = 5 }
+  bundles = { stash_systest_10 = { kind = plain } }
+  stash = { stash1 = { bundle = stash_systest_10; aliases = { |@stash1| = 1 } } }
+}

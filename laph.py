@@ -256,7 +256,11 @@ class Parse:
 
   def tuple():
     d = {}
-    while .p[.i][0] != '}':
+    while True:
+      if len(.p) <= .i:
+        raise 'EOF before Tuple closes'
+      if .p[.i][0] == '}':
+        break
       k, kl = .p[.i]
       .next()
       if k == ';':
@@ -354,7 +358,7 @@ class DstVisitor:
       #say spath, dpath, kw, k, v, desired, level
       spath2 = J(spath, k)
       dpath2 = J(dpath, k)
-      v.visit(self, spath=spath2, dpath=dpath2, desired=desired, level=level)
+      v.visit(self, spath=spath2, dpath=dpath2, desired=desired, level=level, **kw)
       d[k] = (spath2, dpath2)
 
   def visitDerive(p, spath, dpath, desired, level, **kw):
@@ -414,7 +418,7 @@ class DstVisitor:
       v.visit(self, spath=spath2, dpath=dpath2, sup=sup2, desired=desired, level=level)
       d[k] = (spath2, dpath2)
 
-  def visitEnhance(p, spath, dpath, sup, desired, level, **kw):
+  def visitEnhance(p, spath, dpath, desired, level, sup=None, **kw):
     #say spath, dpath, kw, desired, level
     d = dict(__name__=dpath, __src__=spath, __slot__=p.dslot)
     .dst[dpath] = d
