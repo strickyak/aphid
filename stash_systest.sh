@@ -67,7 +67,7 @@ curl -u "chas:/chas/" -o $T/9 -F "file=@$T/111;filename=charles.txt" -F submit=s
 cat -n $T/9 || true
 
 mount > $T/112
-curl -u "bob:/bob/" -o $T/19 -F "file=@$T/112;filename=robert.txt" -F submit=submit -F Title="Mounts by Robert" -F to_amy=amy "$P/submit_upload"
+curl -u "bob:/bob/" -o $T/19 -F "file=@$T/112;filename=robert.txt" -F submit=submit -F Title="Mounts by Robert" "$P/submit_upload"
 cat -n $T/19 || true
 
 curl -u "amy:/amy/" -o $T/15 "$P/list"
@@ -77,12 +77,21 @@ cat -n $T/16
 curl -u "chas:/chas/" -o $T/17 "$P/list"
 cat -n $T/17
 
-grep robert[.]txt $T/15
-grep robert[.]txt $T/16
-test 1 == $(set +e; grep robert[.]txt $T/17; echo $?)
+test "$T/15 $T/16 $T/17" = "$(echo $(grep -l charles[.]txt $T/15 $T/16 $T/17))"
+test "$T/15 $T/16" = "$(echo $(grep -l robert[.]txt $T/15 $T/16 $T/17))"
 
-grep charles[.]txt $T/15
-grep charles[.]txt $T/16
-grep charles[.]txt $T/17
+curl -u "amy:/amy/" -o $T/25 "$P/view?f=robert.txt"
+curl -u "bob:/bob/" -o $T/26 "$P/view?f=robert.txt"
+curl -u "chas:/chas/" -o $T/27 "$P/view?f=robert.txt"
+fgrep "$(head -1 $T/112)" $T/25
+fgrep "$(head -1 $T/112)" $T/26
+fgrep "has not been shared with you" $T/27
+
+curl -u "amy:/amy/" -o $T/35 "$P/view?f=charles.txt"
+curl -u "bob:/bob/" -o $T/36 "$P/view?f=charles.txt"
+curl -u "chas:/chas/" -o $T/37 "$P/view?f=charles.txt"
+fgrep "$(head -1 $T/111)" $T/35
+fgrep "$(head -1 $T/111)" $T/36
+fgrep "$(head -1 $T/111)" $T/37
 
 echo OKAY $0 DONE.

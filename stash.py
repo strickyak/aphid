@@ -327,7 +327,16 @@ class StashHandler:
         plain, content_type = .DecryptDataWithMeta(datum, meta)
 
         if fname.lower().endswith('.jpg') or fname.lower().endswith('.jepg'):
-          .EmitJpg(plain)
+          .EmitRaw(plain, 'image/jpeg')
+
+        elif fname.lower().endswith('.png'):
+          .EmitRaw(plain, 'image/png')
+
+        elif fname.lower().endswith('.gif'):
+          .EmitRaw(plain, 'image/gif')
+
+        elif fname.lower().endswith('.pdf'):
+          .EmitRaw(plain, 'application/pdf')
 
         else:
           .d['Text'] = plain
@@ -442,8 +451,8 @@ class StashHandler:
     .w.Header().Set('Content-Type', 'text/html')
     .master.t.ExecuteTemplate(.w, tname, util.NativeMap(.d))
 
-  def EmitJpg(contents):
-    .w.Header().Set('Content-Type', 'image/jpeg')
+  def EmitRaw(contents, ctype):
+    .w.Header().Set('Content-Type', ctype)
     bw = bufio.NewWriter(.w)
     bw.Write(contents)
     bw.Flush()
