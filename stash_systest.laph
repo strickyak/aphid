@@ -23,7 +23,7 @@ _job_template = {
   }
 }
 
-job:systest10 = _job_template {
+job:systest_10 = _job_template {
   me = 10
   flags { verbose = 5 }
   bundles = { stash_systest_10 = { kind = plain } }

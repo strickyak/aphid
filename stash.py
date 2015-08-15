@@ -269,7 +269,7 @@ class StashHandler:
     with defer master.mu.Unlock():
       .d = dict(Users=master.Users, Meta=master.Meta,
                 R=r, Host=host, Path=path, Base=base,
-                Title='Stash of Files')
+                Title='FileSite')
 
     realm = 'Stash-%s' % master.bund.bname
     .username = '?'
@@ -345,7 +345,7 @@ class StashHandler:
 
         button = MustAscii(Strip(.r.PostForm['submit'][0]))
         say button
-        if button != 'Save':  # Cancel.
+        if button != 'Submit':  # Cancel.
           http.Redirect(w, r, '%s/list' % .base, http.StatusTemporaryRedirect)
 
         newuser = MustUserName(Strip(.r.PostForm['new_user_name'][0]))
@@ -380,7 +380,7 @@ class StashHandler:
         say '%v' % .r.MultipartForm
         button = MustAscii(Strip(.r.Form.get('submit')))
         say button
-        if button != 'Save':  # Cancel.
+        if button != 'Submit':  # Cancel.
           http.Redirect(w, r, '%s/list' % .base, http.StatusTemporaryRedirect)
 
         cd = r.MultipartForm.File['file'][0].Header.Get('Content-Disposition')
@@ -504,37 +504,36 @@ TEMPLATES = `
 
 {{define "HOME"}}
   {{ template "HEAD" $ }}
-    Until we implement login,
-    you can <a href="{{$.Base}}list">list</a> all files.
+    Click <a href="{{$.Base}}list">here</a> to log in.
   {{ template "TAIL" $ }}
 {{end}}
 
 {{define "LIST"}}
   {{ template "HEAD" $ }}
-    <b>Users:</b>
-      <ul>
+    <h3 class=section>Users:</h3>
+      <ul class=userlist>
         {{ range $.Users | KV }}
-          <li> <b>{{.K}}:</b> &nbsp; {{.V.fullname}}
+          <li class=useritem> <b>{{.K}}:</b> &nbsp; {{.V.fullname}}
                {{ if .V.admin }}
                  &nbsp; <b>(admin) </b>
                {{ end }}
         {{ else }}
-          <li> (There are no users.)
+          <li class=useritem> (There are no users.)
         {{ end }}
       </ul>
-    <b>Files:</b>
-      <ul>
+    <h3 class=section>Files:</h3>
+      <ul class=filelist>
         {{ range $.Files | KV }}
-          <li> <a href="{{$.Base}}view?f={{.K}}">{{.K}}</a>
+          <li class=fileitem> <a href="{{$.Base}}view?f={{.K}}">{{.K}}</a>
         {{ else }}
-          <li> (There are no files.)
+          <li class=fileitem> (There are no files.)
         {{ end }}
       </ul>
-    <b>Actions:</b>
-      <ul>
-          <li> <a href="{{$.Base}}upload">Upload a new file.</a>
+    <h3 class=section>Actions:</h3>
+      <ul class=actionlist>
+          <li class=actionitem> <a href="{{$.Base}}upload">Upload a new file.</a>
         {{ if .Admin }}
-          <li> <a href="{{$.Base}}add_user">Add a new user.</a>
+          <li class=actionitem> <a href="{{$.Base}}add_user">Add a new user.</a>
         {{ end }}
       </ul>
   {{ template "TAIL" $ }}
@@ -563,7 +562,7 @@ TEMPLATES = `
         <p>
         Admin: &nbsp; <input type=text size=5 name=new_admin value="no">
         <p>
-        <input type=submit name=submit value=Save> &nbsp; &nbsp;
+        <input type=submit name=submit value=Submit> &nbsp; &nbsp;
         <input type=reset name=reset value=reset> &nbsp; &nbsp;
         <input type=submit name=submit value=Cancel> &nbsp; &nbsp;
 
@@ -586,11 +585,11 @@ TEMPLATES = `
       Give a Title to the file: <input type=text size=80 name=title>
       <br>
       <br>
-      Upload a new attachment:
+      Pick which file to upload:
       <input type="file" name="file">
       <br>
       <br>
-      <input type=submit name=submit value=Save> &nbsp; &nbsp;
+      <input type=submit name=submit value=Submit> &nbsp; &nbsp;
       <input type=reset name=reset value=Reset> &nbsp; &nbsp;
       <input type=submit name=submit value=Cancel> &nbsp; &nbsp;
 
