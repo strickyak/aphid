@@ -20,7 +20,7 @@ def H(s):
   return '%x' % s[:6]
 
 class User:
-  def __init__(string=None, username=None, pw=None, fullname=None, admin=None):
+  def __init__(string=None, username=None, pw=None, fullname=None, admin=None, escrow=None):
     """Provide, by kw, either string or username, pw, fullname, admin."""
     if string:
       d = data.Eval(string)
@@ -38,6 +38,7 @@ class User:
       must type(.public) == str, '%T' % .public
       .secret = d['secret'] # DEBUG
       .esecret = d['esecret']
+      .escrow = d['escrow']
     else:
       .fullname = fullname
       .username = username
@@ -51,12 +52,13 @@ class User:
       symhash = sha256.Sum256(scrypt_ + ':symhash')
       .symhash = symhash #DEBUG
       say 'MAKE esecret:', username, pw, H(.salt), H(scrypt_), H(symhash)
-      dh_ = dh.Forge('', '', dh.GROUP) # DEBUG
-      .dh = dh_
+      dh_ = dh.Forge('', '', dh.GROUP)
+      .dh = dh_ #DEBUG
       .public = dh_.Public()
       must type(.public) == str, '%T' % .public
       .secret = dh_.Secret() # DEBUG
       .esecret = Seal(key=symhash, nonce=.nonce, plaintext=dh_.Secret(), extra='esecret:%s' % .username)
+      .escrow = escrow
 
   def __str__():
     return repr(dict(
@@ -71,7 +73,8 @@ class User:
       symhash=.symhash, # DEBUG
       public=.public,
       secret=.secret, # DEBUG
-      esecret=.esecret))
+      esecret=.esecret,
+      escrow=.escrow))
 
   def CheckPassword(pw):
     scrypt2 = SCrypt(pw, .salt, '')
@@ -366,7 +369,13 @@ class StashHandler:
         if .master.users.get(newuser):
           raise 'User %q already exists.' % newuser
 
-        nu = User(username=newuser, pw=newpw, fullname=newname, admin=newadmin.lower()[0] == 'y')
+        # Escrow the password to the admins, so they can help the user recover.
+        now = time.Now()
+        escrow = [.u.SealKeyToOther(.pw, rcpt, '%s.ESCROW.KEY' % aname, now, newpw)
+                  for aname, rcpt in .master.users.items()
+                  if rcpt.admin]
+
+        nu = User(username=newuser, pw=newpw, fullname=newname, admin=(newadmin.lower()[0] == 'y'), escrow=escrow)
 
         # Write the JSON to the new users's user file.
         bundle.WriteFile(.master.bund, '/stash/user.%s' % newuser, str(nu))
