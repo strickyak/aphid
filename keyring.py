@@ -92,7 +92,8 @@ def Load(fname, ring):
     vec = s.split()
     must len(vec) == 7, vec
     obj = Line().SetFromWords(vec)
-    ring[vec[0]] = obj
+    ring[vec[0]] = obj  # By id.
+    ring[vec[1]] = obj  # By name.
 
 def Save(fname, ring):
   "Save the ring dict to the file."
