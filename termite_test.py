@@ -2,7 +2,7 @@ from go import bytes, os, io, io/ioutil
 from go import mime/multipart, net/http
 from go import encoding/base64
 from go import path/filepath as FP
-from . import A, aphid, au, bundle, sym, util
+from . import A, au, bundle, launch, sym, util
 
 Ring = None
 
@@ -18,9 +18,9 @@ TERMITE1 = '''{
   },
 
   peers: {
-    "11": { host: "127.0.0.1", port: 28181, name: "termite11" },
-    "12": { host: "127.0.0.1", port: 28281, name: "termite12" },
-    "13": { host: "127.0.0.1", port: 28381, name: "termite13" },
+    "11": { host: "127.0.0.1", port: 28181, name: "termite11", num: "11" },
+    "12": { host: "127.0.0.1", port: 28281, name: "termite12", num: "12" },
+    "13": { host: "127.0.0.1", port: 28381, name: "termite13", num: "13" },
   },
 
   ports: {
@@ -199,9 +199,9 @@ def HttpFinishReq(req, ct, pw):
 def main(_):
   Clear()
   quit = rye_chan(1)
-  t1 = aphid.Aphid(quit=quit, filename='termite1.conf', snippet=TERMITE1)
-  t2 = aphid.Aphid(quit=quit, filename='termite2.conf', snippet=TERMITE2)
-  t3 = aphid.Aphid(quit=quit, filename='termite3.conf', snippet=TERMITE3)
+  t1 = launch.Aphid(quit=quit, filename='termite1.conf', snippet=TERMITE1)
+  t2 = launch.Aphid(quit=quit, filename='termite2.conf', snippet=TERMITE2)
+  t3 = launch.Aphid(quit=quit, filename='termite3.conf', snippet=TERMITE3)
 
   t3.StartAll()
   global Ring
