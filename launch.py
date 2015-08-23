@@ -192,9 +192,10 @@ class Aphid:
       obj = formic.FormicMaster(self, bname, bund=bund, config=config)
       .mux.HandleFunc(wname, obj.Handle2)
       say 'formic .mux.HandleFunc %q' % wname
-      for a in config.get('aliases'):
-        .mux.HandleFunc(a.replace('|', '/'), obj.Handle2)
-        say 'formic .mux.HandleFunc %q' % a
+      for k in config.get('paths'):
+        v = config['paths'][k]
+        .mux.HandleFunc(v, obj.Handle2)
+        say 'formic .mux.HandleFunc %q' % k
 
     # Add smilax4.
     for wname, config in .x_smilax4.items():
@@ -203,9 +204,10 @@ class Aphid:
       obj = smilax4.Smilax4Master(self, bname, bund=bund, config=config)
       .mux.HandleFunc(wname, obj.Handle2)
       say 'smilax4 .mux.HandleFunc %q' % wname
-      for a in config.get('aliases'):
-        .mux.HandleFunc(a.replace('|', '/'), obj.Handle2)
-        say 'smilax4 .mux.HandleFunc %q' % a
+      for k in config.get('paths'):
+        v = config['paths'][k]
+        .mux.HandleFunc(v, obj.Handle2)
+        say 'smilax4 .mux.HandleFunc %q' % k
 
     # Add stash.
     for wname, config in .x_stash.items():
@@ -214,9 +216,10 @@ class Aphid:
       obj = stash.StashMaster(self, bname, bund=bund, config=config)
       .mux.HandleFunc(wname, obj.Handle2)
       say 'stash name %q' % wname
-      for a in config.get('aliases'):
-        .mux.HandleFunc(a.replace('|', '/'), obj.Handle2)
-        say 'stash alias %q' % a
+      for k in config.get('paths'):
+        v = config['paths'][k]
+        .mux.HandleFunc(v, obj.Handle2)
+        say 'stash alias %q' % k
 
     ## Misc
     #.mux.HandleFunc('/@@quit', lambda w, r: .quit.Put(1))
@@ -251,7 +254,7 @@ class Aphid:
       go .tlsserver.ListenAndServeTLS("cacert.pem", "privkey.pem")
 
   def StartAmong():
-    peer_map = dict([(k, '%s:%d' % (v['host'], v['port'])) for k, v in .x_peers.items()])
+    peer_map = dict([(v['num'], '%s:%d' % (v['host'], v['port'])) for _, v in .x_peers.items()])
     say peer_map
     am = among.Among(self, .x_me, peer_map)
     am.Start()
