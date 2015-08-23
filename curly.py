@@ -2,12 +2,11 @@ from go import fmt, regexp, unicode/utf8
 
 def ORD(c):
   """ORD() is Like ord() but works on utf8 runes."""
-  native:
-    'x := rune(0)'
-    'n, err := fmt.Sscanf(a_c.String(), "%c", &x)'
-    'if err != nil { panic(err) }'
-    'if n != 1 { panic("fmt.Sscanf fails") }'
-    'return Mkint(int(x))'
+  native: `
+    for _, ru := range a_c.String() {
+      return Mkint(int(ru))
+    }
+`
 
 RE_UNSTRONG_CHARS = regexp.MustCompile('[^-A-Za-z0-9_.]')
 def StrongCurlyEncode(s):
