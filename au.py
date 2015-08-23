@@ -1,7 +1,7 @@
-from go import bytes, io, os, time
+from go import bufio, bytes, io, os, time
 from go import io/ioutil, path/filepath
 
-from . import A, flag, keyring, rbundle, sym
+from . import A, bundle, flag, keyring, rbundle, sym
 
 J = filepath.Join
 FPERM = 0644
@@ -60,11 +60,7 @@ def NewPull(args):
       continue  # Don't copy if mtime & size are same.
 
     jname = J(DIR.X, BUND.X, k)
-    b = client.RReadFile(BUND.X, k, pw=PW.X)
-    os.MkdirAll(filepath.Dir(jname), DPERM)
-    ioutil.WriteFile(jname, b, FPERM)
-    t = time.Unix(mtime, 0)
-    os.Chtimes(jname, t, t)
+    CopyRemoteFileHere(from_there=k, to_here=jname, mtime=mtime)
 
 def NewPush(args):
   lo, re = BigDirs()
@@ -129,18 +125,26 @@ def Pull(args):
       if isDir:
         os.MkdirAll(jname, DPERM)
       else:
-        os.MkdirAll(filepath.Dir(jname), DPERM)
-        say 'READING', BUND.X, name
-        b = client.RReadFile(BUND.X, name, pw=PW.X)
-        ioutil.WriteFile(jname, b, FPERM)
-        t = time.Unix(mtime, 0)
-        os.Chtimes(jname, t, t)
+        CopyRemoteFileHere(from_there=name, to_here=jname, mtime=mtime)
 
 def Cat(args):
   for name in args:
-    b = client.RReadFile(BUND.X, name, pw=PW.X)
-    io.Copy(os.Stdout, bytes.NewReader(b))
+    CopyRemoteFileHere(from_there=name, to_here='/dev/stdout', mtime=None)
 
+# TODO: CopyRemoteFileHere & pullFile are almost the same.
+def CopyRemoteFileHere(from_there, to_here, mtime):
+  os.MkdirAll(filepath.Dir(to_here), DPERM)
+  r = client.RemoteOpen(BUND.X, path=from_there, pw=PW.X, raw=False)
+  fd = os.Create(to_here)
+  w = bufio.NewWriter(fd)
+  bundle.CopyChunks(bundle.ChunkWriterAdapter(w), r)
+  w.Flush()
+  fd.Close()
+  if mtime:
+    t = time.Unix(mtime, 0)
+    os.Chtimes(to_here, t, t)
+
+# TODO: CopyRemoteFileHere & pullFile are almost the same.
 def pullFile(src, dest, mtime=None):
     r = client.RemoteOpen(BUND.X, src, pw=PW.X, raw=False)
     os.MkdirAll(filepath.Dir(dest), 0777)
