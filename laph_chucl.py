@@ -48,13 +48,10 @@ class Evaluator:
   def Lookup(raw_k, k, dirpath, binding):
     # First try looking in the binding.
     while binding:
-      #say binding.key, raw_k
       if binding.key == raw_k:
-        #say binding.value
         return binding.value
       binding = binding.next
     # Then use the provided lookup_fn.
-    #say k, dirpath, (R(k, dirpath))
     return .lookup_fn(R(k, dirpath))
 
   def EvalPath(path, rel='/', binding=None):
