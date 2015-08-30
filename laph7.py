@@ -269,22 +269,43 @@ class Compile22:
 
     def lookup_fn(k):
       return .visitor.visitTuple(.tree, path=k, up='/')
-    .chucl = laph_chucl.Evaluator(lookup_fn, Command)
+
+    def command_ctor(a):
+      return LeafNode(Command(a))
+
+    def value_ctor(a):
+      return LeafNode(Bare(a))
+
+    .chucl = laph_chucl.Evaluator(lookup_fn, command_ctor, value_ctor)
     .visitor = EvalVisitor33(self)
 
   def Eval(path):
     path = C(path)
-    print ''
+    say '#'
     say '<<<<<<<<<', path
     z = .chucl.EvalPath(path)
     say '>>>>>>>>>', path, z
-    print ''
+    say '#'
     return z
 
   def Keys(path):  # that are not _hidden.
     path = C(path)
     d = .chucl.EvalPath(path)
     return sorted([k for k in d if not k.startswith('_')])
+
+  def ToListing(path='/'):
+    path = C(path)
+    a = .Eval(path)
+    switch type(a):
+      case "*rye.PNone":
+        print "%s == **None**" % path
+      case LeafNode:
+        print "%s == %s" % (path, a.leaf)
+      case DirNode:
+        #print "%s :: [[[ %s ]]]" % (path, a.names)
+        for name in a.names:
+          .ToListing(J(path, name))
+
 
   def ToJson(path='/'):
     path = C(path)
@@ -359,9 +380,9 @@ class EvalVisitor33:
     h, t = HT(path)
 
     must type(p.template) is str
-    print p.template, h, t, up, D(up)
+    say p.template, h, t, up, D(up)
     base = .chucl.EvalPath(J(p.template, h, t), D(up))
-    print p.template, J(p.template, h, t), base
+    say p.template, J(p.template, h, t), base
 
     if h:
       if h in p.diff:
@@ -418,14 +439,12 @@ def main(argv):
   s = ioutil.ReadFile('/dev/stdin')
   c = Compile22(s)
 
-  print c.tree
-  return
-
   if len(argv) == 0:
-    print c.ToJson()
+    print c.ToListing()
   else:
     for a in argv:
       print '# %s' % a
-      print c.ToJson(a)
+      #print c.ToJson(a)
+      c.ToListing(a)
 
 pass

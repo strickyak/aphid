@@ -43,9 +43,10 @@ def Simple(a):
   raise 'what?', a
 
 class Evaluator:
-  def __init__(lookup_fn, command_ctor):
+  def __init__(lookup_fn, command_ctor, value_ctor):
     .lookup_fn = lookup_fn
     .command_ctor = command_ctor
+    .value_ctor = value_ctor
 
   def Lookup(k, dirpath, binding):
     # First try looking in the binding.
@@ -97,6 +98,14 @@ class Evaluator:
     raise 'EvalNode cannot eval node of type %v' % type(node)
 
   def EvalCommand(leaf, dirpath, binding):
+    try:
+      z = .EvalCommand2(leaf, dirpath, binding)
+      return .value_ctor(z)
+    except as ex:
+      # TODO: Stop evalling commands too early.
+      return .value_ctor('EXCEPTION(%s)' % ex)
+
+  def EvalCommand2(leaf, dirpath, binding):
     cmdvec = leaf.cmdvec
     say cmdvec, dirpath, binding
     must type(cmdvec) is list, cmdvec
@@ -108,8 +117,8 @@ class Evaluator:
       cmd = .EvalNode(cmd, dirpath, binding)
 
     # If cmd is lambda expression:
-    #if type(cmd) is list:
     if cmd.isCommand():
+      raise 'Lambdas not tested yet'
       vec2 = cmd.cmdvec
       must len(vec2) == 3, vec2
       fn, formals, body = vec2
@@ -152,9 +161,14 @@ class Evaluator:
     #  #say 'Raw ARG:', a
 
     say cmdvec
-    args = [.EvalNode(a, dirpath, binding).leaf.a for a in cmdvec]
-    #for a in args:
-    #  #say 'Evaluated ARG:', a
+    args = []
+    for a in cmdvec:
+      x = .EvalNode(a, dirpath, binding)
+      args.append(x.leaf.a if x else None) 
+
+    switch cmd:
+      case 'error':
+        raise 'ERROR(%s)' % str(args)
 
     # Special code for the many binary operators.
     if len(args) == 1:
@@ -164,8 +178,9 @@ class Evaluator:
           return [str(e) for e in range(int(x))]
         case 'length':
           z = str(len(Simple(x)))
-          #say x, z
           return z
+        case 'error':
+          z = 'ERROR(%s)' % x
 
     if len(args) == 2:
       x, y = args
