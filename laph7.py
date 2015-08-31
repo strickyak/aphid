@@ -265,8 +265,6 @@ class Compile22:
     say .tree
     must type(.tree) == Tuple, 'Expected program to be a Tuple, but got %q' % type(.tree)
 
-    #.look = {}
-
     def lookup_fn(k):
       return .visitor.visitTuple(.tree, path=k, up='/')
 
@@ -359,7 +357,6 @@ class DirNode(Node):
 class EvalVisitor33:
   """Evaluate a path."""
   def __init__(compiler):
-    #.look = compiler.look  # Lookup table of Source AST objects.
     .chucl = compiler.chucl  # The Command Interpreter.
 
   def visitTuple(p, path, up, **kw):
