@@ -60,12 +60,17 @@ class Evaluator:
     return .lookup_fn(Absolute(k, dirpath))
 
   def EvalPath(path, rel='/', binding=None):
-    say '<<', path, rel
-    path = Absolute(path, rel)
-    node = .lookup_fn(path)
-    return .EvalNode(node, path, binding)
+    say '<EP<', path, rel
+    apath = Absolute(path, rel)
+    node = .lookup_fn(apath)
+    z = .EvalNode(node, apath, binding)
+    say '>EP>', node, apath, z
+    return z
   
   def EvalNode(node, path, binding):
+    say '<EN<', node, path
+
+    Cpath = C(path)
     dirpath = D(path)
     if not node:
       say '>>', node, '>>None'
@@ -84,15 +89,15 @@ class Evaluator:
 
     if leaf.isDollar():
       q = .Lookup(leaf.a, dirpath, binding)
-      say '>>', node, dirpath, '>>leaf.isDollar....'
-      z = .EvalNode(q, dirpath, binding)
-      say '>>', node, dirpath, '>>leaf.isDollar>>', z
+      say '>>', node, Cpath, '>>leaf.isDollar....'
+      z = .EvalNode(q, Cpath, binding)
+      say '>>', node, Cpath, '>>leaf.isDollar>>', z
       return z
 
     if leaf.isCommand():
-      say '>>', node, dirpath, '>>leaf.isCommand....'
-      z = .EvalCommand(leaf, dirpath, binding)
-      say '>>', node, dirpath, '>>leaf.isCommand>>', z
+      say '>>', node, Cpath, '>>leaf.isCommand....'
+      z = .EvalCommand(leaf, Cpath, binding)
+      say '>>', node, Cpath, '>>leaf.isCommand>>', z
       return z
 
     raise 'EvalNode cannot eval node of type %v' % type(node)
@@ -165,6 +170,7 @@ class Evaluator:
     for a in cmdvec:
       x = .EvalNode(a, dirpath, binding)
       args.append(x.leaf.a if x else None) 
+    say args
 
     switch cmd:
       case 'error':
@@ -184,6 +190,7 @@ class Evaluator:
 
     if len(args) == 2:
       x, y = args
+      say x, y
       switch cmd:
         case '++':
           return x + y

@@ -275,6 +275,7 @@ class Compile22:
       return LeafNode(Bare(a))
 
     .chucl = laph_chucl.Evaluator(lookup_fn, command_ctor, value_ctor)
+    .lookup_fn = lookup_fn
     .visitor = EvalVisitor33(self)
 
   def Eval(path):
@@ -358,6 +359,7 @@ class EvalVisitor33:
   """Evaluate a path."""
   def __init__(compiler):
     .chucl = compiler.chucl  # The Command Interpreter.
+    .lookup_fn = compiler.lookup_fn
 
   def visitTuple(p, path, up, **kw):
     h, t = HT(path)
@@ -378,7 +380,7 @@ class EvalVisitor33:
 
     must type(p.template) is str
     say p.template, h, t, up, D(up)
-    base = .chucl.EvalPath(J(p.template, h, t), D(up))
+    base = .lookup_fn(J(p.template, h, t))
     say p.template, J(p.template, h, t), base
 
     if h:
