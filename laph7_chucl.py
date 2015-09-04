@@ -64,8 +64,8 @@ class Evaluator:
     # First try looking in the binding.
     say k, dirpath, binding
     while binding:
-      say k, binding.key
-      if binding.key == k:
+      say H(k), binding.key
+      if binding.key == H(k):
         return binding.value
       binding = binding.next
     # Then use the provided lookup_fn.
@@ -124,12 +124,14 @@ class Evaluator:
       say '->', node, Qpath, '>>leaf.isDollar....', q
       z = .EvalNode(q, Qpath, binding)
       say '>>', node, Qpath, '>>leaf.isDollar>>', z
+      must not z or z.IsLeaf()
       return z
 
     if leaf.isCommand():
       say '->', node, Cpath, '>>leaf.isCommand....'
       z = .EvalCommand(leaf, Cpath, binding)
       say '>>', node, Cpath, '>>leaf.isCommand>>', z
+      must not z or z.IsLeaf()
       return z
 
     raise 'EvalNode cannot eval node of type %v' % type(node)
@@ -139,7 +141,20 @@ class Evaluator:
     try:
       z = .EvalCommand2(leaf, Cpath, binding)
       say '>EvalCommand>', leaf, Cpath, binding, '>EC>', z
-      return .value_ctor(z)
+      say str(type(z)), repr(type(z)), z
+      switch repr(type(z)): # TODO -- Unhack this hackity hack.
+        case 'Command':
+          return .command_ctor(z.cmdvec)
+      switch type(z):  # TODO -- Unhack this hack to fix command results.
+        case str:
+          return .value_ctor(z)
+        case int:
+          return .value_ctor(str(z))
+        case float:
+          return .value_ctor(str(z))
+      say type(z), z
+      must not z or z.IsLeaf()
+      return z
     except as ex:
       # TODO: Stop evalling commands too early.
       say('EXCEPTION(%s)' % ex)
@@ -154,23 +169,32 @@ class Evaluator:
 
     # Dereference if cmd is a Dollar.
     if cmd.isDollar():
-      cmd = .EvalNode(cmd, Cpath, binding)
+      cmd = .EvalNode(cmdvec[0], Cpath, binding).leaf
+      say cmd
+      #say cmd.a
+      #say cmd.a.cmdvec
+      #cmd = cmd.a
 
+    say cmd.isCommand(), type(cmd), cmd
     # If cmd is lambda expression:
     if cmd.isCommand():
-      raise 'Lambdas not tested yet'
+      #raise 'Lambdas not tested yet'
       vec2 = cmd.cmdvec
       must len(vec2) == 3, vec2
       fn, formals, body = vec2
-      must fn.isBare(), vec2
-      must fn.a == "fn", vec2
-      must formals.isCommand(), vec2  # Actually, a vec of formal parameters.
-      must len(formals.cmdvec) == len(cmdvec) - 1  # Correct number of args to formals.
+      say type(fn), fn, type(formals), formals
+      must fn.leaf.isBare(), vec2
+      must fn.leaf.a == "fn", vec2
+      must formals.leaf.isCommand(), vec2  # Actually, a vec of formal parameters.
+      must len(formals.leaf.cmdvec) == len(cmdvec) - 1  # Correct number of args to formals.
 
       binding2 = binding
-      for f, v in zip(formals.cmdvec, cmdvec[1:]):
-        binding2 = Binding(f.a, v, binding2)
-      return .EvalNode(body, Cpath, binding2)
+      for f, v in zip(formals.leaf.cmdvec, cmdvec[1:]):
+        binding2 = Binding(f.leaf.a, v, binding2)
+        say f, v, binding2
+      z = .EvalNode(body, Cpath, binding2)
+      say vec2, z
+      return z
 
     must cmd.isBare(), type(cmd), cmd
     cmd = cmd.a

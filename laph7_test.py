@@ -40,7 +40,8 @@ must "100" == p1.Eval('/a').leaf.a
 must "BART" == p1.Eval('/b').leaf.a
 must "BART" == p1.Eval('/c').leaf.a
 must "31400" == p1.Eval('/d').leaf.a
-#TODO# must "TODO" == p1.Eval('/doublefoo').leaf.a
+must "foofoo" == p1.Eval('/doublefoo').leaf.a
+must "2002" == p1.Eval('/twice1001').leaf.a
 ######################################
 
 PROGRAM2= `
