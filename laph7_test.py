@@ -20,7 +20,7 @@ PROGRAM1= `
   a = 100
   b = BART
   c = $b
-  d = (* a 314)
+  d = (* $a 314)
 
   double = (fn (x) (++ $x $x))
   twice = (fn (x) (+ $x $x))
@@ -36,12 +36,11 @@ PROGRAM1= `
   twenty = ($factorial 4)
 `
 p1 = L.Compile22(PROGRAM1)
-e1 = L.EvalVisitor33(p1)
-say e1.visitTuple(p1.tree, path='/', up='/', derived='?')
-say e1.visitTuple(p1.tree, path='/a', up='/', derived='?')
-say e1.visitTuple(p1.tree, path='/b', up='/', derived='?')
-say e1.visitTuple(p1.tree, path='/c', up='/', derived='?')
-say e1.visitTuple(p1.tree, path='/d', up='/', derived='?')
+must "100" == p1.Eval('/a').leaf.a
+must "BART" == p1.Eval('/b').leaf.a
+must "BART" == p1.Eval('/c').leaf.a
+must "31400" == p1.Eval('/d').leaf.a
+#TODO# must "TODO" == p1.Eval('/doublefoo').leaf.a
 ######################################
 
 PROGRAM2= `
