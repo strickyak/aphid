@@ -306,27 +306,18 @@ class Compile22:
         for name in a.names:
           .ToListing(J(path, name))
 
-
   def ToJson(path='/'):
     path = C(path)
     a = .Eval(path)
     switch type(a):
-      case int:
-        return repr(a)
-      case float:
-        return repr(a)
-      case str:
-        if MATCH_INTEGER(a):
-          return a
-        return repr(a)
-      case list:
-        vec = [.ToJson(J(path, e)) for e in a]
-        return '[%s]' % ','.join(vec)
-      case dict:
-        vec = [(k, .ToJson(J(path, k))) for k, v in sorted(a.items()) if not k.startswith('_')]
+      case "*rye.PNone":
+        return "null"
+      case LeafNode:
+        return "%q" % a.leaf.a
+      case DirNode:
+        vec = [(k, .ToJson(J(path, k))) for k in sorted(a.names) if not k.startswith('_')]
         return '{%s}' % ', '.join(['%s:%s' % (repr(k), v) for k, v in vec if not k.startswith('_')])
-      default:
-        raise 'ToJson: Strange Value', type(a), a
+    raise 'bad default %q' % str(type(a))
 
 class Node:
   def IsNode():
@@ -470,7 +461,6 @@ def main(argv):
   else:
     for a in argv:
       print '# %s' % a
-      #print c.ToJson(a)
-      c.ToListing(a)
+      print c.ToJson(a)
 
 pass

@@ -1,3 +1,9 @@
+hosts = {
+  node1 = { num = 31 ; ip = 198.199.119.196 }
+  jig1 =  { num = 32 ; ip = 162.243.222.110 }
+  lid1 =  { num = 33 ; ip = 208.68.37.161   }
+}
+
 _job_template = {
   me = (error YouMustDefineMe)
 
@@ -53,12 +59,6 @@ _job_template = {
   zones = {
     aphid.cc = { bundle = sheep-dns ; zonefile = dns/aphid.cc ; }
   }
-}
-
-hosts = {
-  node1 = { num = 31 ; ip = 198.199.119.196 }
-  jig1 =  { num = 32 ; ip = 162.243.222.110 }
-  lid1 =  { num = 33 ; ip = 208.68.37.161   }
 }
 
 job:node1 = /_job_template {

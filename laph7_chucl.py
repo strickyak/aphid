@@ -77,7 +77,7 @@ class Evaluator:
     node = .lookup_fn(apath)
     z = .EvalNode(node, apath, binding)
     say '>EP>', apath, z, node
-    print "YAK_EvalPath: %-20s ==> %20s ==> %s" % (apath, z, node)
+    #print "YAK_EvalPath: %-20s ==> %20s ==> %s" % (apath, z, node)
     return z
   
   def EvalNode(node, path, binding):
