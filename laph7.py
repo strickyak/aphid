@@ -86,7 +86,7 @@ class Derive(AST):  # Derive from a tuple.
     .template = template
     .diff = diff
   def visit(w, **kw):
-    say 'visiting...', kw, self
+    say 'visiting...<<<', kw, self
     z = w.visitDerive(self, **kw)
     say 'visited', kw, '>>>', z
     return z
@@ -99,7 +99,7 @@ class Enhance(AST):  # Enhance a derived tuple.
     .dslot = dslot
     .diff = diff
   def visit(w, **kw):
-    say 'visiting...', kw, self
+    say 'visiting...<<<', kw, self
     z = w.visitEnhance(self, **kw)
     say 'visited', kw, '>>>', z
     return z
@@ -122,7 +122,7 @@ class Dollar(AST): # Dollar substituted bareword.
   def visit(w, **kw):
     return w.visitDollar(self, **kw)
   def __str__():
-    return '<$%v>' % .a
+    return '< $%v >' % .a
   def __repr__(): return .__str__()
   def isDollar():
     return True
@@ -133,7 +133,7 @@ class Bare(AST):  # Bareword has its own value.
   def visit(w, **kw):
     return w.visitBare(self, **kw)
   def __str__():
-    return '<%v>' % .a
+    return '< %v >' % .a
   def __repr__(): return .__str__()
   def isBare():
     return True
@@ -202,6 +202,7 @@ class Parse:
       if k == ';':
         continue
       must not Special(k), k, .p[.i:]
+      must not '/' in k
 
       op, ol = .p[.i]
       must Special(op), k, op, kl, ol
@@ -266,7 +267,7 @@ class Compile22:
     must type(.tree) == Tuple, 'Expected program to be a Tuple, but got %q' % type(.tree)
 
     def lookup_fn(k):
-      return .visitor.visitTuple(.tree, path=k, up='/')
+      return .visitor.visitTuple(.tree, path=k, up='/', derived='/')
 
     def command_ctor(a):
       return LeafNode(Command(a))
@@ -361,13 +362,13 @@ class EvalVisitor33:
     .chucl = compiler.chucl  # The Command Interpreter.
     .lookup_fn = compiler.lookup_fn
 
-  def visitTuple(p, path, up, **kw):
+  def visitTuple(p, path, up, derived, **kw):
     h, t = HT(path)
     say up, h, t
     if h:
       if h in p.dic:
         # Continue with next key.
-        return p.dic[h].visit(self, path=t, up=J(up, h), **kw)
+        return p.dic[h].visit(self, path=t, up=J(up, h), derived=J(derived, h), **kw)
       else:
         # Error: key not found :-> None.
         return None
@@ -375,22 +376,26 @@ class EvalVisitor33:
       # Path ends here -- we are the DirNode.
       return DirNode(sorted(p.dic.keys()))
 
-  def visitDerive(p, path, up, **kw):
+  def visitDerive(p, path, up, derived, **kw):
+    say p, path, up, derived, kw
     h, t = HT(path)
 
     must type(p.template) is str
     say p.template, h, t, up, D(up)
-    base = .lookup_fn(J(p.template, h, t))
-    say p.template, J(p.template, h, t), base
 
+    basepath = J(R(p.template, D(up)))
     if h:
       if h in p.diff:
-        dif = p.diff[h].visit(self, path=t, up=J(up, h), **kw)
+        say up, D(up), p.template, h, "DERIVED", J(basepath, h)
+        dif = p.diff[h].visit(self, path=t, up=J(up, h), derived=J(basepath, h), **kw)
 
       if dif is not None and dif.IsLeaf():
         # A single value was found in the diff.
         return dif
       # dif is not LeafNode.
+
+      base = .lookup_fn(J(basepath, h, t))
+      say p.template, J(p.template, h, t), base
 
       if dif is None and base is not None and base.IsLeaf():
         return base
@@ -399,10 +404,16 @@ class EvalVisitor33:
 
       # Override base with elements of dif.
       say base
+      if not base and not dif:
+        return None
+
       z = {}
       for e in sorted(base.names if base else []):
         z[e] = True
       return DirNode(sorted(z.keys()))
+
+    base = .lookup_fn(J(basepath, h, t))
+    say p.template, J(p.template, h, t), base
 
     # Override dic with elements of diff.
     must base is None or base.IsDir()
@@ -412,27 +423,43 @@ class EvalVisitor33:
     return DirNode(sorted(z.keys()))
 
 
-  def visitEnhance(p, path, up, **kw):
+  def visitEnhance(p, path, up, derived, **kw):
+    must up != derived
+    say p, path, up, derived, kw, self
     h, t = HT(path)
+    say h, t
     if h:
       if h in p.diff:
-        dif = p.diff[h].visit(self, path=t, up=J(up, h), **kw)
+        dif = p.diff[h].visit(self, path=t, up=J(up, h), derived=J(derived, h), **kw)
+        say dif
 
       if dif is None or dif.IsLeaf():
+        say dif
         return dif
 
+      say up, h, derived, (sorted(p.diff.keys()))
       return DirNode(sorted(p.diff.keys()))
+
+    ## Override dic with elements of diff.
+    base = .lookup_fn(derived)
+    must base is None or base.IsDir()
+    z = dict([(e, True) for e in (base.names if base else [])])
+    for k, _ in sorted(p.diff.items()):
+      z[k] = True
+    return DirNode(sorted(z.keys()))
+
+    #say 'YAKYAKYAKYAK', p, path, up, derived, kw, sorted(z.keys())
+    #raise 'YAKYAKYAKYAK'
+
 
   def visitBare(p, path, **kw):
     return LeafNode(p)
 
   def visitDollar(p, path, **kw):
     return LeafNode(p)
-    #return LeafNode('{{{Dollar:%s}}}' % p.a)
 
   def visitCommand(p, path, **kw):
     return LeafNode(p)
-    #return LeafNode('{{{Command:%s}}}' % str(p.cmdvec))
 
 def main(argv):
   s = ioutil.ReadFile('/dev/stdin')

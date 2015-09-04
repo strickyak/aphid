@@ -37,11 +37,11 @@ PROGRAM1= `
 `
 p1 = L.Compile22(PROGRAM1)
 e1 = L.EvalVisitor33(p1)
-say e1.visitTuple(p1.tree, '/', '/')
-say e1.visitTuple(p1.tree, '/a', '/')
-say e1.visitTuple(p1.tree, '/b', '/')
-say e1.visitTuple(p1.tree, '/c', '/')
-say e1.visitTuple(p1.tree, '/d', '/')
+say e1.visitTuple(p1.tree, path='/', up='/', derived='?')
+say e1.visitTuple(p1.tree, path='/a', up='/', derived='?')
+say e1.visitTuple(p1.tree, path='/b', up='/', derived='?')
+say e1.visitTuple(p1.tree, path='/c', up='/', derived='?')
+say e1.visitTuple(p1.tree, path='/d', up='/', derived='?')
 ######################################
 
 PROGRAM2= `
