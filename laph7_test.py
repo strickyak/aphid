@@ -158,4 +158,171 @@ assert data.Eval(p5.ToJson('/def')) == {"a1":"110", "a2":"1120", "a3":"130", "b"
 
 assert data.Eval(p5.ToJson('/ghi')) == {"a1":"110", "a2":"1120", "a3":"1130", "b":{"b1":"210", "b2":"520", "b3":"530", "d":{"d1":"1111", "d2":"2222"}}, "c":{"c1":"310", "c2":"320", "c3":"930", "c4":"940"}}
 
+
+SHEEP = `
+hosts = {
+  node1 = { num = 31 ; ip = 198.199.119.196 }
+  jig1 =  { num = 32 ; ip = 162.243.222.110 }
+  lid1 =  { num = 33 ; ip = 208.68.37.161   }
+}
+
+_job_template = {
+  me = (error YouMustDefineMe)
+
+  confname = (++ sheep_ $me)
+
+  flags = {
+    ip =        (error YouMustDefineMe)
+    topdir =    (++ /opt/disk/ $confname)
+    keyring =   sheep.ring
+  }
+
+  peers = {
+    31 = { host = $/hosts/node1/ip ; port = 81 ; name = node1 ; num = $/hosts/node1/num ; }
+    32 = { host = $/hosts/jig1/ip  ; port = 81 ; name = jig1  ; num = $/hosts/jig1/num  ; }
+    33 = { host = $/hosts/lid1/ip  ; port = 81 ; name = lid1  ; num = $/hosts/lid1/num  ; }
+  }
+
+  ports = {
+    _base =  0
+
+    dns =   (+ $_base 53)
+    http =  (+ $_base 80)
+    https = (+ $_base 443)
+    rpc =   (+ $_base 81)
+  }
+
+  bundles = {
+    sheep-boxturtle = { kind = plain }
+    sheep-dns = { kind = plain }
+    sheep-docs = { kind = plain }
+    sheep-formic = { kind = plain }
+    sheep-smilax = { kind = plain }
+    sheep-stash = { kind = plain }
+  }
+
+  formic = {
+    sheep-formic = { bundle = sheep-formic; paths = { 1 = /@sheep-formic/ } }
+    sheep-boxturtle = { bundle = sheep-boxturtle; paths = { 1 = /@sheep-boxturtle/ } }
+  }
+
+  smilax4 = {
+    sheep-smilax = { bundle = sheep-smilax; paths = { 1 = /@sheep-smilax/ } }
+    sheep-docs = { bundle = sheep-docs; paths = { 1 = /@docs/ } }
+  }
+
+  stash = {
+    sheep-stash = { bundle = sheep-stash; paths = { 1 = /@sheep-stash/ } }
+  }
+
+  webs = {}
+  wikis =  {}
+
+  zones = {
+    aphid.cc = { bundle = sheep-dns ; zonefile = dns/aphid.cc ; }
+  }
+}
+
+job:node1 = /_job_template {
+  me = $/hosts/node1/num
+  flags { ip = $/hosts/node1/ip }
+}
+
+job:jig1 = /_job_template {
+  me = $/hosts/jig1/num
+  flags { ip = $/hosts/jig1/ip }
+}
+
+job:lid1 = /_job_template {
+  me = $/hosts/lid1/num
+  flags { ip = $/hosts/lid1/ip }
+}
+
+_local_template = /_job_template {
+  peers = {
+    node1 = { host = 127.0.0.1 ; port = 11081 }
+    jig1  = { host = 127.0.0.1 ; port = 12081 }
+    lid1  = { host = 127.0.0.1 ; port = 13081 }
+  }
+  flags { ip = 127.0.0.1 }
+}
+
+job:local:node1 = /_local_template {
+  me = $/hosts/node1/num
+  ports { _base = 11000 }
+}
+
+job:local:jig1 = /_local_template {
+  me = $/hosts/jig1/num
+  ports { _base = 12000 }
+}
+
+job:local:lid1 = /_local_template {
+  me = $/hosts/lid1/num
+  ports { _base = 13000 }
+}
+`
+sheep = L.Compile22(SHEEP)
+
+
+print "\n\njob:node1#", sheep.ToJson('job:node1')
+print "\n\njob:jig1#", sheep.ToJson('job:jig1')
+print "\n\njob:lid1#", sheep.ToJson('job:lid1')
+
+assert data.Eval(sheep.ToJson('job:node1')) == {"bundles":{"sheep-boxturtle":{"kind":"plain"}, "sheep-dns":{"kind":"plain"}, "sheep-docs":{"kind":"plain"}, "sheep-formic":{"kind":"plain"}, "sheep-smilax":{"kind":"plain"}, "sheep-stash":{"kind":"plain"}},
+   "confname":"sheep_31", "flags":{"ip":"198.199.119.196", "keyring":"sheep.ring", "topdir":"/opt/disk/sheep_31"},
+   "formic":{"sheep-boxturtle":{"bundle":"sheep-boxturtle", "paths":{"1":"/@sheep-boxturtle/"}}, "sheep-formic":{"bundle":"sheep-formic", "paths":{"1":"/@sheep-formic/"}}},
+   "me":"31", "peers":{"31":{"host":"198.199.119.196", "name":"node1", "num":"31", "port":"81"}, "32":{"host":"162.243.222.110", "name":"jig1", "num":"32", "port":"81"}, "33":{"host":"208.68.37.161", "name":"lid1", "num":"33", "port":"81"}},
+   "ports":{"dns":"53", "http":"80", "https":"443", "rpc":"81"},
+   "smilax4":{"sheep-docs":{"bundle":"sheep-docs", "paths":{"1":"/@docs/"}}, "sheep-smilax":{"bundle":"sheep-smilax", "paths":{"1":"/@sheep-smilax/"}}},
+   "stash":{"sheep-stash":{"bundle":"sheep-stash", "paths":{"1":"/@sheep-stash/"}}},
+   "webs":{}, "wikis":{}, "zones":{"aphid.cc":{"bundle":"sheep-dns", "zonefile":"dns/aphid.cc"}}}
+
+
+assert data.Eval(sheep.ToJson('job:jig1')) == {"bundles":{"sheep-boxturtle":{"kind":"plain"}, "sheep-dns":{"kind":"plain"}, "sheep-docs":{"kind":"plain"}, "sheep-formic":{"kind":"plain"}, "sheep-smilax":{"kind":"plain"}, "sheep-stash":{"kind":"plain"}},
+   "confname":"sheep_32", "flags":{"ip":"162.243.222.110", "keyring":"sheep.ring", "topdir":"/opt/disk/sheep_32"},
+   "formic":{"sheep-boxturtle":{"bundle":"sheep-boxturtle", "paths":{"1":"/@sheep-boxturtle/"}}, "sheep-formic":{"bundle":"sheep-formic", "paths":{"1":"/@sheep-formic/"}}},
+   "me":"32", "peers":{"31":{"host":"198.199.119.196", "name":"node1", "num":"31", "port":"81"}, "32":{"host":"162.243.222.110", "name":"jig1", "num":"32", "port":"81"}, "33":{"host":"208.68.37.161", "name":"lid1", "num":"33", "port":"81"}},
+   "ports":{"dns":"53", "http":"80", "https":"443", "rpc":"81"},
+   "smilax4":{"sheep-docs":{"bundle":"sheep-docs", "paths":{"1":"/@docs/"}}, "sheep-smilax":{"bundle":"sheep-smilax", "paths":{"1":"/@sheep-smilax/"}}},
+   "stash":{"sheep-stash":{"bundle":"sheep-stash", "paths":{"1":"/@sheep-stash/"}}},
+   "webs":{}, "wikis":{}, "zones":{"aphid.cc":{"bundle":"sheep-dns", "zonefile":"dns/aphid.cc"}}}
+
+assert data.Eval(sheep.ToJson('job:lid1')) == {"bundles":{"sheep-boxturtle":{"kind":"plain"}, "sheep-dns":{"kind":"plain"}, "sheep-docs":{"kind":"plain"}, "sheep-formic":{"kind":"plain"}, "sheep-smilax":{"kind":"plain"}, "sheep-stash":{"kind":"plain"}},
+   "confname":"sheep_33", "flags":{"ip":"208.68.37.161", "keyring":"sheep.ring", "topdir":"/opt/disk/sheep_33"},
+   "formic":{"sheep-boxturtle":{"bundle":"sheep-boxturtle", "paths":{"1":"/@sheep-boxturtle/"}}, "sheep-formic":{"bundle":"sheep-formic", "paths":{"1":"/@sheep-formic/"}}},
+   "me":"33", "peers":{"31":{"host":"198.199.119.196", "name":"node1", "num":"31", "port":"81"}, "32":{"host":"162.243.222.110", "name":"jig1", "num":"32", "port":"81"}, "33":{"host":"208.68.37.161", "name":"lid1", "num":"33", "port":"81"}},
+   "ports":{"dns":"53", "http":"80", "https":"443", "rpc":"81"},
+   "smilax4":{"sheep-docs":{"bundle":"sheep-docs", "paths":{"1":"/@docs/"}}, "sheep-smilax":{"bundle":"sheep-smilax", "paths":{"1":"/@sheep-smilax/"}}},
+   "stash":{"sheep-stash":{"bundle":"sheep-stash", "paths":{"1":"/@sheep-stash/"}}},
+   "webs":{}, "wikis":{}, "zones":{"aphid.cc":{"bundle":"sheep-dns", "zonefile":"dns/aphid.cc"}}}
+
+assert data.Eval(sheep.ToJson('job:local:node1')) == {"bundles":{"sheep-boxturtle":{"kind":"plain"}, "sheep-dns":{"kind":"plain"}, "sheep-docs":{"kind":"plain"}, "sheep-formic":{"kind":"plain"}, "sheep-smilax":{"kind":"plain"}, "sheep-stash":{"kind":"plain"}},
+  "confname":"sheep_31",
+  "flags":{"ip":"127.0.0.1", "keyring":"sheep.ring", "topdir":"/opt/disk/sheep_31"},
+  "formic":{"sheep-boxturtle":{"bundle":"sheep-boxturtle", "paths":{"1":"/@sheep-boxturtle/"}}, "sheep-formic":{"bundle":"sheep-formic", "paths":{"1":"/@sheep-formic/"}}},
+  "me":"31", "peers":{"31":{"host":"198.199.119.196", "name":"node1", "num":"31", "port":"81"}, "32":{"host":"162.243.222.110", "name":"jig1", "num":"32", "port":"81"}, "33":{"host":"208.68.37.161", "name":"lid1", "num":"33", "port":"81"}, "jig1":{"host":"127.0.0.1", "port":"12081"}, "lid1":{"host":"127.0.0.1", "port":"13081"}, "node1":{"host":"127.0.0.1", "port":"11081"}},
+  "ports":{"dns":"11053", "http":"11080", "https":"11443", "rpc":"11081"},
+  "smilax4":{"sheep-docs":{"bundle":"sheep-docs", "paths":{"1":"/@docs/"}}, "sheep-smilax":{"bundle":"sheep-smilax", "paths":{"1":"/@sheep-smilax/"}}},
+  "stash":{"sheep-stash":{"bundle":"sheep-stash", "paths":{"1":"/@sheep-stash/"}}},
+  "webs":{}, "wikis":{}, "zones":{"aphid.cc":{"bundle":"sheep-dns", "zonefile":"dns/aphid.cc"}}}
+
+assert data.Eval(sheep.ToJson('job:local:jig1')) == {"bundles":{"sheep-boxturtle":{"kind":"plain"}, "sheep-dns":{"kind":"plain"}, "sheep-docs":{"kind":"plain"}, "sheep-formic":{"kind":"plain"}, "sheep-smilax":{"kind":"plain"}, "sheep-stash":{"kind":"plain"}},
+  "confname":"sheep_32", "flags":{"ip":"127.0.0.1", "keyring":"sheep.ring", "topdir":"/opt/disk/sheep_32"},
+  "formic":{"sheep-boxturtle":{"bundle":"sheep-boxturtle", "paths":{"1":"/@sheep-boxturtle/"}}, "sheep-formic":{"bundle":"sheep-formic", "paths":{"1":"/@sheep-formic/"}}},
+  "me":"32", "peers":{"31":{"host":"198.199.119.196", "name":"node1", "num":"31", "port":"81"}, "32":{"host":"162.243.222.110", "name":"jig1", "num":"32", "port":"81"}, "33":{"host":"208.68.37.161", "name":"lid1", "num":"33", "port":"81"}, "jig1":{"host":"127.0.0.1", "port":"12081"}, "lid1":{"host":"127.0.0.1", "port":"13081"}, "node1":{"host":"127.0.0.1", "port":"11081"}},
+  "ports":{"dns":"12053", "http":"12080", "https":"12443", "rpc":"12081"},
+  "smilax4":{"sheep-docs":{"bundle":"sheep-docs", "paths":{"1":"/@docs/"}}, "sheep-smilax":{"bundle":"sheep-smilax", "paths":{"1":"/@sheep-smilax/"}}},
+  "stash":{"sheep-stash":{"bundle":"sheep-stash", "paths":{"1":"/@sheep-stash/"}}},
+  "webs":{}, "wikis":{}, "zones":{"aphid.cc":{"bundle":"sheep-dns", "zonefile":"dns/aphid.cc"}}}
+
+assert data.Eval(sheep.ToJson('job:local:lid1')) == {"bundles":{"sheep-boxturtle":{"kind":"plain"}, "sheep-dns":{"kind":"plain"}, "sheep-docs":{"kind":"plain"}, "sheep-formic":{"kind":"plain"}, "sheep-smilax":{"kind":"plain"}, "sheep-stash":{"kind":"plain"}},
+  "confname":"sheep_33", "flags":{"ip":"127.0.0.1", "keyring":"sheep.ring", "topdir":"/opt/disk/sheep_33"},
+  "formic":{"sheep-boxturtle":{"bundle":"sheep-boxturtle", "paths":{"1":"/@sheep-boxturtle/"}}, "sheep-formic":{"bundle":"sheep-formic", "paths":{"1":"/@sheep-formic/"}}},
+  "me":"33", "peers":{"31":{"host":"198.199.119.196", "name":"node1", "num":"31", "port":"81"}, "32":{"host":"162.243.222.110", "name":"jig1", "num":"32", "port":"81"}, "33":{"host":"208.68.37.161", "name":"lid1", "num":"33", "port":"81"}, "jig1":{"host":"127.0.0.1", "port":"12081"}, "lid1":{"host":"127.0.0.1", "port":"13081"}, "node1":{"host":"127.0.0.1", "port":"11081"}},
+  "ports":{"dns":"13053", "http":"13080", "https":"13443", "rpc":"13081"},
+  "smilax4":{"sheep-docs":{"bundle":"sheep-docs", "paths":{"1":"/@docs/"}}, "sheep-smilax":{"bundle":"sheep-smilax", "paths":{"1":"/@sheep-smilax/"}}},
+  "stash":{"sheep-stash":{"bundle":"sheep-stash", "paths":{"1":"/@sheep-stash/"}}},
+  "webs":{}, "wikis":{}, "zones":{"aphid.cc":{"bundle":"sheep-dns", "zonefile":"dns/aphid.cc"}}}
+
 print "OKAY: laph7_test.py"
