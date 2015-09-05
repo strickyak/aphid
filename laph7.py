@@ -10,11 +10,6 @@ C = P.Clean
 D = P.Dir
 def J(*args):
   return C(P.Join(*args))
-def S(s):
-  if s.startswith('/'):
-    return ['/'] + [e for e in s.split('/') if e]
-  else:
-    return [e for e in s.split('/') if e]
 def R(path, rel):
   if path.startswith('/'):
     return C(path)
@@ -394,12 +389,14 @@ class EvalVisitor33:
         raise 'Conflict: base is Leaf, but dif is Dir: %q/%q/%q' % (up, h, t)
 
       # Override base with elements of dif.
-      say base
+      say base, dif
       if not base and not dif:
         return None
 
       z = {}
-      for e in sorted(base.names if base else []):
+      for e in base.names if base else []:
+        z[e] = True
+      for e in dif.names if dif else []:
         z[e] = True
       return DirNode(sorted(z.keys()))
 
@@ -428,8 +425,8 @@ class EvalVisitor33:
         say dif
         return dif
 
-      say up, h, derived, (sorted(p.diff.keys()))
-      return DirNode(sorted(p.diff.keys()))
+      say p.diff, dif, h, t, up, derived
+      return DirNode(sorted(dif.names))
 
     ## Override dic with elements of diff.
     base = .lookup_fn(derived)
@@ -438,10 +435,6 @@ class EvalVisitor33:
     for k, _ in sorted(p.diff.items()):
       z[k] = True
     return DirNode(sorted(z.keys()))
-
-    #say 'YAKYAKYAKYAK', p, path, up, derived, kw, sorted(z.keys())
-    #raise 'YAKYAKYAKYAK'
-
 
   def visitBare(p, path, **kw):
     return LeafNode(p)

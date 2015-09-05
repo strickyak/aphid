@@ -1,4 +1,5 @@
 from . import laph7 as L
+from lib import data
 #####################################
 
 p1 = `{ a = { #comment
@@ -111,5 +112,50 @@ assert '33' == p4.Eval('/three/a').leaf.a
 assert '20' == p4.Eval('/one/aa').leaf.a
 assert '44' == p4.Eval('/two/aa').leaf.a
 assert '66' == p4.Eval('/three/aa').leaf.a
+
+
+PROGRAM5 = `
+  abc = {
+    a1 = 110
+    a2 = 120
+    a3 = 130
+    b = { b1 = 210; b2 = 220; d = { d1 = 1111} }
+    c = { c1 = 310; c2 = 320; c3 = 330 }
+  }
+
+  def = abc {
+    a2 = 1120
+    c { c3 = 930; c4 = 940 }
+  }
+
+  ghi = def {
+    a3 = 1130
+    b { b2 = 520 ; b3 = 530 ; d { d2 = 2222} }
+  }
+`
+# abc {"a1":"110", "a2":"120", "a3":"130", "b":{"b1":"210", "b2":"220", "d":{"d1":"1111"}}, "c":{"c1":"310", "c2":"320", "c3":"330"}}
+
+# def {"a1":"110", "a2":"1120", "a3":"130", "b":{"b1":"210", "b2":"220", "d":{"d1":"1111"}}, "c":{"c1":"310", "c2":"320", "c3":"930", "c4":"940"}}
+
+# ghi {"a1":"110", "a2":"1120", "a3":"1130", "b":{"b1":"210", "b2":"520", "b3":"530", "d":{"d1":"1111", "d2":"2222"}}, "c":{"c1":"310", "c2":"320", "c3":"930", "c4":"940"}}
+
+p5 = L.Compile22(PROGRAM5)
+assert ['d1'] == p5.Eval('/def/b/d').names
+assert ['d1', 'd2'] == p5.Eval('/ghi/b/d').names
+assert '1111' == p5.Eval('/abc/b/d/d1').leaf.a
+assert '1111' == p5.Eval('/def/b/d/d1').leaf.a
+assert '1111' == p5.Eval('/ghi/b/d/d1').leaf.a
+assert '2222' == p5.Eval('/ghi/b/d/d2').leaf.a
+assert p5.Eval('/def/c').names == 'c1 c2 c3 c4'.split()
+
+print "\nabc", p5.ToJson('/abc')
+print "\ndef", p5.ToJson('/def')
+print "\nghi", p5.ToJson('/ghi')
+
+assert data.Eval(p5.ToJson('/abc')) == {"a1":"110", "a2":"120", "a3":"130", "b":{"b1":"210", "b2":"220", "d":{"d1":"1111"}}, "c":{"c1":"310", "c2":"320", "c3":"330"}}
+
+assert data.Eval(p5.ToJson('/def')) == {"a1":"110", "a2":"1120", "a3":"130", "b":{"b1":"210", "b2":"220", "d":{"d1":"1111"}}, "c":{"c1":"310", "c2":"320", "c3":"930", "c4":"940"}}
+
+assert data.Eval(p5.ToJson('/ghi')) == {"a1":"110", "a2":"1120", "a3":"1130", "b":{"b1":"210", "b2":"520", "b3":"530", "d":{"d1":"1111", "d2":"2222"}}, "c":{"c1":"310", "c2":"320", "c3":"930", "c4":"940"}}
 
 print "OKAY: laph7_test.py"
