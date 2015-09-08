@@ -1,10 +1,22 @@
 from go import path as P
 
+class Lambda:
+  def __init__(formals, body):
+    .formals = formals
+    .body = body
+
+class Directory:
+  def __init__(names):
+    .names = names
+  def __repr__():
+    return 'D{%s}' % ','.join(.names)
+
 ###############################
 # Path Manipulation
 B = P.Base
 C = P.Clean
 D = P.Dir
+
 def J(*args):
   """Join"""
   return C(P.Join(*args))
@@ -20,12 +32,6 @@ def H(path):
   vec = [e for e in path.split('/') if e]
   return vec[0] if vec else ''
 
-#def S(s):
-#  """Split Somehow?"""
-#  if s.startswith('/'):
-#    return ['/'] + [e for e in s.split('/') if e]
-#  else:
-#    return [e for e in s.split('/') if e]
 def Absolute(path, rel):
   """Resolve Relative or Absolute to Absoulte"""
   if path.startswith('/'):
@@ -33,286 +39,231 @@ def Absolute(path, rel):
   else:
     return J(rel, path)
 
-class Binding:
-  def __init__(key, value, next):
-    .key = key
-    .value = value
-    .next = next
-def Simple(a):
-  switch type(a):
-    case str:
-      return a
-    case int:
-      return a
-    case list:
-      return a
-  if a.isCommand():
-    return a.vec
-  if a.isBare():
-    return a.a
-  if a.isDollar():
-    raise 'dollar?', a
-  raise 'what?', a
 
-class Evaluator:
-  def __init__(lookup_fn, command_ctor, value_ctor):
+class Chucl:
+  def __init__(lookup_fn):
     .lookup_fn = lookup_fn
-    .command_ctor = command_ctor
-    .value_ctor = value_ctor
 
-  def Lookup(k, dirpath, binding):
-    # First try looking in the binding.
-    say k, dirpath, binding
-    while binding:
-      say H(k), binding.key
-      if binding.key == H(k):
-        return binding.value
-      binding = binding.next
-    # Then use the provided lookup_fn.
-    return .lookup_fn(Absolute(k, dirpath))
+  def EvalPathThing(path, rel='/', binding=None):
+    # Look in binding for the path (if it has no '/').
+    if binding and not ('/' in path):
+      if path in binding:
+        return binding[path]
 
-  def EvalPath(path, rel='/', binding=None):
-    say '<EP<', path, rel
-    apath = Absolute(path, rel)
-    node = .lookup_fn(apath)
-    z = .EvalNode(node, apath, binding)
-    say '>EP>', apath, z, node
-    #print "YAK_EvalPath: %-20s ==> %20s ==> %s" % (apath, z, node)
+    # THIS IS THE UPLOOKING CODE.
+    if path.startswith('/') or path.startswith('./') or path.startswith('../'):
+      # Specific path was given; do not do up-looking.
+      Qpath = R(path, rel)
+    else:
+      # Search for the head name.
+      h = H(path)
+      d = rel
+      while True:
+        maybe = .lookup_fn(R(h, d))
+        if maybe: break
+        if d == '.' or d == '' or d == '/': break
+        d = D(d)
+      if not maybe:
+        say h, path
+        raise 'Dollar: Cannot find %q from path %q starting at %q' % (h, path, rel)
+      Qpath = R(path, d)  # Rejoin d with entire path.
+
+    # Now that you know how far up to go, lookup the final result.
+    thing = .lookup_fn(Qpath)
+    # And eval the result with Chucl.
+    z = .EvalChucl(thing, Qpath, binding)
     return z
-  
-  def EvalNode(node, path, binding):
-    Cpath = C(path)
-    Dpath = D(Cpath)
-    say '<EN<', node, path, Cpath
 
-    if not node:
-      say '>>', node, '>>None'
+  def EvalChucl(thing, path, binding):
+    if thing is None:
       return None
 
-    if node.IsDir():
-      must type(node.names) is list, node.names
-      say '>>', node, '>>IsDir>>', node
-      return node
+    Cpath = C(path)
+    Dpath = D(Cpath)
 
-    must node.IsLeaf(), node
-    leaf = node.leaf
-    if leaf.isBare():
-      say '>>', node, '>>leaf.isBare>>', node
-      return node
+    switch repr(type(thing)):
+      case 'Directory':
+        return thing
 
-    if leaf.isDollar():
-      say leaf.a
-      if leaf.a.startswith('/') or leaf.a.startswith('./') or leaf.a.startswith('../'):
-        # Absolute path was given.
-        Qpath = R(leaf.a, Dpath)
-      else:
-        # Search for the head name.
-        h = H(leaf.a)
-        d = Dpath
-        while True:
-          say leaf.a, h, d, Cpath
-          maybe = .Lookup(R(h, d), '/', binding)
-          if maybe: break
-          if d == '' or d == '/': break
-          d = D(d)
-        if not maybe:
-          say h, leaf.a
-          raise 'Dollar: Cannot find %q from path %q starting at %q' % (h, leaf.a, Cpath)
-        Qpath = J(d, leaf.a)
+    switch type(thing):
+      case str:
+        say '>>', thing, '>>leaf.isBare>>', thing
 
-      q = .Lookup(Qpath, '/', binding)
-      say '->', node, Qpath, '>>leaf.isDollar....', q
-      z = .EvalNode(q, Qpath, binding)
-      say '>>', node, Qpath, '>>leaf.isDollar>>', z
-      must not z or z.IsLeaf()
-      return z
-
-    if leaf.isCommand():
-      say '->', node, Cpath, '>>leaf.isCommand....'
-      z = .EvalCommand(leaf, Cpath, binding)
-      say '>>', node, Cpath, '>>leaf.isCommand>>', z
-      must not z or z.IsLeaf()
-      return z
-
-    raise 'EvalNode cannot eval node of type %v' % type(node)
-
-  def EvalCommand(leaf, Cpath, binding):
-    say '<EvalCommand<', leaf, Cpath, binding
-    try:
-      z = .EvalCommand2(leaf, Cpath, binding)
-      say '>EvalCommand>', leaf, Cpath, binding, '>EC>', z
-      say str(type(z)), repr(type(z)), z
-      switch repr(type(z)): # TODO -- Unhack this hackity hack.
-        case 'Command':
-          return .command_ctor(z.cmdvec)
-      switch type(z):  # TODO -- Unhack this hack to fix command results.
-        case str:
-          return .value_ctor(z)
-        case int:
-          return .value_ctor(str(z))
-        case float:
-          return .value_ctor(str(z))
-      say type(z), z
-      must not z or z.IsLeaf()
-      return z
-    except as ex:
-      # TODO: Stop evalling commands too early.
-      say('EXCEPTION(%s)' % ex)
-      return .value_ctor('EXCEPTION(%s)' % ex)
-
-  def EvalCommand2(leaf, Cpath, binding):
-    cmdvec = leaf.cmdvec
-    say cmdvec, Cpath, binding
-    must type(cmdvec) is list, cmdvec
-    must len(cmdvec), cmdvec
-    cmd = cmdvec[0].leaf
-
-    # Dereference if cmd is a Dollar.
-    if cmd.isDollar():
-      cmd = .EvalNode(cmdvec[0], Cpath, binding).leaf
-      say cmd
-      #say cmd.a
-      #say cmd.a.cmdvec
-      #cmd = cmd.a
-
-    say cmd.isCommand(), type(cmd), cmd
-    # If cmd is lambda expression:
-    if cmd.isCommand():
-      #raise 'Lambdas not tested yet'
-      vec2 = cmd.cmdvec
-      must len(vec2) == 3, vec2
-      fn, formals, body = vec2
-      say type(fn), fn, type(formals), formals
-      must fn.leaf.isBare(), vec2
-      must fn.leaf.a == "fn", vec2
-      must formals.leaf.isCommand(), vec2  # Actually, a vec of formal parameters.
-      must len(formals.leaf.cmdvec) == len(cmdvec) - 1  # Correct number of args to formals.
-
-      binding2 = binding
-      for f, v in zip(formals.leaf.cmdvec, cmdvec[1:]):
-        binding2 = Binding(f.leaf.a, v, binding2)
-        say f, v, binding2
-      z = .EvalNode(body, Cpath, binding2)
-      say vec2, z
-      return z
-
-    must cmd.isBare(), type(cmd), cmd
-    cmd = cmd.a
-    cmdvec = cmdvec[1:]
-
-    # Handle special forms.
-    switch cmd:
-      case 'fn':
-        return leaf  # Lambda exprs eval to themselves.
-      case 'if':
-        must len(cmdvec) == 3, cmdvec
-        x, y, z = cmdvec
-        #say x, y, v
-        xv = Simple(.EvalNode(x, Cpath, binding))
-        #say xv
-        if xv and xv!='False':
-          # True branch.
-          #say 'True', y
-          return .EvalNode(y, Cpath, binding)
-        else:
-          # False branch.
-          #say 'False', z
-          return .EvalNode(z, Cpath, binding)
-
-    # Handle other builtins.
-    args = []
-    #for a in vecmdvec:
-    #  #say 'Raw ARG:', a
-
-    say cmdvec
-    args = []
-    for a in cmdvec:
-      x = .EvalNode(a, Cpath, binding)
-      if x and x.IsDir():
-        say 'YAK GOT DirNode FROM EvalNode', a, Cpath, binding
-      args.append(x.leaf.a if x else None) 
-    say args
-
-    switch cmd:
-      case 'error':
-        raise 'ERROR(%s)' % str(args)
-
-    # Special code for the many binary operators.
-    if len(args) == 1:
-      x, = args
-      switch cmd:
-        case 'range':
-          return [str(e) for e in range(int(x))]
-        case 'length':
-          z = str(len(Simple(x)))
+        if thing.startswith('$'):
+          q = thing[1:]
+          say '<<leaf.isDollar<<', q
+          z = .EvalPathThing(q, Dpath, binding)
+          say '>>', path, thing, q, Dpath, '>>leaf.isDollar>>', z
+          must not z or type(z) is str
           return z
-        case 'error':
-          z = 'ERROR(%s)' % x
+        else:
+          return thing
 
-    if len(args) == 2:
-      x, y = args
-      say x, y
-      switch cmd:
-        case '++':
-          return x + y
-        case '+':
-          return str(float(x) + float(y))
-        case '-':
-          return str(float(x) - float(y))
-        case '*':
-          return str(float(x) * float(y))
-        case '/':
-          return str(float(x) / float(y))
-        case '//':
-          return str(float(x) // float(y))
-        case '%':
-          return str(float(x) % float(y))
-        case '<':
-          return str(float(x) < float(y))
-        case '<=':
-          return str(float(x) <= float(y))
-        case '==':
-          return str(float(x) == float(y))
-        case '!=':
-          return str(float(x) != float(y))
-        case '>':
-          return str(float(x) > float(y))
-        case '>=':
-          return str(float(x) >= float(y))
-        case 'split':
-          return y.split(x)  # (split ch str)
-        case 'join':
-          return x.join(y)   # (join sep strs)
+      case list:
+        say '->', thing, Cpath, '>>leaf.isCommand....'
+        z = .EvalCommand(thing, Cpath, binding)
+        say '>>', thing, Cpath, '>>leaf.isCommand>>', z
+        return z
 
-        # String comparison
-        case 'lt':
-          return str(x < y)
-        case 'le':
-          return str(x <= y)
-        case 'eq':
-          return str(x == y)
-        case 'ne':
-          return str(x != y)
-        case 'gt':
-          return str(x > y)
-        case 'ge':
-          return str(x >= y)
+    raise 'EvalChucl cannot eval node of type %v' % type(thing)
+  
+  def EvalCommand(in_vec, Cpath, binding):
+    vec = [(None if e is None else .EvalChucl(e, Cpath, binding)) for e in in_vec]
 
-        case 'map':
-          return [.EvalCommand(.command_ctor([x, e]), Cpath, binding) for e in y]
-
-    # Fall through for other cases.
+    cmd, args = vec[0], vec[1:]
     switch cmd:
       case '++':
-        return ''.join([x for x in args])
-
+        return ''.join(args)
       case '+':
-        return str(sum([float(x) for x in args]))
+        return str(sum([int(x) for x in args]))
       case '*':
-        return reduce((lambda a,b: a*b), [float(x) for x in args])
-      case 'list':
-        return args
+        return str(reduce(lambda a, b: int(a)*int(b), args, 1))
+    raise 'EvalCommand: unknown cmd: %q' % cmd
 
-    raise 'No such Chucl command: %q (or wrong number of args: %d)' % (cmd, len(args))
-
-pass
+#  def EvalCommand2(leaf, Cpath, binding):
+#    raise 666
+#    cmdvec = leaf.cmdvec
+#    say cmdvec, Cpath, binding
+#    must type(cmdvec) is list, cmdvec
+#    must len(cmdvec), cmdvec
+#    cmd = cmdvec[0].leaf
+#
+#    # Dereference if cmd is a Dollar.
+#    if cmd.isBare() and cmd.a.startswith('$'):
+#      cmd = .EvalPath(cmd.a[1:], D(Cpath), binding).leaf
+#      say cmd
+#
+#    say cmd.isCommand(), type(cmd), cmd
+#    # If cmd is lambda expression:
+#    if cmd.isCommand():
+#      #raise 'Lambdas not tested yet'
+#      vec2 = cmd.cmdvec
+#      must len(vec2) == 3, vec2
+#      fn, formals, body = vec2
+#      say type(fn), fn, type(formals), formals
+#      must fn.leaf.isBare(), vec2
+#      must fn.leaf.a == "fn", vec2
+#      must formals.leaf.isCommand(), vec2  # Actually, a vec of formal parameters.
+#      must len(formals.leaf.cmdvec) == len(cmdvec) - 1  # Correct number of args to formals.
+#
+#      binding2 = binding
+#      for f, v in zip(formals.leaf.cmdvec, cmdvec[1:]):
+#        raise 'binding2 = Binding(f.leaf.a, v, binding2)'
+#        say f, v, binding2
+#      z = .EvalNode(body, Cpath, binding2)
+#      say vec2, z
+#      return z
+#
+#    must cmd.isBare(), type(cmd), cmd
+#    cmd = cmd.a
+#    cmdvec = cmdvec[1:]
+#
+#    # Handle special forms.
+#    switch cmd:
+#      case 'lambda':
+#        return leaf  # Lambda exprs eval to themselves.
+#      case 'if':
+#        must len(cmdvec) == 3, cmdvec
+#        x, y, z = cmdvec
+#        xv = .EvalNode(x, Cpath, binding)
+#        s = xv.leaf.a if xv else None
+#        if xv and xv!='False':
+#          # True branch.
+#          return .EvalNode(y, Cpath, binding)
+#        else:
+#          # False branch.
+#          return .EvalNode(z, Cpath, binding)
+#
+#    # Handle other builtins.
+#    args = []
+#
+#    say cmdvec
+#    args = []
+#    for a in cmdvec:
+#      x = .EvalNode(a, Cpath, binding)
+#      if x and x.IsDir():
+#        say 'YAK GOT DirNode FROM EvalNode', a, Cpath, binding
+#      args.append((x.leaf.a if x.leaf.isBare() else x.leaf.cmdvec) if x else None) 
+#    say args
+#
+#    switch cmd:
+#      case 'error':
+#        raise 'ERROR(%s)' % str(args)
+#
+#    # Special code for the many binary operators.
+#    if len(args) == 1:
+#      x, = args
+#      switch cmd:
+#        case 'range':
+#          return [str(e) for e in range(int(x))]
+#        #case 'length':
+#        #  z = str(len(Simple(x)))
+#        #  return z
+#        case 'error':
+#          z = 'ERROR(%s)' % x
+#
+#    if len(args) == 2:
+#      x, y = args
+#      say x, y
+#      switch cmd:
+#        case '++':
+#          return x + y
+#        case '+':
+#          return str(float(x) + float(y))
+#        case '-':
+#          return str(float(x) - float(y))
+#        case '*':
+#          return str(float(x) * float(y))
+#        case '/':
+#          return str(float(x) / float(y))
+#        case '//':
+#          return str(float(x) // float(y))
+#        case '%':
+#          return str(float(x) % float(y))
+#        case '<':
+#          return str(float(x) < float(y))
+#        case '<=':
+#          return str(float(x) <= float(y))
+#        case '==':
+#          return str(float(x) == float(y))
+#        case '!=':
+#          return str(float(x) != float(y))
+#        case '>':
+#          return str(float(x) > float(y))
+#        case '>=':
+#          return str(float(x) >= float(y))
+#        case 'split':
+#          return y.split(x)  # (split ch str)
+#        case 'join':
+#          return x.join(y)   # (join sep strs)
+#
+#        # String comparison
+#        case 'lt':
+#          return str(x < y)
+#        case 'le':
+#          return str(x <= y)
+#        case 'eq':
+#          return str(x == y)
+#        case 'ne':
+#          return str(x != y)
+#        case 'gt':
+#          return str(x > y)
+#        case 'ge':
+#          return str(x >= y)
+#
+#        case 'map':
+#          return [.EvalCommand(.command_ctor([x, e]), Cpath, binding) for e in y]
+#
+#    # Fall through for other cases.
+#    switch cmd:
+#      case '++':
+#        return ''.join([x for x in args])
+#
+#      case '+':
+#        return str(sum([float(x) for x in args]))
+#      case '*':
+#        return reduce((lambda a,b: a*b), [float(x) for x in args])
+#      case 'list':
+#        return args
+#
+#    raise 'No such Chucl command: %q (or wrong number of args: %d)' % (cmd, len(args))

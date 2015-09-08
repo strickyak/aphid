@@ -1,5 +1,5 @@
 from go import path as P, regexp, io/ioutil, strconv
-from . import laph7_chucl as laph_chucl
+from . import laph7_chucl as Ch
 
 MAX_DELEGATION = 4  # Awful hack.  Should get feedback, if things fail.
 
@@ -43,11 +43,9 @@ ReplaceComment = regexp.MustCompile('[#].*').ReplaceAllString
 class Lex:
   def __init__(program):
     .program = ReplaceSpecialsAnywhere(program, ' $1 ')
-    #say .program
     .toks = .lexProgram()
 
   def lexLine(line):
-    #say line
     line = ReplaceComment(line, '')
     return [x for x in line.split() if x]
 
@@ -62,7 +60,6 @@ class Lex:
 ###############################
 # Abstract Syntax Tree Nodes
 #  -- Bare:  a bare word, like x
-#  -- Dollar: a word starting with Dollar, like $x
 #  -- Command: a parenthesized nonempty list of words, like (+ $x 1)
 #  -- Tuple: a Named Tuple, like { a = foo ; b = 99 }
 #  -- Derive:  a Derived Tuple, like tmpl... in { ... ; x = tmpl { p = 80 } ; ... } 
@@ -70,8 +67,6 @@ class Lex:
 
 class AST:
   def isBare():
-    return False
-  def isDollar():
     return False
   def isCommand():
     return False
@@ -111,17 +106,6 @@ class Tuple(AST): # Named tuple with {...}.
     return '{Tuple: %s }' % (' ; '.join(['%v = %v' % (k, v) for k, v in sorted(.dic.items())]))
   def __repr__(): return .__str__()
 
-class Dollar(AST): # Dollar substituted bareword.
-  def __init__(a):
-    .a = a
-  def visit(w, **kw):
-    return w.visitDollar(self, **kw)
-  def __str__():
-    return '< $%v >' % .a
-  def __repr__(): return .__str__()
-  def isDollar():
-    return True
-
 class Bare(AST):  # Bareword has its own value.
   def __init__(a):
     .a = a
@@ -132,6 +116,8 @@ class Bare(AST):  # Bareword has its own value.
   def __repr__(): return .__str__()
   def isBare():
     return True
+  def simplify():
+    return str(.a)
 
 class Command(AST):  # Parenthesized command.
   def __init__(cmdvec):
@@ -143,6 +129,8 @@ class Command(AST):  # Parenthesized command.
   def __repr__(): return .__str__()
   def isCommand():
     return True
+  def simplify():
+    return [x.simplify() for x in .cmdvec]
 
 ###############################
 # The Parser.
@@ -164,9 +152,7 @@ class Parse:
     z = []
     while .p[.i][0] != ')':
       word, wordl = .p[.i]
-      if word.startswith('$'):
-        z.append( LeafNode(Dollar(word[1:])) )
-      elif word.startswith('('):
+      if word.startswith('('):
         .next()
         zzz = .ParseCommand()
         z.append( LeafNode(zzz) )
@@ -236,10 +222,7 @@ class Parse:
     else: # if not Special
       peek, peekl = .p[.i]
       if peek == ';' or peek == '}':
-        if x.startswith('$'):
-          return Dollar(x[1:])
-        else:
-          return Bare(x)
+        return Bare(x)
       elif peek == '{':
         tup = .ParseExpr()
         must type(tup) is Tuple
@@ -249,74 +232,8 @@ class Parse:
 
     raise 'Unhandled', .i, .p[.i]
 
-MATCH_INTEGER = regexp.MustCompile('^-?[0-9]+$').FindString
-
-class Compile22:
-  def __init__(program):
-    .program = program
-    say .program
-    parsed = Parse(program)
-    say parsed.p
-    .tree = parsed.ParseTupleGuts()
-    say .tree
-    must type(.tree) == Tuple, 'Expected program to be a Tuple, but got %q' % type(.tree)
-
-    def lookup_fn(k):
-      return .visitor.visitTuple(.tree, path=k, up='/', derived='/')
-
-    def command_ctor(a):
-      return LeafNode(Command(a))
-
-    def value_ctor(a):
-      return LeafNode(Bare(a))
-
-    .chucl = laph_chucl.Evaluator(lookup_fn, command_ctor, value_ctor)
-    .lookup_fn = lookup_fn
-    .visitor = EvalVisitor33(self)
-
-  def Eval(path):
-    path = C(path)
-    say '#'
-    say '<<<<<<<<<', path
-    z = .chucl.EvalPath(path)
-    say '>>>>>>>>>', path, z
-    say '#'
-    return z
-
-  def Keys(path):  # that are not _hidden.
-    path = C(path)
-    d = .chucl.EvalPath(path)
-    return sorted([k for k in d if not k.startswith('_')])
-
-  def ToListing(path='/'):
-    path = C(path)
-    a = .Eval(path)
-    switch type(a):
-      case "*rye.PNone":
-        print "%s == **None**" % path
-      case LeafNode:
-        print "%s == %s" % (path, a.leaf)
-      case DirNode:
-        #print "%s :: [[[ %s ]]]" % (path, a.names)
-        for name in a.names:
-          .ToListing(J(path, name))
-
-  def ToJson(path='/'):
-    path = C(path)
-    a = .Eval(path)
-    switch type(a):
-      case "*rye.PNone":
-        return "null"
-      case LeafNode:
-        return "%q" % a.leaf.a
-      case DirNode:
-        vec = [(k, .ToJson(J(path, k))) for k in sorted(a.names) if not k.startswith('_')]
-        return '{%s}' % ', '.join(['%s:%s' % (repr(k), v) for k, v in vec if not k.startswith('_')])
-    raise 'bad default %q' % str(type(a))
-
 class Node:
-  def IsNode():
-    return True
+  pass
 
 class LeafNode(Node):
   def __init__(leaf):
@@ -326,9 +243,11 @@ class LeafNode(Node):
   def IsDir():
     return False
   def __str__():
-    return 'L(%s)' % .leaf
+    return 'L{%s}' % .leaf
   def __repr__():
-    return 'L(%s)' % .leaf
+    return 'L{%s}' % .leaf
+  def simplify():
+    return .leaf.simplify()
 
 class DirNode(Node):
   def __init__(names):
@@ -341,12 +260,13 @@ class DirNode(Node):
     return 'D{%s}' % ','.join(.names)
   def __repr__():
     return 'D{%s}' % ','.join(.names)
+  def simplify():
+    return Ch.Directory(.names)
 
 class EvalVisitor33:
   """Evaluate a path."""
   def __init__(compiler):
-    .chucl = compiler.chucl  # The Command Interpreter.
-    .lookup_fn = compiler.lookup_fn
+    .compiler = compiler
 
   def visitTuple(p, path, up, derived, **kw):
     h, t = HT(path)
@@ -380,7 +300,7 @@ class EvalVisitor33:
         return dif
       # dif is not LeafNode.
 
-      base = .lookup_fn(J(basepath, h, t))
+      base = .compiler.lookupNode(J(basepath, h, t))
       say p.template, J(p.template, h, t), base
 
       if dif is None and base is not None and base.IsLeaf():
@@ -400,7 +320,7 @@ class EvalVisitor33:
         z[e] = True
       return DirNode(sorted(z.keys()))
 
-    base = .lookup_fn(J(basepath, h, t))
+    base = .compiler.lookupNode(J(basepath, h, t))
     say p.template, J(p.template, h, t), base
 
     # Override dic with elements of diff.
@@ -429,7 +349,7 @@ class EvalVisitor33:
       return DirNode(sorted(dif.names))
 
     ## Override dic with elements of diff.
-    base = .lookup_fn(derived)
+    base = .compiler.lookupNode(derived)
     must base is None or base.IsDir()
     z = dict([(e, True) for e in (base.names if base else [])])
     for k, _ in sorted(p.diff.items()):
@@ -437,9 +357,6 @@ class EvalVisitor33:
     return DirNode(sorted(z.keys()))
 
   def visitBare(p, path, **kw):
-    return LeafNode(p)
-
-  def visitDollar(p, path, **kw):
     return LeafNode(p)
 
   def visitCommand(p, path, **kw):
@@ -450,10 +367,61 @@ def main(argv):
   c = Compile22(s)
 
   if len(argv) == 0:
-    print c.ToListing()
+    print c.ToListing('/')
   else:
     for a in argv:
       print '# %s' % a
       print c.ToJson(a)
+
+class Compile22:
+  def __init__(program):
+    .program = program
+    say .program
+    parsed = Parse(program)
+    say parsed.p
+    .tree = parsed.ParseTupleGuts()
+    say .tree
+    must type(.tree) == Tuple, 'Expected program to be a Tuple, but got %q' % type(.tree)
+
+    .chucl = Ch.Chucl(.Lookup)
+    .visitor = EvalVisitor33(self)
+
+  def Eval(path):
+    return .chucl.EvalPathThing(C(path))
+
+  def Lookup(path):
+    node = .lookupNode(path)
+    return None if node is None else node.simplify()
+
+  def lookupNode(path):
+    return .visitor.visitTuple(.tree, path=path, up='/', derived='/')
+
+  def ToListing(path):
+    path = C(path)
+    a = .Eval(path)
+    switch type(a):
+      case type(None):
+        print "%s == **None**" % path
+      case LeafNode:
+        print "%s == %s" % (path, a.leaf)
+      case DirNode:
+        #print "%s :: [[[ %s ]]]" % (path, a.names)
+        for name in a.names:
+          .ToListing(J(path, name))
+
+  def ToJson(path):
+    path = C(path)
+    a = .Eval(path)
+    switch type(a):
+      case type(None):
+        return "null"
+      case str:
+        return "%q" % a
+      case Ch.Directory:
+
+        vec = [(k, .ToJson(J(path, k))) for k in sorted(a.names) if not k.startswith('_')]
+        return '{%s}' % ', '.join(['%s:%s' % (repr(k), v) for k, v in vec if not k.startswith('_')])
+
+    raise 'bad default %q' % str(type(a))
 
 pass
