@@ -5,12 +5,6 @@ class Lambda:
     .formals = formals
     .body = body
 
-class Directory:
-  def __init__(names):
-    .names = names
-  def __repr__():
-    return 'D{%s}' % ','.join(.names)
-
 ###############################
 # Path Manipulation
 B = P.Base
@@ -41,8 +35,9 @@ def Absolute(path, rel):
 
 
 class Chucl:
-  def __init__(lookup_fn):
+  def __init__(lookup_fn, directory_cls):
     .lookup_fn = lookup_fn
+    .directory_cls = directory_cls
 
   def EvalPathThing(path, rel='/', binding=None):
     # Look in binding for the path (if it has no '/').
@@ -81,11 +76,10 @@ class Chucl:
     Cpath = C(path)
     Dpath = D(Cpath)
 
-    switch repr(type(thing)):
-      case 'Directory':
+    switch type(thing):
+      case .directory_cls:
         return thing
 
-    switch type(thing):
       case str:
         say '>>', thing, '>>leaf.isBare>>', thing
 

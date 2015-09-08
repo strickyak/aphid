@@ -3,6 +3,12 @@ from . import laph7_chucl as Ch
 
 MAX_DELEGATION = 4  # Awful hack.  Should get feedback, if things fail.
 
+class Directory:
+  def __init__(names):
+    .names = names
+  def __repr__():
+    return 'D{%s}' % ','.join(.names)
+
 ###############################
 # Path Manipulation
 B = P.Base
@@ -261,7 +267,7 @@ class DirNode(Node):
   def __repr__():
     return 'D{%s}' % ','.join(.names)
   def simplify():
-    return Ch.Directory(.names)
+    return Directory(.names)
 
 class EvalVisitor33:
   """Evaluate a path."""
@@ -383,7 +389,7 @@ class Compile22:
     say .tree
     must type(.tree) == Tuple, 'Expected program to be a Tuple, but got %q' % type(.tree)
 
-    .chucl = Ch.Chucl(.Lookup)
+    .chucl = Ch.Chucl(.Lookup, Directory)
     .visitor = EvalVisitor33(self)
 
   def Eval(path):
@@ -398,14 +404,16 @@ class Compile22:
 
   def ToListing(path):
     path = C(path)
-    a = .Eval(path)
+    try:
+      a = .Eval(path)
+    except as ex:
+      a = 'EXCEPTION: ' + ex
     switch type(a):
       case type(None):
         print "%s == **None**" % path
-      case LeafNode:
-        print "%s == %s" % (path, a.leaf)
-      case DirNode:
-        #print "%s :: [[[ %s ]]]" % (path, a.names)
+      case str:
+        print "%s == %s" % (path, a)
+      case Directory:
         for name in a.names:
           .ToListing(J(path, name))
 
@@ -417,7 +425,7 @@ class Compile22:
         return "null"
       case str:
         return "%q" % a
-      case Ch.Directory:
+      case Directory:
 
         vec = [(k, .ToJson(J(path, k))) for k in sorted(a.names) if not k.startswith('_')]
         return '{%s}' % ', '.join(['%s:%s' % (repr(k), v) for k, v in vec if not k.startswith('_')])
