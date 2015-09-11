@@ -16,9 +16,9 @@ _job_template = {
   }
 
   peers = {
-    31 = { host = $/hosts/node1/ip ; port = 81 ; name = node1 ; num = $/hosts/node1/num ; }
-    32 = { host = $/hosts/jig1/ip  ; port = 81 ; name = jig1  ; num = $/hosts/jig1/num  ; }
-    33 = { host = $/hosts/lid1/ip  ; port = 81 ; name = lid1  ; num = $/hosts/lid1/num  ; }
+    node1 = { host = $/hosts/node1/ip ; port = 81 ; name = node1 ; num = $/hosts/node1/num ; }
+    jig1 = { host = $/hosts/jig1/ip  ; port = 81 ; name = jig1  ; num = $/hosts/jig1/num  ; }
+    lid1 = { host = $/hosts/lid1/ip  ; port = 81 ; name = lid1  ; num = $/hosts/lid1/num  ; }
   }
 
   ports = {
@@ -39,9 +39,10 @@ _job_template = {
     sheep-stash = { kind = plain }
   }
 
-  formic = {
-    sheep-formic = { bundle = sheep-formic; paths = { 1 = /@sheep-formic/ } }
-    sheep-boxturtle = { bundle = sheep-boxturtle; paths = { 1 = /@sheep-boxturtle/ } }
+  formics = {
+    _PW = { md5pw = f5606220aa1e4ab012a6cc32cc980dd9 } # "password"
+    sheep-formic = _PW { bundle = sheep-formic; paths = { 1 = /@sheep-formic/ } }
+    sheep-boxturtle = _PW { bundle = sheep-boxturtle; paths = { 1 = /@sheep-boxturtle/ } }
   }
 
   smilax4 = {
@@ -77,7 +78,7 @@ job:lid1 = /_job_template {
 }
 
 _local_template = /_job_template {
-  peers = {
+  peers {
     node1 = { host = 127.0.0.1 ; port = 11081 }
     jig1  = { host = 127.0.0.1 ; port = 12081 }
     lid1  = { host = 127.0.0.1 ; port = 13081 }

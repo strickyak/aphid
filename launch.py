@@ -55,7 +55,7 @@ class Aphid:
     if filename.find('.laph:') > 0:
       laphfile, part = filename.split(':', 1)
       laphexpr = ioutil.ReadFile(laphfile)
-      js = laph.Compile('{%s}' % laphexpr).ToJson(part)
+      js = laph.Compile(laphexpr).ToJson(part)
       .x = data.Eval(js)
     else:
       .x = EvalConfig(filename, snippet)
@@ -67,10 +67,10 @@ class Aphid:
     .f_topdir = .x['flags']['topdir']
     .f_domain = .x['flags'].get('domain', '')
     say .x['ports']
-    .p_dns = .x['ports'].get('dns', 0)
-    .p_http = .x['ports']['http']
-    .p_https = .x['ports']['https']
-    .p_rpc = .x['ports']['rpc']
+    .p_dns = int(.x['ports'].get('dns', 0))
+    .p_http = int(.x['ports']['http'])
+    .p_https = int(.x['ports']['https'])
+    .p_rpc = int(.x['ports']['rpc'])
     .x_bundles = .x['bundles']
     .x_zones = .x.get('zones', {})
     .x_webs = .x.get('webs', {})
@@ -254,7 +254,7 @@ class Aphid:
       go .tlsserver.ListenAndServeTLS("cacert.pem", "privkey.pem")
 
   def StartAmong():
-    peer_map = dict([(v['num'], '%s:%d' % (v['host'], v['port'])) for _, v in .x_peers.items()])
+    peer_map = dict([(v['num'], '%s:%d' % (v['host'], int(v['port']))) for _, v in .x_peers.items()])
     say peer_map
     am = among.Among(self, .x_me, peer_map)
     am.Start()

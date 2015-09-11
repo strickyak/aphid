@@ -1,4 +1,4 @@
-from . import laph7 as L
+from . import laph as L
 from lib import data
 #####################################
 
@@ -36,7 +36,7 @@ PROGRAM1= `
   factorial = (lambda (n) (if (< $n 2) 1 (* $n ($factorial (- $n 1)))))
   twenty = ($factorial 4)
 `
-p1 = L.Compile22(PROGRAM1)
+p1 = L.Compile(PROGRAM1)
 
 must "100" == p1.Eval('/a')
 must "BART" == p1.Eval('/b')
@@ -63,7 +63,7 @@ PROGRAM2= `
       b { x = 888 ; m { nn = 20 ; nnn = 40 } }
     }
 `
-p2 = L.Compile22(PROGRAM2)
+p2 = L.Compile(PROGRAM2)
 must "D{a,d,e,qrs}" == repr(p2.Eval('/'))
 must "?Nando!" == p2.Eval('/qrs')
 must "100" == p2.Eval('/a/b/x')
@@ -86,7 +86,7 @@ PROGRAM3 = `
   three = two { c = 33 }
   result = (+ $three/a $three/b $three/c )
 `
-p3 = L.Compile22(PROGRAM3)
+p3 = L.Compile(PROGRAM3)
 assert '66' == p3.Eval('/result')
 ######################################
 
@@ -96,7 +96,7 @@ PROGRAM4 = `
   two = one   { a = 22 }
   three = two { a = 33 }
 `
-p4 = L.Compile22(PROGRAM4)
+p4 = L.Compile(PROGRAM4)
 assert '10' == p4.Eval('/one/a')
 assert '22' == p4.Eval('/two/a')
 assert '33' == p4.Eval('/three/a')
@@ -124,7 +124,7 @@ PROGRAM5 = `
     b { b2 = 520 ; b3 = 530 ; d { d2 = 2222} }
   }
 `
-p5 = L.Compile22(PROGRAM5)
+p5 = L.Compile(PROGRAM5)
 assert 'D{d1}' == repr(p5.Eval('/def/b/d'))
 assert 'D{d1,d2}' == repr(p5.Eval('/ghi/b/d'))
 assert '1111' == p5.Eval('/abc/b/d/d1')
@@ -243,7 +243,7 @@ job:local:lid1 = /_local_template {
   ports { _base = 13000 }
 }
 `
-sheep = L.Compile22(SHEEP)
+sheep = L.Compile(SHEEP)
 
 assert data.Eval(sheep.ToJson('job:node1')) == {"bundles":{"sheep-boxturtle":{"kind":"plain"}, "sheep-dns":{"kind":"plain"}, "sheep-docs":{"kind":"plain"}, "sheep-formic":{"kind":"plain"}, "sheep-smilax":{"kind":"plain"}, "sheep-stash":{"kind":"plain"}},
    "confname":"sheep_31", "flags":{"ip":"198.199.119.196", "keyring":"sheep.ring", "topdir":"/opt/disk/sheep_31"},
