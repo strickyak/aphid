@@ -5,20 +5,20 @@ WATCHDOG_PERIOD = 300.0
 MAX_BACKOFF = 120
 
 class Among:
-  def __init__(aphid, my_id, all_ids_map):
+  def __init__(aphid, my_id, peer_map):
     my_id = str(my_id)
     .aphid = aphid
     .ring = .aphid.ring
     .bus = .aphid.bus
-    must type(all_ids_map) == dict
-    must my_id in all_ids_map
+    must type(peer_map) == dict
+    must my_id in peer_map
     .my_id = my_id
-    .all_ids_map = all_ids_map
+    .peer_map = peer_map
     .conn_map = {}
-    say 'CTOR Among', .my_id, .all_ids_map
+    say 'CTOR Among', .my_id, .peer_map
 
   def Start():
-    for peer_id, peer_loc in .all_ids_map.items():
+    for peer_id, peer_loc in .peer_map.items():
       if peer_id != .my_id:
         go .Connect(peer_id, peer_loc)
 
