@@ -3,13 +3,16 @@ from . import among, aweber, awiki, awedit, azoner, formic, smilax4, stash
 from . import bundle, keyring, pubsub, rbundle
 from . import laph
 
-from go import bufio, fmt, io/ioutil, net/http, os, time
+from go import bufio, fmt, html, io/ioutil, net/http, os, time
 from go import path as P, path/filepath as F
 from go import github.com/strickyak/jsonnet_cgo as VM
+
 from lib import data
 import sys
 
 SEEDDIR = flag.String('seeddir', '', 'Directory containing bundle seed files')
+
+Esc = html.EscapeString
 
 def PJ(*vec):
   return P.Clean(P.Join(*vec))
@@ -46,6 +49,38 @@ def EvalConfig(filename, snippet=None):
     #say js[1730:]
     # Eval the JSON into a Python value.
     return data.Eval(js)
+
+class Mux:
+  def __init__():
+    .mux = http.NewServeMux()
+    .mux.HandleFunc('/', .Otherwise)
+    .paths = {}
+
+  def HandleFunc(path, func):
+    .mux.HandleFunc(path, func)
+    .paths[path] = func
+
+  def Otherwise(w, r):
+    w.Header().Set('Content-Type', 'text/html; charset=UTF-8')
+    w.WriteHeader(http.StatusNotFound)
+    try:
+      fmt.Fprintf(w, Esc("404 NOT FOUND (Path prefix not registered)\n\n") + '<br><p>')
+      fmt.Fprintf(w, Esc("[aphid] Proto: %q Method: %q\n" % ( r.Proto, r.Method)) + '<br><p>')
+      fmt.Fprintf(w, Esc("[aphid] Host: %q Path: %q\n" % (r.Host, r.URL.Path)) + '<br><p>')
+      for k, v in sorted(r.Header.items()):
+        for e in v:
+          fmt.Fprintf(w, Esc("[aphid] Header: %q : %q\n" % (k, e)) + '<br>')
+      fmt.Fprintf(w, '<br><p>')
+
+      fmt.Fprintf(w, 'Are you looking for one of these?<ul>')
+      for k in sorted(.paths.keys()):
+        if k.startswith('/'):
+          fmt.Fprintf(w, '<li> <a href="%s">%s</a>', k, Esc(k))
+        else:
+          fmt.Fprintf(w, '<li> <a href="http://%s">%s</a>', k, Esc(k))
+      fmt.Fprintf(w, '</ul>')
+    except as ex:
+      fmt.Fprintf(w, '<br><br><tt>******* EXCEPTION ******* %s' % Esc(str(ex)))
 
 class Aphid:
   def __init__(quit, filename, snippet=None):
@@ -163,7 +198,9 @@ class Aphid:
 
   def StartWebHandlers():
     # Mux and Server.
-    .mux = http.NewServeMux()
+    #// .mux = http.NewServeMux()
+    .mux = Mux()
+
     # Add webs.
     for wname, config in .x_webs.items():
       bname = config['bundle']
@@ -224,22 +261,11 @@ class Aphid:
     ## Misc
     #.mux.HandleFunc('/@@quit', lambda w, r: .quit.Put(1))
 
-    def Otherwise(w, r):
-      w.WriteHeader(http.StatusNotFound)
-      fmt.Fprintf(w, "404 NOT FOUND\n\n")
-      fmt.Fprintf(w, "[aphid] Proto: %q Method: %q\n", r.Proto, r.Method)
-      fmt.Fprintf(w, "[aphid] Host: %q Path: %q\n", r.Host, r.URL.Path)
-      fmt.Fprintf(w, "[aphid] Header:\n")
-      for k, v in sorted(r.Header.items()):
-        for e in v:
-          fmt.Fprintf(w, "[aphid]   %q : %q\n", k, e)
-    .mux.HandleFunc('/', Otherwise)
-
     # Go Serve.
     say 'SERVING', .server
     .server = go_new(http.Server) {
       Addr: '%s:%d' % (.f_ip, .p_http),
-      Handler: .mux,
+      Handler: .mux.mux,
       ReadTimeout:    10 * time.Second,
       WriteTimeout:   10 * time.Second,
     }
@@ -247,7 +273,7 @@ class Aphid:
     if .p_https:
       .tlsserver = go_new(http.Server) {
         Addr: '%s:%d' % (.f_ip, .p_https),
-        Handler: .mux,
+        Handler: .mux.mux,
         ReadTimeout:    10 * time.Second,
         WriteTimeout:   10 * time.Second,
       }
