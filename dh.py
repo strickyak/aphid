@@ -1,18 +1,16 @@
 from go import math/big
 from go import crypto/rand as crand
-
-from go import encoding/base64
-E = base64.URLEncoding
+from . import conv
 
 def Big(s):
   must s
   must type(s) == str, '%v' % type(s), '%T' % s
-  return big.NewInt(0).SetBytes(E.DecodeString(s))
+  return big.NewInt(0).SetBytes(conv.Decode64(s))
 
 def String(x):
   must x
   must go_typeof(x).String() == '*big.Int'
-  return E.EncodeToString(x.Bytes())
+  return conv.Encode64(x.Bytes())
 
 def DefineGroup(sz, g, m):
   # Drop all non-upper-hex chars from string m.
@@ -36,18 +34,16 @@ def CryptoRandBig(m):
   z = big.NewInt(0).SetBytes(bb)
   return big.NewInt(0).Mod(z, m)
 
-def Forge(id, name, group):
+def Forge(group):
   sz, g, m = group
   sec = CryptoRandBig(m)
   pub = big.NewInt(0).Exp(g, sec, m)
-  return DhSecret(id, name, group, pub, sec)
+  return DhSecret(group, pub, sec)
 
 class DhSecret:
-  def __init__(id, name, group, pub, sec):
+  def __init__(group, pub, sec):
     must type(pub) != str, '%T' % pub
     must type(sec) != str, '%T' % sec
-    .id = id
-    .name = name
     .sz, .g, .m = group
     .pub = pub
     .sec = sec

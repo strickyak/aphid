@@ -2,17 +2,13 @@ from go import bufio, bytes, fmt, html, log, reflect, regexp, sort, sync, time
 from go import html/template, net/http, io/ioutil
 from go import crypto/sha256, crypto/aes, crypto/rand, crypto/cipher
 from go import github.com/golang/crypto/scrypt
-from go import encoding/base64
 from . import A, atemplate, bundle, dh, markdown, pubsub, util
-from . import adapt, basic, flag
+from . import adapt, basic, conv, flag
 from lib import data
 
 ADMIN_INIT_PW = flag.String('admin_init_pw', '', 'initial admin password')
 
 MAX_UPLOAD_SIZE = 50*1024*1024  # 50MB.
-
-Encode = base64.URLEncoding.EncodeToString
-Decode = base64.URLEncoding.DecodeString
 
 MATCH_FILENAME = regexp.MustCompile('.*filename="([^"]+)"').FindStringSubmatch
 
@@ -52,7 +48,7 @@ class User:
       symhash = sha256.Sum256(scrypt_ + ':symhash')
       .symhash = symhash #DEBUG
       say 'MAKE esecret:', username, pw, H(.salt), H(scrypt_), H(symhash)
-      dh_ = dh.Forge('', '', dh.GROUP)
+      dh_ = dh.Forge(dh.GROUP)
       .dh = dh_ #DEBUG
       .public = dh_.Public()
       must type(.public) == str, '%T' % .public
@@ -94,7 +90,7 @@ class User:
 
   def MutualKey(pw, otherUser):
     must type(.public) == str, '%T' % .public
-    dh1 = dh.DhSecret("bogus1", "bogus2", dh.GROUP, dh.Big(.public), dh.Big(.Secret(pw)))
+    dh1 = dh.DhSecret(dh.GROUP, dh.Big(.public), dh.Big(.Secret(pw)))
     must type(otherUser.public) == str, '%T' % .public
     mutKey = dh1.MutualKey(str(otherUser.public))
     return mutKey
@@ -108,7 +104,7 @@ class User:
     return dict(ekey=ekey, nonce=nonce2, extra=extra2)
 
   def SealKeyToOther(pw, rcpt, curly, now, plainkey):
-    dh3 = dh.DhSecret(None, None, dh.GROUP, dh.Big(rcpt.public), dh.Big(.Secret(pw)))
+    dh3 = dh.DhSecret(dh.GROUP, dh.Big(rcpt.public), dh.Big(.Secret(pw)))
     mutual_key = dh3.MutualKey(rcpt.public)
     nonce3 = RandomBytes(12)
     extra3 = 'for_others:%d:%s:%s:%s' % (now.Unix(), .username, rcpt.username, curly)
@@ -120,12 +116,6 @@ def RandomBytes(n):
   n = rand.Read(z)
   must n == n
   return z
-
-RE_ABNORMAL_CHARS = regexp.MustCompile('[^-A-Za-z0-9_.]')
-def CurlyEncode(s):
-  if not s:
-    return '{}'
-  return RE_ABNORMAL_CHARS.ReplaceAllStringFunc(s, lambda c: '{%d}' % ord(c))
 
 def Seal(key, nonce, plaintext, extra):
   c = cipher.NewGCM(aes.NewCipher(key))
@@ -410,7 +400,7 @@ class StashHandler:
         if f:
           fname = r.MultipartForm.File['file'][0].Filename
           say fname
-          curly = CurlyEncode(fname)
+          curly = conv.EncodeCurlyStrong(fname)
           say curly
           fd = r.MultipartForm.File['file'][0].Open()
           contents = ioutil.ReadAll(fd)

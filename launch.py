@@ -87,18 +87,15 @@ class Aphid:
     .quit = quit
     .filename = filename
 
-    if filename.find('.laph:') > 0:
-      laphfile, part = filename.split(':', 1)
-      laphexpr = ioutil.ReadFile(laphfile)
-      js = laph.Compile(laphexpr).ToJson(part)
-      .x = data.Eval(js)
-    else:
-      .x = EvalConfig(filename, snippet)
+    laphfile, part = filename.split(':', 1)
+    laphexpr = ioutil.ReadFile(laphfile)
+    .laph = laph.Compile(laphexpr)
+    js = .laph.ToJson(part)
+    .x = data.Eval(js)
 
     say .x
     .x_me = .x['me']
     .f_ip = .x['flags']['ip']
-    .f_keyring = .x['flags']['keyring']
     .f_topdir = .x['flags']['topdir']
     .f_domain = .x['flags'].get('domain', '')
     say .x['ports']
@@ -130,8 +127,8 @@ class Aphid:
     .StartAmong()
 
   def StartKeyring():
-    .ring = {}
-    keyring.Load(.f_keyring, .ring)
+    keyring.Load()
+    .ring = keyring.Ring
 
   def StartBundles():
     .bundles = {}
@@ -142,18 +139,20 @@ class Aphid:
           .bundles[bname] = bundle.PlainBundle(self, bname=bname, bundir=bundir, suffix='0')
         case 'sym':
           keyid = bx['key']
-          key = .ring[keyid]
+          key = keyring.Ring[keyid]
+          say keyid, key.b_sym, key, bx
           .bundles[bname] = bundle.RedhedBundle(self, bname=bname, bundir=bundir, suffix='0', keyid=keyid, key=key.b_sym)
         case 'websym':
           keyid = bx['key']
-          key = .ring[keyid]
+          key = keyring.Ring[keyid]
+          say keyid, bx, key
           .bundles[bname] = bundle.WebkeyBundle(
               self, bname, topdir=.f_topdir, suffix='0',
-              webkeyid=keyid, webkey=key.b_sym, basekey=key.base)
+              webkeyid=keyid, xorkey=key.b_xor, basekey=key.base)
       if SEEDDIR.X:
         .LoadBundleSeedFiles(bname, .bundles[bname], SEEDDIR.X)
 
-    go rbundle.RBundleServer(self, '%s:%d' % (.f_ip, .p_rpc), .ring).ListenAndServe()
+    go rbundle.RBundleServer(self, '%s:%d' % (.f_ip, .p_rpc), keyring.Ring).ListenAndServe()
 
   def LoadBundleSeedFiles(bname, bund, seeddir):
     t = FJ(seeddir, bname)

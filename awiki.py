@@ -1,7 +1,7 @@
 from go import bufio, bytes, fmt, regexp, time
 from go import html/template, net/http, io/ioutil
-from . import A, atemplate, bundle, markdown, util
-from . import basic, flag
+from . import A, atemplate, bundle, conv, flag, util
+from . import basic, markdown
 from lib import data
 
 BASIC = flag.String('basic', '', 'Test Basic Auth users')
@@ -11,10 +11,6 @@ F = fmt.Sprintf
 SUBJECT_VERB_OBJECT = regexp.MustCompile(
     '^([0-9]+|[A-Z]+[a-z]+[A-Z][A-Za-z0-9_]*)(([.]+)(([A-Za-z0-9_]+)(([.]+)(([-A-Za-z0-9_.]+)?)?)?)?)?$'
     ).FindStringSubmatch
-
-RE_ABNORMAL_CHARS = regexp.MustCompile('[^-A-Za-z0-9_.]')
-def CurlyEncode(s):
-  return RE_ABNORMAL_CHARS.ReplaceAllStringFunc(s, lambda c: '{%d}' % ord(c))
 
 class WikiParams:
   def __init__(host):
@@ -204,7 +200,7 @@ def VerbAttach(w, r, m, wp):
   if f:
     # Save it.
     fname = r.MultipartForm.File['file'][0].Filename
-    fname = CurlyEncode(fname)
+    fname = conv.EncodeCurlyStrong(fname)
     fd = r.MultipartForm.File['file'][0].Open()
     stuff = ioutil.ReadAll(fd)
     m.bund.WriteFile('/wiki/%s/%s' % (wp.Subject, fname), stuff)

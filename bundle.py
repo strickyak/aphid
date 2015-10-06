@@ -103,14 +103,14 @@ class Base:
     return '%T{%s}' % (self, .bname)
 
 class WebkeyBundle(Base):
-  def __init__(aphid, bname, topdir='.', suffix, webkeyid, webkey, basekey):
+  def __init__(aphid, bname, topdir='.', suffix, webkeyid, xorkey, basekey):
     .aphid = aphid
     must webkeyid
-    must webkey
-    must type(webkey) == byt
-    must len(webkey) == 32  # 256 bit.
+    must xorkey
+    must type(xorkey) == byt
+    must len(xorkey) == sym.KEY_BYT_LEN  # 256 bit.
     .bname, .topdir, .suffix = bname, topdir, suffix
-    .webkeyid, .webkey, .basekey = webkeyid, webkey, basekey
+    .webkeyid, .xorkey, .basekey = webkeyid, xorkey, basekey
     .links = 0
     .mu = go_new(sync.Mutex)
     .wx = True  # Does use encrypted webpw -- please Link(pw) it.
@@ -120,7 +120,7 @@ class WebkeyBundle(Base):
     # TODO -- extract from multi-pw
     h = sha256.Sum256(pw.strip(' \t\n\r'))
     must len(h) == 32 # 256 bits.
-    return h ^ .webkey  # In rye, xor of byt & byt is byt.
+    return h ^ .xorkey  # In rye, xor of byt & byt is byt.
 
   def Link(pw):
     must pw

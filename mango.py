@@ -103,12 +103,11 @@ def DemoHandler(msg, serial):
 
 
 BUSKEY = flag.String('buskey', '', 'Key ID for Bus')
-BUSKEYRING = flag.String('buskeyring', 'test.ring', 'Keyring for Bus')
 def main(args):
   args = flag.Munch(args)
   must BUSKEY.X
   ring = {}
-  keyring.Load(BUSKEYRING.X, ring)
+  keyring.Load()
   say ring.keys()
   keyline = ring[BUSKEY.X]
   key = sym.DecodeHex(keyline.sym)

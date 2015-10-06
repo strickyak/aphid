@@ -3,11 +3,12 @@ from go import path/filepath as F
 from go import github.com/strickyak/redhed
 from . import bundle, keyring
 
-Ring = {}
-keyring.Load('test.ring', Ring)
-must Ring.get('YAK')
-must Ring.get('BLM')
-must Ring.get('WLM')
+keyring.Load(filename='test.ring')
+say keyring.Ring.keys()
+say keyring.Ring
+must keyring.Ring.get('YAK')
+must keyring.Ring.get('BLM')
+must keyring.Ring.get('WLM')
 
 REV1 =  'r.01000111222333.test.01000111222999.6'
 T1 = 1000111222999
@@ -41,7 +42,7 @@ def TestBundles():
   say '############################################################################'
 
   bundir = F.Join(TD, 'b.red')
-  pw = Ring['YAK'].b_sym
+  pw = keyring.Ring['YAK'].b_sym
   key = redhed.NewKey('YAK', pw)
   say bundir, pw, key
   d1x = redhed.EncryptFilename('d.d1', key)
@@ -66,7 +67,7 @@ def TestBundles():
   w.Close()
 
   say '############################################################################'
-  b = bundle.RedhedBundle(FA, 'red', bundir, 'RR', keyid='YAK', key=Ring['YAK'].b_sym)
+  b = bundle.RedhedBundle(FA, 'red', bundir, 'RR', keyid='YAK', key=keyring.Ring['YAK'].b_sym)
   say '############################################################################'
   Do1Bundle(b)
   say '############################################################################'

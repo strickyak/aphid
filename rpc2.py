@@ -40,7 +40,7 @@ def ReadChunk(r):
   head = mkbyt(5)
   #say 'read head'
   io.ReadFull(r, head)
-  must head[0] == CHUNK_MAGIC
+  must head[0] == CHUNK_MAGIC, [b for b in head], str(head)
   n = (head[1]<<24) | (head[2]<<16) | (head[3]<<8) | head[4]
   must n < (100 << 20)  # 100 Meg Max
   pay = mkbyt(n)
@@ -141,14 +141,14 @@ def MutualKey(ring, clientId, serverId):
   say 'MutualKey', clientId, serverId
   cli = ring[clientId]
   svr = ring[serverId]
-  must cli.kind == 'dh'
-  must svr.kind == 'dh'
+  must type(cli) is keyring.DhKey, type(cli)
+  must type(svr) is keyring.DhKey, type(svr)
   if cli.sec:
-    secret = dh.DhSecret(cli.num, cli.name, dh.GROUP, dh.Big(cli.pub), dh.Big(cli.sec))
+    secret = dh.DhSecret(group=dh.GROUP, pub=dh.Big(cli.pub), sec=dh.Big(cli.sec))
     #say 'C', secret.MutualKey(svr.pub)
     return secret.MutualKey(svr.pub)
   if svr.sec:
-    secret = dh.DhSecret(svr.num, svr.name, dh.GROUP, dh.Big(svr.pub), dh.Big(svr.sec))
+    secret = dh.DhSecret(group=dh.GROUP, pub=dh.Big(svr.pub), sec=dh.Big(svr.sec))
     #say 'S', secret.MutualKey(cli.pub)
     return secret.MutualKey(cli.pub)
   raise 'MISSING SECRET KEY'
@@ -168,7 +168,7 @@ class Client:
     go .WriteActor()
 
   def __str__():
-    return 'Client{%v %v %v}' % (.hostport, .clientId, .serverId)
+    return 'Client{%v c=%v s=%v}' % (.hostport, .clientId, .serverId)
   def __repr__():
     return .__str__()
 

@@ -7,6 +7,12 @@ KEY_HEX_LEN = 64
 
 RE_HEX = regexp.MustCompile('^[0-9a-f]+$').FindString
 
+def RandomKey():
+  bb = mkbyt(KEY_BYT_LEN)
+  c = rand.Read(bb)
+  must c == KEY_BYT_LEN
+  return bb
+
 def DecodeHex(s):
   must RE_HEX(s)
   must len(s) == KEY_HEX_LEN

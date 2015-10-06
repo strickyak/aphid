@@ -1,0 +1,93 @@
+job:termite11 = {
+  me = 11
+  _portbase = ( + 30000 ( * $me 1000 ) )
+
+  confname = ( ++ termite $me )
+
+  flags = {
+    ip =        127.0.0.1
+    topdir =    ( ++ __termite__ $confname )
+  }
+
+  peers = {
+    11 = { host = 127.0.0.1 ; port = 41081 ; name = termite11 ; num = 11 }
+    12 = { host = 127.0.0.1 ; port = 42081 ; name = termite12 ; num = 12 }
+    13 = { host = 127.0.0.1 ; port = 43081 ; name = termite13 ; num = 13 }
+  }
+
+  ports = {
+
+    _dnsoff =   53
+    _httpoff =  80
+    _httpsoff =  43
+    _rpcoff =   81
+
+    dns =   ( + $_portbase $_dnsoff )
+    http =  ( + $_portbase $_httpoff )
+    https = ( + $_portbase $_httpsoff )
+    rpc =   ( + $_portbase $_rpcoff )
+  }
+
+  bundles = {
+    termite0 = { kind = plain }
+    termite1 = { kind = plain }
+    termite2 = { kind = sym ; key = YAK }
+    termite3 = { kind = websym ; key = WLM }
+    termite3peek = { kind = sym ; key = BLM }
+  }
+
+  zones = {
+#    aphid.cc = {
+#      bundle = termite0
+#      zonefile = dns/aphid.cc
+#    }
+  }
+
+  webs = {
+    termite0 = { bundle = termite0 ; paths = { a = /@termite0.web/ } }
+    termite1 = { bundle = termite1 ; paths = { a = /@termite1.web/ } }
+    termite2 = { bundle = termite2 ; paths = { a = /@termite2.web/ } }
+    termite3 = { bundle = termite3 ; paths = { a = /@termite3.web/ } }
+  }
+
+  wikis = {
+    wiki = { bundle = termite0 ; paths = { a = /@wiki/ } }
+    wiki.termite0.aphid.cc = { bundle = termite0 ; paths = { a = /@wiki.termite0.aphid.cc/ } }
+    termite1.wiki = { bundle = termite1 ; paths = { a = /@termite1.wiki/ } }
+    termite2.wiki = { bundle = termite2 ; paths = { a = /@termite2.wiki/ } }
+    termite3.wiki = { bundle = termite3 ; paths = { a = /@termite3.wiki/ } }
+  }
+
+  formics = {
+    _PW = { md5pw = f5606220aa1e4ab012a6cc32cc980dd9 } # "password"
+
+    t1 = _PW { bundle = termite1 ; paths = { a = /@termite1.formic/ } }
+    t2 = _PW { bundle = termite2 ; paths = { a = /@termite2.formic/ } }
+  }
+}
+
+job:termite12 = job:termite11 {
+  me = 12
+
+  flags {
+    verbose = 5
+  }
+
+  ports {
+    debug = ( + $_portbase 99 )
+  }
+
+  webs {
+    extra.termite0.aphid.cc = { bundle = termite0 }
+  }
+
+  wikis {
+    extra.wiki.termite0.aphid.cc = { bundle = termite0 }
+  }
+
+  formics {}
+}
+
+job:termite13 = job:termite11 {
+  me = 13
+}

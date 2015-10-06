@@ -3,7 +3,7 @@ from go import html/template, net/http, io, io/ioutil
 from go import path as P
 from go import crypto/md5
 from . import A, atemplate, bundle, markdown, pubsub, util
-from . import adapt, basic, flag
+from . import adapt, basic, conv, flag
 from lib import data
 
 F = fmt.Sprintf
@@ -28,10 +28,6 @@ MatchMediaFileName = regexp.MustCompile('^[-A-Za-z0-9_.{}]+$').FindString
 DOTFILE = regexp.MustCompile('(^[.]|[/][.])').FindString
 MATCH_FILENAME = regexp.MustCompile('.*filename="([^"]+)"').FindStringSubmatch
 MatchHrefOrSrc = regexp.MustCompile(" (href|src)=\"/.")
-
-RE_ABNORMAL_CHARS = regexp.MustCompile('[^-A-Za-z0-9_.]')
-def CurlyEncode(s):
-  return RE_ABNORMAL_CHARS.ReplaceAllStringFunc(s, lambda c: '{%d}' % ord(c))
 
 def WeightedKey(x):
   return x.Weight, x.Name
@@ -538,7 +534,7 @@ class Curator:
           if f:
             fname = r.MultipartForm.File['file'][0].Filename
             editdir = r.MultipartForm.Value['EditDir'][0]
-            fpath = J(editdir, CurlyEncode(fname))
+            fpath = J(editdir, conv.EncodeCurlyStrong(fname))
             say editdir, fname, fpath
 
             fd = r.MultipartForm.File['file'][0].Open()

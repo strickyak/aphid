@@ -223,7 +223,6 @@ SERVER = flag.String('server', 'localhost:8081', 'Location of bundle server')
 YES    = flag.Bool('y', False, 'Really sync.')
 CID    = flag.String('cid', '91', 'Client DH ID.')
 SID    = flag.String('sid', '92', 'Server DH ID.')
-RING   = flag.String('ring', 'test.ring', 'Keyring File.')
 EXIT   = flag.Int('exit', 1, 'Exit at end of main()')
 PW     = flag.String('pw', '', 'Web password')
 MTIME  = flag.Int('mtime', 0, 'Mtime of file creation')
@@ -231,7 +230,7 @@ MTIME  = flag.Int('mtime', 0, 'Mtime of file creation')
 def main(args):
   global client
   args = flag.Munch(args)
-  keyring.Load(RING.X, keyring.Ring)
+  keyring.Load()
   client = rbundle.RBundleClient(SERVER.X, keyring.Ring, CID.X, SID.X)
 
   if not len(args):

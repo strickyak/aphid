@@ -2,106 +2,9 @@ from go import bytes, os, io, io/ioutil
 from go import mime/multipart, net/http
 from go import encoding/base64
 from go import path/filepath as FP
-from . import A, au, bundle, launch, sym, util
+from . import A, au, bundle, keyring, launch, sym, util
 
 Ring = None
-
-TERMITE1 = '''{
-  me: 11,
-
-  confname: "termite" + $.me,
-
-  flags: {
-    ip:        "127.0.0.1",
-    topdir:    "__termite__" + $.confname,
-    keyring:   "test.ring",
-  },
-
-  peers: {
-    "11": { host: "127.0.0.1", port: 28181, name: "termite11", num: "11" },
-    "12": { host: "127.0.0.1", port: 28281, name: "termite12", num: "12" },
-    "13": { host: "127.0.0.1", port: 28381, name: "termite13", num: "13" },
-  },
-
-  ports: {
-    base::  $.peers[""+$.me].port - self.rpcoff,
-
-    dnsoff::   53,
-    httpoff::  80,
-    httpsoff::  43,
-    rpcoff::   81,
-
-    dns:   self.base + self.dnsoff,
-    http:  self.base + self.httpoff,
-    https: self.base + self.httpsoff,
-    rpc:   self.base + self.rpcoff,
-  },
-
-  bundles: {
-    "termite0": { kind: "plain" },
-    "termite1": { kind: "plain" },
-    "termite2": { kind: "sym", key: "YAK" },
-    "termite3": { kind: "websym", key: "WLM" },
-    "termite3peek": { kind: "websym", key: "BLM" },
-  },
-
-  zones: {
-    "aphid.cc": {
-      "bundle": "termite0",
-      "zonefile": "dns/aphid.cc",
-    },
-  },
-
-  webs: {
-    "termite0": { bundle: "termite0" },
-    "termite1": { bundle: "termite1" },
-    "termite2": { bundle: "termite2" },
-    "termite3": { bundle: "termite3" },
-  },
-
-  wikis: {
-    "wiki": { bundle: "termite0" },
-    "web": { bundle: "termite0" },
-    "wiki.termite0.aphid.cc": { bundle: "termite0" },
-    "termite1.wiki": { bundle: "termite1" },
-    "termite2.wiki": { bundle: "termite2" },
-    "termite3.wiki": { bundle: "termite3" },
-  },
-
-  formics: {
-    local trivial_pw = "f5606220aa1e4ab012a6cc32cc980dd9", // "password"
-    "/@termite1.formic/": { bundle: "termite1", md5pw: trivial_pw },
-    "/@termite2.formic/": { bundle: "termite2", md5pw: trivial_pw },
-  },
-}'''
-TERMITE2 = '''import "termite1.conf" {
-  me: 12,
-
-  flags: super.flags {
-    verbose: 5,
-  },
-
-  ports: super.ports {
-    debug: self.base + 99,
-  },
-
-  webs: super.webs {
-    "extra.termite0.aphid.cc": { bundle: "termite0" },
-  },
-
-  wikis: super.wikis {
-    "extra.wiki.termite0.aphid.cc": { bundle: "termite0" },
-  },
-
-  formics: super.formics {},
-}'''
-TERMITE3 = '''import "termite1.conf" {
-  me: 13,
-  zones: {},
-  webs: {},
-  wikis: {},
-  formics: {},
-}'''
 
 def Clear():
   for d in ['__termite_local', '__termite__termite11', '__termite__termite12', '__termite__termite13']:
@@ -145,7 +48,7 @@ def Glob1(*names):
   must len(vec) == 1
   return vec[0]
 
-def LoadTermite(i):
+def LoadTermite(i, t3_rpc):
   say i
   for cmd in ['BigLocalDir', 'BigRemoteDir', 'SPush', 'BigLocalDir', 'BigRemoteDir']:
     say '@@@@@@@@@@@@@@@@@@@@@@@@@ Building:', i, cmd
@@ -153,7 +56,7 @@ def LoadTermite(i):
     bund = 'termite%d' % i
     pw = 'password' if i>2 else ''
     fullcmd = [
-        '--bund=%s' % bund, '--dir=./__termite_local', '--server=127.0.0.1:28381',
+        '--bund=%s' % bund, '--dir=./__termite_local', '--server=127.0.0.1:%s' % t3_rpc,
         '--cid=91', '--sid=92', '--exit=0', '--pw=%s' % pw,
         cmd]
     say '@@@@@@@@@@@@@@@@@@@@@@@@@ Running:', i, fullcmd
@@ -196,12 +99,23 @@ def HttpFinishReq(req, ct, pw):
   say z99, resp
   return z99
 
-def main(_):
+def main(args):
+  #args = flag.Munch(args)
+  keyring.RingFilename.X = 'test.ring'
   Clear()
   quit = rye_chan(1)
-  t1 = launch.Aphid(quit=quit, filename='termite1.conf', snippet=TERMITE1)
-  t2 = launch.Aphid(quit=quit, filename='termite2.conf', snippet=TERMITE2)
-  t3 = launch.Aphid(quit=quit, filename='termite3.conf', snippet=TERMITE3)
+
+  t1 = launch.Aphid(quit=quit, filename='termite.laph:job:termite11')
+  t2 = launch.Aphid(quit=quit, filename='termite.laph:job:termite12')
+  t3 = launch.Aphid(quit=quit, filename='termite.laph:job:termite13')
+  t1_http = t1.laph.Eval('/job:termite11/ports/http')
+  say t1_http
+  t3_rpc = t3.laph.Eval('/job:termite13/ports/rpc')
+  say t3_rpc
+
+  say t1
+  say t2
+  say t3
 
   t3.StartAll()
   global Ring
@@ -215,7 +129,7 @@ def main(_):
   say 'Red it', x
 
   A.Sleep(1)
-  LoadTermite(0)
+  LoadTermite(0, t3_rpc=t3_rpc)
 
   CopyFilesDirToDir(
       '__termite__termite11/b.termite0/d.dns/f.aphid.cc/',
@@ -238,7 +152,7 @@ def main(_):
         HELLO_APHID,
         0666)
     say i
-    LoadTermite(i)
+    LoadTermite(i, t3_rpc=t3_rpc)
     A.Sleep(1)
     say i
 
@@ -264,7 +178,7 @@ def main(_):
   # Install a template for /formic/layouts/_default/single.html
   buf = bytes.NewBuffer('Default Single Template\n')
   z0 = HttpUpload(
-      url='http://localhost:28180/@termite1.formic/*attach_media_submit?',
+      url='http://localhost:%s/@termite1.formic/*attach_media_submit?' % t1_http,
       basename='single.html',
       params=dict(foo='bar', EditDir='/formic/layouts/_default'),
       r=buf,
@@ -281,12 +195,12 @@ def main(_):
         EditMainWeight='0',
         EditType='',
         EditAliases=''))
-  z1 = HttpMethod('POST', 'http://localhost:28180/@termite1.formic/*edit_page_submit?', body=body, pw='password')
+  z1 = HttpMethod('POST', 'http://localhost:%s/@termite1.formic/*edit_page_submit?' % t1_http, body=body, pw='password')
   say z1
 
   # Get the home page.
   A.Sleep(1)
-  z2 = HttpMethod('GET', 'http://localhost:28180/@termite1.formic/home?', body='', pw='password')
+  z2 = HttpMethod('GET', 'http://localhost:%s/@termite1.formic/home?' % t1_http, body='', pw='password')
   say z2
 
   say "OKAY termite_test.py"

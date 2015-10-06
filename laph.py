@@ -168,8 +168,9 @@ class Parse:
 
   def ParseTuple():
     z = .ParseTupleGuts()
-    if .p[.i][0] != '}':
-      raise 'At end of tuple, expected "}" but got %q' % .p[.i][0]
+    token = .p[.i][0] if .i < len(.p) else '*EOF*'
+    if token != '}':
+      raise 'At end of tuple, expected "}" but got %q' % token
     .next()
     return z
 
@@ -514,6 +515,9 @@ class Chucl:
         return str(sum([int(x) for x in args]))
       case '*':
         return str(reduce(lambda a, b: int(a)*int(b), args, 1))
+      case 'lookup':
+        must len(args) == 1
+        return .EvalPath(args[0], rel=Cpath, binding=binding)
     raise 'EvalCommand: unknown cmd: %q' % cmd
 
 #  def EvalCommand2(leaf, Cpath, binding):
