@@ -11,9 +11,16 @@ import (
 )
 
 import (
-	// Internal requirements.
+	// Yak requirements.
 	_ "github.com/strickyak/redhed"
 	_ "github.com/strickyak/rye"
+	_ "github.com/yak-labs/chirp-lang"
+	_ "github.com/yak-labs/chirp-lang/goapi/default"
+	_ "github.com/yak-labs/chirp-lang/http"
+	_ "github.com/yak-labs/chirp-lang/img"
+	_ "github.com/yak-labs/chirp-lang/posix"
+	_ "github.com/yak-labs/chirp-lang/rpc"
+	_ "github.com/yak-labs/chirp-lang/ryba"
 )
 
 import (
