@@ -4,16 +4,15 @@ from go import github.com/BurntSushi/toml
 from go import github.com/microcosm-cc/bluemonday
 from go import github.com/russross/blackfriday
 from lib import data
-from . import sonnet, util
+from . import util
 
 JS_FRONT_MATTER = regexp.MustCompile(`(?s)^({\s*\n.*?\n}\s*\n)(.*)$`)
 TOML_FRONT_MATTER = regexp.MustCompile(`(?s)^[+][+][+]\s*\n(.*?\n)[+][+][+]\s*\n(.*)$`)
 
 CR = regexp.MustCompile("\r")
 
-def EvalJSonnet(s):
-  js = sonnet.RunSnippet(s)
-  f = data.Eval(js)
+def EvalJS(s):
+  f = data.Eval(s)
   return f
 
 def EvalToml(s):
@@ -44,7 +43,7 @@ def ProcessWithFrontMatter(text):
   f = None
   if m1:
     _, front, md = m1
-    f = EvalJSonnet(front)
+    f = EvalJS(front)
   elif m2:
     _, front, md = m2
     f = EvalToml(front)

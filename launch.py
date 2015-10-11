@@ -1,54 +1,16 @@
 from . import A, flag
 from . import among, aweber, awiki, awedit, azoner, formic, smilax4, stash
-from . import bundle, keyring, pubsub, rbundle
-from . import laph
-
+from . import bundle, keyring, laph, pubsub, rbundle
 from go import bufio, fmt, html, io/ioutil, net/http, os, time
 from go import path as P, path/filepath as F
-from go import github.com/strickyak/jsonnet_cgo as VM
-
 from lib import data
-import sys
 
 SEEDDIR = flag.String('seeddir', '', 'Directory containing bundle seed files')
 
 Esc = html.EscapeString
 
-def PJ(*vec):
-  return P.Clean(P.Join(*vec))
 def FJ(*vec):
   return F.Clean(F.Join(*vec))
-
-SnippetMemory = {}
-def EvalConfig(filename, snippet=None):
-  vm = VM.Make()
-
-  def importSnippet(base, rel):
-    importName = P.Clean(P.Join(base, rel))
-    if importName in SnippetMemory:
-      say base, rel, importName, SnippetMemory[importName]
-      #say SnippetMemory[importName][1700:]
-      #say SnippetMemory[importName][1790:]
-      return SnippetMemory[importName]
-    else:
-      say '????????????????????', False
-      return '????????????????????'
-  vm.ImportCallback(importSnippet)
-
-  with defer vm.Destroy():
-    # Convert to JSON string.
-    if snippet:
-      say filename, snippet
-      js = vm.EvaluateSnippet(filename, snippet)
-      SnippetMemory[filename] = snippet  # For future use.
-    else:
-      js = vm.EvaluateFile(filename)
-    say js
-    #print >>os.Stderr, js
-    #say js[1700:]
-    #say js[1730:]
-    # Eval the JSON into a Python value.
-    return data.Eval(js)
 
 class Mux:
   def __init__():
