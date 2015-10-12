@@ -3,7 +3,7 @@ from go import net, sync, time
 from go import crypto/rand
 
 from . import dh, sym, keyring
-from lib import sema
+from lib import sema, data
 
 ProcessNonce = mkbyt(12)  # Per Process nonce.
 rand.Read(ProcessNonce)
@@ -28,12 +28,12 @@ class Request:
 CHUNK_MAGIC = 191
 SHAKE_MAGIC = 222
 
-def WriteChunk(w, data):
-  n = len(data)
+def WriteChunk(w, dat):
+  n = len(dat)
   #say w, n
   head = byt([CHUNK_MAGIC, n>>24, n>>16, n>>8, n])
   buf = bytes.NewBuffer(head)
-  buf.Write(data)
+  buf.Write(dat)
   io.Copy(w, buf)
 
 def ReadChunk(r):
@@ -81,7 +81,7 @@ class ServerConn:
 
   def Handshake():
     msg = ReadChunk(.conn)
-    magic, c, s = msg
+    magic, c, s = data.Eval(msg)
     must magic == SHAKE_MAGIC
     mut = MutualKey(.server.ring, str(c), str(s))
     .sealer = sym.Cipher(mut)
@@ -173,10 +173,8 @@ class Client:
     return .__str__()
 
   def Handshake():
-    c, s = int(.clientId), int(.serverId)
-    must c < 256
-    must s < 256
-    msg = byt([SHAKE_MAGIC, c, s])
+    c, s = str(.clientId), str(.serverId)
+    msg = byt(repr((SHAKE_MAGIC, c, s)))
     WriteChunk(.conn, msg)
 
   def WriteActor():
