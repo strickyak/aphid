@@ -100,7 +100,8 @@ def HttpFinishReq(req, ct, pw):
   return z99
 
 def main(args):
-  #args = flag.Munch(args)
+  global Ring
+
   keyring.RingFilename.X = 'test.ring'
   Clear()
   quit = rye_chan(1)
@@ -118,7 +119,6 @@ def main(args):
   say t3
 
   t3.StartAll()
-  global Ring
   Ring = t3.ring
 
   bt2 = t3.bundles['termite2']
