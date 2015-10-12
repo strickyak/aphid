@@ -1,4 +1,5 @@
 from go import path as P, regexp, io/ioutil, strconv
+from lib import data
 
 MAX_DELEGATION = 4  # Awful hack.  Should get feedback, if things fail.
 
@@ -373,8 +374,11 @@ def main(argv):
     print c.ToListing('/')
   else:
     for a in argv:
-      print '# %s' % a
-      print c.ToJson(a)
+      js = c.ToJson(a)
+      #print '### %s' % a
+      #print '###', js
+      print '### %s' % a
+      print data.PrettyPrint(data.Eval(js))
 
 class Compile:
   def __init__(program):

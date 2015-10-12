@@ -1,8 +1,7 @@
 from go import bufio, bytes, fmt, log, reflect, regexp, sort, sync, time
 from go import html/template, net/http, io, io/ioutil
 from go import path as P
-from go import crypto/md5
-from . import A, atemplate, bundle, markdown, pubsub, util
+from . import A, atemplate, bundle, keyring, markdown, pubsub, util
 from . import adapt, basic, conv, flag
 from lib import data
 
@@ -433,7 +432,8 @@ class Curator:
     must bund
     .bund = bund
     .config = config
-    .wantHash = config['md5pw']
+    .pwName = config['pw']
+    .wantHash = keyring.Ring[.pwName].doubleMD5
     .ReloadTemplates()
 
   def ReloadTemplates():
@@ -449,12 +449,8 @@ class Curator:
       return  # We demanded Basic Authorization.
     say user, host, path, root
 
-    # Apply md5 twice.
-    say pw
-    hashed = '%x' % md5.Sum('%s\n' % pw)
-    say hashed
-    hashed2 = '%x' % md5.Sum('%s\n' % hashed)
-    say hashed2, .wantHash
+    # Hash the given password into hex.
+    hashed2 = conv.DoubleMD5(pw)
 
     if hashed2 != .wantHash or not len(user):
       w.Header().Set("WWW-Authenticate", 'Basic realm="%s"' % root)

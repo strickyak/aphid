@@ -44,6 +44,11 @@ class WebKey:
     must len(.xor)== sym.KEY_HEX_LEN
     .b_xor = sym.DecodeHex(.xor)
 
+class Pw:
+  def __init__(d):
+    .id = d['id']
+    .doubleMD5 = d['doubleMD5']
+
 def CompileDicts(d):
   """CompileDicts the dict of dicts into the dict of objects."""
   ring = {}
@@ -51,6 +56,8 @@ def CompileDicts(d):
   for k, v in d.items():
     say k, v
     switch v['type']:
+      case 'pw/doubleMD5':
+        ring[k] = Pw(v)
       case 'dh':
         ring[k] = DhKey(v)
       case 'sym/aes256':
@@ -90,6 +97,18 @@ def main(args):
 
   say cmd, args
   switch cmd:
+    case "nop":
+      pass
+
+    case "mkpw":
+      key_id = args.pop(0)
+      pw = args.pop(0)
+      RingDict[key_id] = dict(
+          id=key_id,
+          type='pw/doubleMD5',
+          doubleMD5=conv.DoubleMD5(pw)
+          )
+
     case "mkdh":
       key_id = args.pop(0)
       must not args

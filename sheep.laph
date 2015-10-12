@@ -40,7 +40,7 @@ _job_template = {
   }
 
   formics = {
-    _PW = { md5pw = f5606220aa1e4ab012a6cc32cc980dd9 } # "password"
+    _PW = { pw = formic-pw }
     sheep-formic = _PW { bundle = sheep-formic; paths = { 1 = /@sheep-formic/ } }
     sheep-boxturtle = _PW { bundle = sheep-boxturtle; paths = { 1 = /@sheep-boxturtle/ } }
   }
@@ -84,6 +84,8 @@ _local_template = /_job_template {
     lid1  = { host = 127.0.0.1 ; port = 13081 }
   }
   flags { ip = 127.0.0.1 }
+  formics { _PW { pw = just-password } }
+  # Bug: formics/_PW is not working.
 }
 
 job:local:node1 = /_local_template {

@@ -1,6 +1,20 @@
 from go import encoding/base64, encoding/ascii85
 from go import encoding/hex as H 
-from go import fmt, regexp, unicode/utf8
+from go import fmt, regexp, unicode/utf8, crypto/md5
+
+##
+##  Double-MD5 Hash
+##
+
+def DoubleMD5(pw):
+  """Double MD5 with newlines and hexing."""
+  hashed = '%x' % md5.Sum('%s\n' % pw)
+  hashed2 = '%x' % md5.Sum('%s\n' % hashed)
+  return hashed2
+
+##
+##  Base85
+##
 
 def Encode85(b):
   b = byt(b)
