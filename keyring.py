@@ -80,7 +80,7 @@ def Save(filename=None):
     print v
   print '====='
   Ring = CompileDicts(RingDict)
-  ioutil.WriteFile(filename, repr(RingDict) + '\n', 0600)
+  ioutil.WriteFile(filename, data.PrettyPrint(RingDict), 0600)
 
 def main(args):
   args = flag.Munch(args)
