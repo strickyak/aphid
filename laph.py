@@ -1,7 +1,7 @@
-from go import path as P, regexp, io/ioutil, strconv
+from go import path as P, io/ioutil, os, regexp, strconv
 from lib import data
 
-MAX_DELEGATION = 4  # Awful hack.  Should get feedback, if things fail.
+
 
 class Directory:
   def __init__(names):
@@ -406,7 +406,7 @@ class Compile:
   def lookupNode(path):
     return .visitor.visitTuple(.tree, path=path, up='/', derived='/')
 
-  def ToListing(path):
+  def ToListing(path, w=os.Stdout):
     path = C(path)
     try:
       a = .Eval(path)
@@ -414,12 +414,12 @@ class Compile:
       a = 'EXCEPTION: ' + ex
     switch type(a):
       case type(None):
-        print "%s == **None**" % path
+        print >>w, "%s == **None**" % path
       case str:
-        print "%s == %s" % (path, a)
+        print >>w, "%s == %s" % (path, a)
       case Directory:
         for name in a.names:
-          .ToListing(J(path, name))
+          .ToListing(J(path, name), w=w)
 
   def ToJson(path):
     path = C(path)
