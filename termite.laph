@@ -59,7 +59,7 @@ job:termite11 = {
   }
 
   formics = {
-    _PW = { md5pw = f5606220aa1e4ab012a6cc32cc980dd9 } # "password"
+    _PW = { pw = pw-password } # "password"
 
     t1 = _PW { bundle = termite1 ; paths = { a = /@termite1.formic/ } }
     t2 = _PW { bundle = termite2 ; paths = { a = /@termite2.formic/ } }

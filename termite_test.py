@@ -102,7 +102,7 @@ def HttpFinishReq(req, ct, pw):
 def main(args):
   global Ring
 
-  keyring.RingFilename.X = 'test.ring'
+  keyring.RingFilename.X = 'termite.ring'
   Clear()
   quit = rye_chan(1)
 
