@@ -380,6 +380,11 @@ def main(argv):
       print '### %s' % a
       print data.PrettyPrint(data.Eval(js))
 
+LookupNodeCache = {}
+
+Lookups = 0
+CachedLookups = 0
+
 class Compile:
   def __init__(program):
     .program = program
@@ -404,7 +409,15 @@ class Compile:
     return None if node is None else node.simplify()
 
   def lookupNode(path):
-    return .visitor.visitTuple(.tree, path=path, up='/', derived='/')
+    global Lookups
+    global CachedLookups
+    Lookups += 1
+    z = LookupNodeCache.get(path)
+    if not z:
+      z = .visitor.visitTuple(.tree, path=path, up='/', derived='/')
+      LookupNodeCache[path] = z
+      CachedLookups += 1
+    return z
 
   def ToListing(path, w=os.Stdout):
     path = C(path)
@@ -523,6 +536,10 @@ class Chucl:
         must len(args) == 1
         return .EvalPath(args[0], rel=Cpath, binding=binding)
     raise 'EvalCommand: unknown cmd: %q' % cmd
+
+
+def SayReport():
+  say Lookups, CachedLookups
 
 #  def EvalCommand2(leaf, Cpath, binding):
 #    raise 666
