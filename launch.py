@@ -241,7 +241,7 @@ class Aphid:
       go .tlsserver.ListenAndServeTLS("cacert.pem", "privkey.pem")
 
   def StartAmong():
-    peer_map = dict([(v['num'], '%s:%d' % (v['host'], int(v['port']))) for _, v in .x_peers.items()])
+    peer_map = dict([(k, '%s:%d' % (v['host'], int(v['port']))) for k, v in .x_peers.items()])
     say peer_map
     am = among.Among(self, .x_me, peer_map)
     am.Start()

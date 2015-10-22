@@ -12,6 +12,7 @@ def Nav(top, *keys):
       d = t
   return d
 
+#MATCH_HOST_IN_PATH = regexp.MustCompile('/+@([-A-Za-z0-9.]+)($|/.*$)').FindStringSubmatch
 MATCH_HOST_IN_PATH = regexp.MustCompile('/@([-A-Za-z0-9.]+)(@\\w+)?($|/.*$)').FindStringSubmatch
 
 def HostExtraPathRoot(r):

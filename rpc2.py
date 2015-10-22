@@ -205,7 +205,6 @@ class Client:
 
 
   def Call(proc, *args, **kw):
-    say 'SUN CALLING', proc, ArgsSummary(args, kw)
     req = Request(proc, args, kw)
     .inQ.Send(req)
     return Promise(req.replyQ)
@@ -223,7 +222,6 @@ class Promise:
 
   def Wait():
     result, err = .chan.Recv()
-    say 'SUN', AtMost(80, result), AtMost(80, err)
     if err:
       if str(err) == 'EOF':
         raise io.EOF

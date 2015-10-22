@@ -13,7 +13,7 @@ def J(*vec):
   return P.Clean(P.Join(*vec))
 
 MatchContent = regexp.MustCompile('^/+(([-A-Za-z0-9_]+)/)?([-A-Za-z0-9_]+)/*$').FindStringSubmatch
-MatchHome = regexp.MustCompile('^/+(index[.]html)?$').FindStringSubmatch
+MatchHome = regexp.MustCompile('^/+(@[^/]*/+)?(index[.]html)?$').FindStringSubmatch
 MatchCurator = regexp.MustCompile('^/+([*]+\\w*)').FindStringSubmatch
 MatchTaxonomy = regexp.MustCompile('^/+(tags)(?:/(\\w*)/?)?').FindStringSubmatch
 
@@ -159,9 +159,6 @@ class FormicMaster:
           say '@tags', t
           d = Nav(tags, t)
           d[pname] = p
-        say '==@tags', repr(tags)
-        say '==@tags', str(tags)
-        say '==@tags', (tags)
 
         # Collect menus.
         j_menus = p.Params.get('menu')
@@ -245,10 +242,10 @@ class FormicMaster:
     .tpl = tpl
 
   def Handle2(w, r):
-    host, extra, path, root = util.HostExtraPathRoot(r)
-    say host, extra, path, root
-
     try:
+      say 'Handle2'
+      host, extra, path, root = util.HostExtraPathRoot(r)
+      say host, extra, path, root
       return .Handle5(w, r, host, path, root)
     except as ex:
       say ex
@@ -257,6 +254,7 @@ class FormicMaster:
       return # raise ex
 
   def Handle5(w, r, host, path, root):
+    say 'Handle5'
     # Special Commands.
     m = MatchCurator(path)
     if m:
@@ -303,7 +301,7 @@ class FormicMaster:
         # Generate list.
         print >>w, '<ul>'
         for tag in .tags:
-          print >>w, '<li><a href="/tags/%s">%s</a>' % (tag, tag)
+          print >>w, '<li><a href="%stags/%s">%s</a>' % (root, tag, tag)
         print >>w, '</ul>'
       return
 
@@ -313,7 +311,9 @@ class FormicMaster:
     # If it is not a curator command and not a static file and not a Taxonomy, it must be a page.
     m = MatchContent(path)
     if MatchHome(path):
+      say 'MatchHome'
       m = '/home', (), '', 'home'
+      # TODO -- try to serve .../formic/layouts/index.html for HOME
     if m:
       _, _, section, base = m
       pname = J(section, base).strip('/')
@@ -329,6 +329,7 @@ class FormicMaster:
         return
 
       ptype = p.Type if p.Type else '_default'
+      p.Root = root  # TODO -- fix critical race when concurrent.
       .tpl.ExecuteTemplate(w, J('theme', ptype, 'single.html'), p)
       return
 
@@ -348,6 +349,7 @@ type MenuEntry struct {
         Weight     int
         Parent     string
         // Children   Menu
+        Root      string
 }
 
 type MediaFile struct {
@@ -357,6 +359,7 @@ type MediaFile struct {
         Slug            string
         Directory       string
         Age             float64
+        Root      string
 }
 
 type Page struct {
@@ -383,6 +386,8 @@ type Page struct {
         Section         string
         Slug            string
         Identifier      string
+
+        Root      string
 }
 
 type PagesBy struct {
@@ -420,6 +425,8 @@ type Site struct {
         // futureCount    int
         Data           i_util.NativeMap
         Params           i_util.NativeMap
+
+        Root      string
 }
 `
 
@@ -473,7 +480,7 @@ class Curator:
         case '*curate':
           d = dict(
               Site=.master.site,
-              root=root,
+              Root=root,
               )
           say d
           .t.ExecuteTemplate(w, 'CURATE', util.NativeMap(d))
@@ -481,7 +488,7 @@ class Curator:
         case '**site':
           d = dict(
               Site=.master.site,
-              root=root,
+              Root=root,
               )
           .t.ExecuteTemplate(w, 'SITE', util.NativeMap(d))
 
@@ -490,6 +497,7 @@ class Curator:
             d = dict(
               title= query['title'],
               baseurl= query['baseurl'],
+              Root=root,
               )
             toml = markdown.EncodeToml(util.NativeMap(d))
             bundle.WriteFile(.bund, '/formic/config.toml', toml, pw=None)
@@ -499,7 +507,7 @@ class Curator:
         case '**edit_site':
           d = dict(
             Site=.master.site,
-            root=root,
+            Root=root,
             )
           .t.ExecuteTemplate(w, 'EDIT_SITE', util.NativeMap(d))
 
@@ -508,13 +516,15 @@ class Curator:
           if query.get('DeleteFile'):
             bundle.WriteFile(.bund, delfile, '', pw=None)
           say P.Dir(delfile)
-          http.Redirect(w, r, '**view?f=%s' % P.Dir(delfile), http.StatusTemporaryRedirect)
+          http.Redirect(w, r, '%s**view?f=%s' % (root, P.Dir(delfile)), http.StatusTemporaryRedirect)
 
         case '**delete_file':
-          d = dict(Title='Upload Media Attachment',
-                   Action='/**delete_file_submit',
-                   fname=fname,
-                   )
+          d = dict(
+            Title='Upload Media Attachment',
+            Action='%s**delete_file_submit' % root,
+            fname=fname,
+            Root=root,
+            )
           .t.ExecuteTemplate(w, 'DELETE', util.NativeMap(d))
 
         case '*attach_media_submit':
@@ -542,26 +552,28 @@ class Curator:
             fd.Close()
             .master.Reload()
 
-            if editdir == '/formic/static/media':
-              http.Redirect(w, r, '*', http.StatusTemporaryRedirect)
+            if editdir == 'formic/static/media':
+              http.Redirect(w, r, '%s*' % root, http.StatusTemporaryRedirect)
             else:
-              http.Redirect(w, r, '**view?f=%s' % editdir, http.StatusTemporaryRedirect)
+              http.Redirect(w, r, '%s**view?f=%s' % (root, editdir), http.StatusTemporaryRedirect)
           else:
             print >>w, 'No file was uploaded.  Go back and try again.'
 
         case '*attach_media':
           d = dict(Title='Upload Media Attachment',
-                   Action='/*attach_media_submit',
-                   EditDir='/formic/static/media',
+                   Action='%s*attach_media_submit' % root,
+                   EditDir='formic/static/media',
                    EditDirFixed='1',
+                   Root=root,
                    )
           .t.ExecuteTemplate(w, 'ATTACH', util.NativeMap(d))
 
         case '**attach_file':
           d = dict(Title='Upload Media Attachment',
-                   Action='/*attach_media_submit',
-                   EditDir=query.get('dir', '/formic/static/media'),
+                   Action='%s*attach_media_submit' % root,
+                   EditDir='%s' % query.get('dir', '/formic/static/media'),
                    EditDirFixed='',
+                   Root=root,
                    )
           .t.ExecuteTemplate(w, 'ATTACH', util.NativeMap(d))
 
@@ -569,7 +581,7 @@ class Curator:
           say query
           if query.get('submit') != 'Save':
             # Cancel; don't save.
-            http.Redirect(w, r, "/%s" % fname, http.StatusTemporaryRedirect)
+            http.Redirect(w, r, "%s%s" % (root, fname), http.StatusTemporaryRedirect)
             return
 
           edit_path = query.get('EditPath', '')
@@ -625,14 +637,14 @@ class Curator:
           bundle.WriteFile(.bund, J('/formic/content', fname + '.md'), text, pw=None)
           .master.Reload()
           if text:
-            http.Redirect(w, r, "/%s" % fname, http.StatusTemporaryRedirect)
+            http.Redirect(w, r, "%s%s" % (root, fname), http.StatusTemporaryRedirect)
           else:
-            http.Redirect(w, r, "*", http.StatusTemporaryRedirect)
+            http.Redirect(w, r, "%s*" % root, http.StatusTemporaryRedirect)
           return
 
         case '*new_page':
           d = dict(Title='Create New Page',
-                   Submit='/*edit_page_submit',
+                   Submit='%s*edit_page_submit' % root,
                    Filepath='',
                    EditMd='[Enter the page content here.]',
                    EditTitle='Untitled',
@@ -642,6 +654,7 @@ class Curator:
                    EditMainWeight=0,
                    DebugMeta='',
                    new_page='1',  # True
+                   Root=root,
                    )
           .t.ExecuteTemplate(w, 'EDIT_PAGE', util.NativeMap(d))
 
@@ -657,7 +670,7 @@ class Curator:
           EditMainWeight = main_d.get('weight', 0) if main_d else 0
 
           d = dict(Title='Edit Page %q' % fname,
-                   Submit='/*edit_page_submit?f=%s' % fname,
+                   Submit='%s*edit_page_submit?f=%s' % (root, fname),
                    Filepath=fname,
                    EditMd=md,
                    EditTitle=meta.get('title', 'Untitled'),
@@ -667,6 +680,7 @@ class Curator:
                    EditMainWeight=EditMainWeight,
                    DebugMeta=meta,
                    new_page='',  # Empty for False
+                   Root=root,
                    )
           .t.ExecuteTemplate(w, 'EDIT_PAGE', util.NativeMap(d))
 
@@ -676,14 +690,15 @@ class Curator:
             say 'bundle.WriteFile', fname, text
             bundle.WriteFile(.bund, fname, text, pw=None)
             .master.Reload()
-          http.Redirect(w, r, "/**view?f=%s" % P.Dir(fname), http.StatusTemporaryRedirect)
+          http.Redirect(w, r, "%s**view?f=%s" % (root, P.Dir(fname)), http.StatusTemporaryRedirect)
 
         case '**edit_text':
           edittext = bundle.ReadFile(.bund, fname, pw=None)
           d = dict(Title='VIEW TEXT: %q' % fname,
-                   Submit='/**edit_text_submit?f=%s' % fname,
+                   Submit='%s**edit_text_submit?f=%s' % (root, fname),
                    Filepath=fname,
                    EditText=edittext,
+                   Root=root,
                    )
           .t.ExecuteTemplate(w, 'EDIT_TEXT', util.NativeMap(d))
 
@@ -696,7 +711,9 @@ class Curator:
             dd = dict([(d, J(fname, d)) for d in dirs if d])
             ff = dict([(f, J(fname, f)) for f in files if f])
             up = '/' if fname == '/' else J(fname, '..')
-            d = dict(Title=fname, dir=fname, dd=dd, ff=ff, up=up)
+            d = dict(Title=fname, dir=fname, dd=dd, ff=ff, up=up,
+                     Root=root,
+                     )
 
             say d
             .t.ExecuteTemplate(w, 'DIR', util.NativeMap(d))
@@ -763,24 +780,24 @@ CURATOR_TEMPLATES = `
         <h3>Directories</h3>
         <ul>
         {{ if $.up }}
-          <li> <a href="/**view?f={{ $.up }}">[up]</a>
+          <li> <a href="{{$.Root}}**view?f={{ $.up }}">[up]</a>
         {{ end }}
         {{ range $.dd | keys }}
-          <li> <a href="/**view?f={{ index $.dd . }}">{{ . }}</a>
+          <li> <a href="{{$.Root}}**view?f={{ index $.dd . }}">{{ . }}</a>
         {{ end }}
         </ul>
 
         <h3>Files</h3>
-        [<a href="/**attach_file?dir={{.dir}}">Upload File</a>]
+        [<a href="{{$.Root}}**attach_file?dir={{.dir}}">Upload File</a>]
         <ul>
         {{ range $.ff | keys }}
-          <li> <a href="/**view?f={{ index $.ff . }}">{{ . }}</a>
+          <li> <a href="{{$.Root}}**view?f={{ index $.ff . }}">{{ . }}</a>
                &nbsp; &nbsp;
-               [<a href="/**view?f={{ index $.ff . }}&ct=text/plain">text/plain</a>]
+               [<a href="{{$.Root}}**view?f={{ index $.ff . }}&ct=text/plain">text/plain</a>]
                &nbsp; &nbsp;
-               [<a href="/**edit_text?f={{ index $.ff . }}">edit</a>]
+               [<a href="{{$.Root}}**edit_text?f={{ index $.ff . }}">edit</a>]
                &nbsp; &nbsp;
-               [<a href="/**delete_file?f={{ index $.ff . }}">delete</a>]
+               [<a href="{{$.Root}}**delete_file?f={{ index $.ff . }}">delete</a>]
         {{ end }}
         </ul>
 
@@ -791,7 +808,7 @@ CURATOR_TEMPLATES = `
         <ttx><ul>
           <li>Site Title = "{{.Site.Title}}"
           <li>Base URL = "{{.Site.BaseURL}}"
-          <li>[<a href="/**edit_site">Edit Site</a>]
+          <li>[<a href="{{$.Root}}**edit_site">Edit Site</a>]
         </ul></ttx>
 
         {{ template "TAIL" $ }}
@@ -819,13 +836,13 @@ CURATOR_TEMPLATES = `
         <pre>{{.Text}}</pre>
         </div>
         <div class="floor">
-        [<a href="{{.Edit}}">EDIT</a>] &nbsp;
+        [<a href="{{$.Root}}{{.Edit}}">EDIT</a>] &nbsp;
 
         {{ template "TAIL" $ }}
 {{end}}
 {{define "EDIT_TEXT"}}
         {{ template "HEAD" $ }}
-        <form method="POST" action="{{.Submit}}">
+        <form method="POST" action="{{$.Root}}{{.Submit}}">
           <p>
           <textarea name=EditText wrap=virtual rows=30 cols=80 style="width: 95%; height: 70%"
             >{{.EditText}}</textarea>
@@ -934,13 +951,13 @@ CURATOR_TEMPLATES = `
         </table>
 
         <h3>Pages:</h3>
-        [<a href="/*new_page">Create New Page</a>]
+        [<a href="{{$.Root}}*new_page">Create New Page</a>]
         <table border=1 cellpadding=4>
           <tr><th>Path &amp; Edit Link<th>Title &amp; View Link<th>Days Old<th>Date
           {{ range .Site.Pages.ByDate }}
             <tr>
-              <td><a href="/*edit_page?f={{.Identifier}}">{{.Identifier}}
-              <td><a href="/{{.Identifier}}">{{.Title}}</a>
+              <td><a href="{{$.Root}}*edit_page?f={{.Identifier}}">{{.Identifier}}
+              <td><a href="{{$.Root}}{{.Identifier}}">{{.Title}}</a>
               <td align=right>{{printf "%.0f" .Age}}
               <td>{{.Date.Format "Mon, 02-Jan-2006 15:04 MST"}}
           {{ end }}
@@ -948,11 +965,11 @@ CURATOR_TEMPLATES = `
 
         <h3>Media:</h3>
         <table border=1 cellpadding=4>
-          [<a href="/*attach_media">Upload New Media</a>]
+          [<a href="{{$.Root}}*attach_media">Upload New Media</a>]
           <tr><th>Path<th>Size<th>Days Old<th>Date
           {{ range .Site.Media.ByDate }}
             <tr>
-              <td><a href="/media/{{.Identifier}}">{{.Identifier}}</a>
+              <td><a href="{{$.Root}}media/{{.Identifier}}">{{.Identifier}}</a>
               <td align=right>{{.Size}}
               <td align=right>{{printf "%.0f" .Age}}
               <td>{{.Date.Format "Mon, 02-Jan-2006 15:04 MST"}}

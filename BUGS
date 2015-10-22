@@ -1,0 +1,48 @@
+Cannot create files in root level of bundle.
+
+  ## ## string "FYI: PrintStack:"  ; string "Cannot convert None to go type string"  ; 
+  /home/strick/gocode/src/github.com/strickyak/rye/runtime.go:3016 (0x495cc6)
+          PrintStack: debug.PrintStack()
+  /home/strick/gocode/src/github.com/strickyak/rye/runtime.go:3010 (0x495abe)
+          PrintStackUnlessEOF: PrintStack(e)
+  /home/strick/gocode/src/github.com/strickyak/aphid/formic.py:245
+  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   (0x71dda2)
+          func.049: PrintStackUnlessEOF(r)
+  /usr/local/go/src/pkg/runtime/panic.c:248 (0x40ef4d)
+  /home/strick/gocode/src/github.com/strickyak/rye/runtime.go:2461 (0x48e9c9)
+          adaptForCall2: panic(F("Cannot convert None to go type %v", want))
+  /home/strick/gocode/src/github.com/strickyak/rye/runtime.go:2439 (0x48e429)
+          AdaptForCall: z := adaptForCall2(v, want)
+  /home/strick/gocode/src/github.com/strickyak/rye/runtime.go:2641 (0x4a4e35)
+          func.040: zz = []R.Value{AdaptForCall(r, ft.Out(0))}
+  /usr/local/go/src/pkg/reflect/value.go:628 (0x565083)
+  /usr/local/go/src/pkg/reflect/asm_amd64.s:15 (0x577de4)
+  /home/strick/gocode/src/github.com/strickyak/redhed/redhed.go:810 (0xc37d7f)
+          (*StreamWriter).Close: pathname := o.fnGetName(o)
+  /usr/local/go/src/pkg/runtime/asm_amd64.s:361 (0x42b592)
+  /usr/local/go/src/pkg/reflect/value.go:563 (0x5648c0)
+  /usr/local/go/src/pkg/reflect/value.go:411 (0x563567)
+  /home/strick/gocode/src/github.com/strickyak/rye/runtime.go:2379 (0x48d34e)
+          FinishInvokeOrCall: outs := f.Call(args)
+  /home/strick/gocode/src/github.com/strickyak/rye/runtime.go:2213 (0x48ae6f)
+          (*PGo).Invoke: return FinishInvokeOrCall(meth.Func, r, aa)
+  /home/strick/gocode/src/github.com/strickyak/aphid/bundle/ryemodule.go:8969 (0x81f740)
+          f_INVOKE_0_Close: return x.Invoke("Close")
+  /home/strick/gocode/src/github.com/strickyak/aphid/bundle.py:729
+  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   (0x8132fe)
+          (*C_ChunkWriter).M_0_Close: _ = /**/ f_INVOKE_0_Close(self.M_w)
+  /home/strick/gocode/src/github.com/strickyak/aphid/formic/ryemodule.go:5195 (0x705cd6)
+          f_INVOKE_0_Close: return x.M_0_Close()
+  /home/strick/gocode/src/github.com/strickyak/aphid/formic.py:551
+  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   (0x6f5465)
+          (*C_Curator).M_5_Handle5: _ = /**/ f_INVOKE_0_Close(v_cw)
+  /home/strick/gocode/src/github.com/strickyak/aphid/formic/ryemodule.go:4644 (0x702108)
+          (*pMeth_5_Curator__Handle5).CallV: return o.Rcvr.M_5_Handle5(argv[0], argv[1], argv[2], argv[3], argv[4])
+  /home/strick/gocode/src/github.com/strickyak/aphid/formic.py:263
+  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+
+Should the Formic /** curator edit files outside of /formic ?

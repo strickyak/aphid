@@ -89,16 +89,16 @@ _local_template = /_job_template {
 }
 
 job:local:node1 = /_local_template {
-  me = $/hosts/node1/num
+  me = node1
   ports { _base = 11000 }
 }
 
 job:local:jig1 = /_local_template {
-  me = $/hosts/jig1/num
+  me = jig1
   ports { _base = 12000 }
 }
 
 job:local:lid1 = /_local_template {
-  me = $/hosts/lid1/num
+  me = lid1
   ports { _base = 13000 }
 }

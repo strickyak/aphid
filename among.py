@@ -101,6 +101,7 @@ class Conn:
     .lasttime = A.NowSecs()
 
     hostport, ring, clientId, serverId = .peer_where, among.ring, .among.my_id, .peer_id
+    say hostport, clientId, serverId
     .client = rbundle.RBundleClient(hostport, ring, clientId, serverId)
 
   def Watchdog():
