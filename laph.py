@@ -380,13 +380,12 @@ def main(argv):
       print '### %s' % a
       print data.PrettyPrint(data.Eval(js))
 
-LookupNodeCache = {}
-
 Lookups = 0
 CachedLookups = 0
 
 class Compile:
   def __init__(program):
+    .memo = {}
     .program = program
     say .program
     parsed = Parse(program)
@@ -412,10 +411,10 @@ class Compile:
     global Lookups
     global CachedLookups
     Lookups += 1
-    z = LookupNodeCache.get(path)
+    z = .memo.get(path)
     if not z:
       z = .visitor.visitTuple(.tree, path=path, up='/', derived='/')
-      LookupNodeCache[path] = z
+      .memo[path] = z
       CachedLookups += 1
     return z
 
