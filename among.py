@@ -75,18 +75,12 @@ class Among:
     if not remote:
       log.Printf('No connection to Origin: %q', thing.origin)
 
-    say 'MON RAW: ', .my_id, thing.origin, b.bundir
-    say 'MON RAW: remote.client.RemoteOpen', (b.bname, rawpath, None, True)
+    say .my_id, thing.origin, b.bundir, b.bname, rawpath
     r = remote.client.RemoteOpen(b.bname, rawpath, pw=None, raw=True)
-    say 'MON RAW: RawChunkWriter', (b.bname, rawpath)
     w = bundle.RawChunkWriter(bund=b, path=rawpath, mtime=None)
-    say 'MON RAW: bundle.CopyChunks'
     bundle.CopyChunks(w, r)
-    say 'MON RAW: w.Close'
     w.Close()
-    say 'MON RAW: r.Close'
     r.Close()
-
 
   def StartSyncronizer():
     sub = pubsub.Sub(key1='WriteFile', re2=None, fn=.WriteFileSyncronizerFunc)
@@ -127,12 +121,10 @@ class Conn:
   def PingAndUpdate():
     try:
       then = A.NowNanos()
-      say .peer_id, .peer_where, then
       t = .client.RPing()
       now = A.NowNanos()
-      say .peer_id, .peer_where, then, t, now, (now-t), (now-then)
-      say float(now-t) / float(1.0e6), float(now-then) / float(1.0e6)
       .lasttime = A.NowSecs()
+      say (.my_id, .peer_id, .peer_where), (then, t, now), (now-t), (now-then), .lasttime
     except as ex:
       say 'EXCEPTION', ex
 
