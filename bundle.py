@@ -782,7 +782,6 @@ native:
     }
   `
 
-
 def CopyChunks(w, r):
   say str(w), str(r)
   try:
@@ -795,5 +794,31 @@ def CopyChunks(w, r):
   except as ex:
     say ex
     must strings.Contains(ex, 'EOF'), ex
+
+def RawFileExits(bund, path):
+  fullpath = F.Join(bund.bundir, path)
+  basename = F.Base(fullpath)
+  try:
+    fd = os.Open(basename)
+    must fd
+  except:
+    return False
+
+  # If we can parse the basename, check file length.
+  m3 = PARSE_REV_FILENAME(basename)
+  if m3:
+    _, name3, suffix3, mtime3, size3, more3 = m3
+    size = int(size3)
+    if size >= 0:
+      try:
+        info = fd.Stat()
+        must info
+      except:
+        return False
+      if info.IsDir():
+        return False
+      if size != info.Size():
+        return False
+  return True  # Assume all is OK if we cannot check more.
 
 pass
