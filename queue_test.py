@@ -1,4 +1,6 @@
-#from go import github.com/strickyak/aphid
+from . import queue
+
+#############  Test raw rye_chan.
 
 N=123   # Num to count
 L=13    # queue Len
@@ -26,3 +28,19 @@ while True:
   z.append(x.a)
 
 assert z == [N-i for i in range(N)]
+
+#############  Test queue.Actor.
+
+z = 0
+def MakeAdder(n):
+  def adder():
+    global z
+    z += n
+  return adder
+
+a = queue.Actor()
+for i in range(101):
+  a.Do(MakeAdder(i))
+a.Do(None)
+a.Wait()
+must z == 5050
