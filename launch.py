@@ -172,7 +172,7 @@ class Aphid:
         .mux.HandleFunc('%s/' % wname, obj.Handle2)
         .mux.HandleFunc('%s:%d/' % (wname, .p_http), obj.Handle2)
       .mux.HandleFunc('%s/@%s/' % (.f_domain, wname), obj.Handle2)
-      .mux.HandleFunc('%s/@%s@e' % (.f_domain, wname), awedit.Master(self, bname, bund=bund).Handle2)
+      .mux.HandleFunc('%s/@%s*/' % (.f_domain, wname), awedit.Master(self, bname, bund=bund).Handle2)
     # Add wikis.
     for wname, config in .x_wikis.items():
       bname = config['bundle']
@@ -182,7 +182,7 @@ class Aphid:
         .mux.HandleFunc('%s/' % wname, obj.Handle2)
         .mux.HandleFunc('%s:%d/' % (wname, .p_http), obj.Handle2)
       .mux.HandleFunc('%s/@%s/' % (.f_domain, wname), obj.Handle2)
-      .mux.HandleFunc('%s/@%s@e' % (.f_domain, wname), awedit.Master(self, bname, bund=bund).Handle2)
+      .mux.HandleFunc('%s/@%s*/' % (.f_domain, wname), awedit.Master(self, bname, bund=bund).Handle2)
 
     # Add formic.
     for wname, config in .x_formics.items():
