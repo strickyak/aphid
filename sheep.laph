@@ -37,6 +37,8 @@ _job_template = {
     sheep-formic = { kind = plain }
     sheep-smilax = { kind = plain }
     sheep-stash = { kind = plain }
+    sheep-web = { kind = plain }
+    sheep-wiki = { kind = plain }
   }
 
   formics = {
@@ -54,8 +56,12 @@ _job_template = {
     sheep-stash = { bundle = sheep-stash; paths = { 1 = /@sheep-stash/ } }
   }
 
-  webs = {}
-  wikis =  {}
+  webs = {
+    sheep-web = { bundle = sheep-web; paths = { 1 = /@sheep-web/ } }
+  }
+  wikis =  {
+    sheep-wiki = { bundle = sheep-wiki; paths = { 1 = /@sheep-wiki/ } }
+  }
 
   zones = {
     aphid.cc = { bundle = sheep-dns ; zonefile = dns/aphid.cc ; }
