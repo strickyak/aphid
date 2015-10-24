@@ -117,6 +117,7 @@ class Aphid:
     go rbundle.RBundleServer(self, '%s:%d' % (.f_ip, .p_rpc), keyring.Ring).ListenAndServe()
 
   def LoadBundleSeedFiles(bname, bund, seeddir):
+    say bname, type(bund), seeddir
     t = FJ(seeddir, bname)
     def fn(path, info, err):
       say path, info, err
