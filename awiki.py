@@ -107,7 +107,7 @@ def VerbFile(w, r, m, wp):
 
 def VerbDemo(w, r, m, wp):
   try:
-    t = m.bund.ReadFile('/wiki/%s/__wiki__.txt' % wp.Subject)
+    t = bundle.ReadFile(m.bund, '/wiki/%s/__wiki__.txt' % wp.Subject)
   except as ex:
     t = '(Error: %s)' % ex
   d = dict(
@@ -135,7 +135,7 @@ def VerbList(w, r, m, wp):
 
 def VerbView(w, r, m, wp):
   try:
-    text = m.bund.ReadFile('/wiki/%s/__wiki__.txt' % wp.Subject)
+    text = bundle.ReadFile(m.bund, '/wiki/%s/__wiki__.txt' % wp.Subject)
   except:
     # Offer to let them make the page.
     d = dict(
@@ -150,7 +150,7 @@ def VerbView(w, r, m, wp):
     return
 
   say 'VerbView', text
-  _, html = markdown.ProcessWithFrontMatter(text)
+  _front, _raw_md, html = markdown.ProcessWithFrontMatter(text)
   say 'VerbView', html
   d = dict(
       Html = html,
@@ -165,13 +165,13 @@ def VerbEdit(w, r, m, wp):
   text = r.FormValue('text')
   if text:
     # Save it.
-    m.bund.WriteFile('/wiki/%s/__wiki__.txt' % wp.Subject, text)
+    bundle.WriteFile(m.bund, '/wiki/%s/__wiki__.txt' % wp.Subject, text)
     http.Redirect(w, r,
                   "%s%sview" % (wp.Subject, wp.d['Dots']),
                   http.StatusTemporaryRedirect)
     return
   try:
-    text = m.bund.ReadFile('/wiki/%s/__wiki__.txt' % wp.Subject)
+    text = bundle.ReadFile(m.bund, '/wiki/%s/__wiki__.txt' % wp.Subject)
   except:
     text = 'TODO: Edit me!'
   d = dict(
@@ -203,7 +203,7 @@ def VerbAttach(w, r, m, wp):
     fname = conv.EncodeCurlyStrong(fname)
     fd = r.MultipartForm.File['file'][0].Open()
     stuff = ioutil.ReadAll(fd)
-    m.bund.WriteFile('/wiki/%s/%s' % (wp.Subject, fname), stuff)
+    bundle.WriteFile(m.bund, '/wiki/%s/%s' % (wp.Subject, fname), stuff)
     http.Redirect(w, r,
                   "%s%sview" % (wp.Subject, wp.d['Dots']),
                   http.StatusTemporaryRedirect)
