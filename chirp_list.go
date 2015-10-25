@@ -124,8 +124,8 @@ func consumeBackslashEscaped(s string, i int) (byte, int) {
 	case 'v':
 		return '\v', i + 2
 	case 'x':
-    a := unhex(s[i+1])
-    b := unhex(s[i+2])
+    a := unhex(s[i+2])
+    b := unhex(s[i+3])
     return byte((a<<4) | b), i + 4
 	}
 	if s[i+1] < '0' || s[i+1] > '7' {
@@ -160,8 +160,10 @@ func unhex(b byte) int {
     return int(b - '0')
   } else if 'a' <= b && b <= 'f' {
     return int(b - 'a' + 10)
+  } else if 'A' <= b && b <= 'F' {
+    return int(b - 'A' + 10)
   } else {
-    panic("bad hex char")
+    panic(fmt.Sprintf("bad hex char: %d", b))
   }
 }
 
