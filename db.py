@@ -37,26 +37,4 @@ class Db:
   def Compact():
     .db.CompactRange(go_indirect(go_new(util.Range)))
 
-def main(args):
-  cmd = args[1]
-  db = Db(args[0], recover=(cmd=='recover'))
-  with defer db.Close():
-    switch cmd:
-      default:
-        raise 'Unknown command: %q' % cmd
-      case 'get':
-        print db.Get(args[2])
-      case 'put':
-        db.Put(args[2], args[3])
-      case 'keys':
-        for k in db.Keys(args[2] if len(args)>2 else ''):
-          print k
-      case 'items':
-        for k, v in db.Items(args[2] if len(args)>2 else ''):
-          print k, '==', v
-      case 'compact':
-        db.Compact()
-      case 'recover':
-        pass
-
 pass
