@@ -69,17 +69,17 @@ _job_template = {
 }
 
 job:node1 = /_job_template {
-  me = $/hosts/node1/num
+  me = node1
   flags { ip = $/hosts/node1/ip }
 }
 
 job:jig1 = /_job_template {
-  me = $/hosts/jig1/num
+  me = jig1
   flags { ip = $/hosts/jig1/ip }
 }
 
 job:lid1 = /_job_template {
-  me = $/hosts/lid1/num
+  me = lid1
   flags { ip = $/hosts/lid1/ip }
 }
 
