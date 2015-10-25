@@ -8,14 +8,12 @@ import (
 
 func JoinChirpList(vec []string) string {
 	var buf bytes.Buffer
-	buf.WriteByte('{')
 	for i, s := range vec {
 		if i > 0 {
 			buf.WriteByte(' ')
 		}
 		buf.WriteString(ToChirpListElement(s))
 	}
-	buf.WriteByte('}')
 	return buf.String()
 }
 
@@ -25,7 +23,7 @@ func ToChirpListElement(s string) string {
 	}
 
 	if strings.ContainsAny(s, " \t\n\r{}\\") {
-		return "{" + octalEscape(s) + "}"
+		return "{" + hexEscapeAsNeeded(s) + "}"
 	}
 	return s
 }
@@ -126,7 +124,9 @@ func consumeBackslashEscaped(s string, i int) (byte, int) {
 	case 'v':
 		return '\v', i + 2
 	case 'x':
-		panic("Hexadecimal Backslash Escapes not supported (yet)")
+    a := unhex(s[i+1])
+    b := unhex(s[i+2])
+    return byte((a<<4) | b), i + 4
 	}
 	if s[i+1] < '0' || s[i+1] > '7' {
 		return s[i+1], i + 2 // Default for all other cases is the escaped char.
@@ -143,17 +143,39 @@ func consumeBackslashEscaped(s string, i int) (byte, int) {
 	return byte(a*64 + b*8 + c), i + 4
 }
 
-func octalEscape(s string) string {
+/*
+func hex(x int) byte {
+  if 0 <= x && x <= '9' {
+    return byte(x + '0' + x)
+  } else if 10 <= x && x <= 16 {
+    return byte(x - 10 + 'a' + x - 10)
+  } else {
+    panic("bad hex int")
+  }
+}
+*/
+
+func unhex(b byte) int {
+  if '0' <= b && b <= '9' {
+    return int(b - '0')
+  } else if 'a' <= b && b <= 'f' {
+    return int(b - 'a' + 10)
+  } else {
+    panic("bad hex char")
+  }
+}
+
+func hexEscapeAsNeeded(s string) string {
 	var buf bytes.Buffer
 	n := len(s)
 	for i := 0; i < n; i++ { // Iterate bytes in s.
 		var b byte = s[i]
-		if needsOctalEscape(b) {
-			// buf.WriteString(Sprintf("\\%03o", b))
-			buf.WriteByte('\\')
-			buf.WriteByte('0' + ((b >> 6) & 3))
-			buf.WriteByte('0' + ((b >> 3) & 7))
-			buf.WriteByte('0' + ((b >> 0) & 7))
+		if byteNeedsEscape(b) {
+			buf.WriteString(fmt.Sprintf("\\x%02x", b))
+			//// buf.WriteByte('\\')
+			//// buf.WriteByte('x')
+			//// buf.WriteByte(hex(int((b >> 4) & 15)))
+			//// buf.WriteByte(hex(int((b >> 0) & 15)))
 		} else {
 			buf.WriteByte(b)
 		}
@@ -161,6 +183,20 @@ func octalEscape(s string) string {
 	return buf.String()
 }
 
-func needsOctalEscape(b byte) bool {
+func octalEscapeAsNeeded(s string) string {
+	var buf bytes.Buffer
+	n := len(s)
+	for i := 0; i < n; i++ { // Iterate bytes in s.
+		var b byte = s[i]
+		if byteNeedsEscape(b) {
+			buf.WriteString(fmt.Sprintf("\\%03o", b))
+		} else {
+			buf.WriteByte(b)
+		}
+	}
+	return buf.String()
+}
+
+func byteNeedsEscape(b byte) bool {
 	return b < ' ' || b > '~' || b == '{' || b == '}' || b == '\\'
 }
