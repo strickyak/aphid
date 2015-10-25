@@ -8,6 +8,7 @@ import (
 	_ "github.com/microcosm-cc/bluemonday"
 	_ "github.com/russross/blackfriday"
 	_ "golang.org/x/crypto/scrypt"
+	_ "github.com/syndtr/goleveldb/leveldb"
 )
 
 import (
