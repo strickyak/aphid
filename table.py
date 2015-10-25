@@ -69,8 +69,8 @@ class Table:
         vec.append(None)  # Add None as third thing.
         pending.append(vec)
         
-  def addem(hold):
-    for ts, k, v in hold:
+  def addem(pending):
+    for ts, k, v in pending:
       ts = ts.lstrip('+-')  # Omit the '+' or '-'.
 
       # Look for ts of existing record with key k.
