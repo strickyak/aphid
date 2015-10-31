@@ -5,6 +5,7 @@ from go import path/filepath as F
 from go import crypto/md5, crypto/sha256, crypto/rand
 from go import github.com/strickyak/redhed
 from . import  A, pubsub, sym, table
+#from . import  resize
 from lib import sema
 
 DIR_PERM = 0755
@@ -12,22 +13,25 @@ FILE_PERM = 0644
 
 TheSerial = sema.Serial()
 
-def ReadFile(bund, path, pw=None, raw=None, rev=None):
-  r = bund.MakeReader(path, pw=pw, raw=raw, rev=rev)
+def ReadFile(bund, path, pw=None, raw=None, rev=None, varient='r'):
+  r = bund.MakeReader(path, pw=pw, raw=raw, rev=rev, varient=varient)
   say bund, path, rev
   w = go_new(bytes.Buffer)
   io.Copy(w, r)
   r.Close()
   return w.String()
 
-def WriteFile(bund, path, body, pw=None, mtime=0, raw=None):
-  say bund, path, body, pw, raw
+def WriteFile(bund, path, body, pw=None, mtime=0, raw=None, varient='r'):
+  say bund, path, len(body), pw, raw
   r = ioutil.NopCloser(bytes.NewReader(byt(body)))
-  w = bund.MakeWriter(path, pw=None, mtime=0, raw=None)
+  w = bund.MakeWriter(path, pw=None, mtime=0, raw=None, varient=varient)
   io.Copy(w, r)
   say bund, path, len(body), pw
   w.Close()
   r.Close()
+
+  #if not raw:
+  #  resize.MakeThumbnails(bund, path, body, pw)
 
 def ListDirs(b, d, pw=None):
   say 'YAK-ListDirs', b
@@ -57,10 +61,10 @@ def TRY(fn):
 def NowMillis():
     return time.Now().UnixNano() // 1000000
 
-def RevFormat(fpath, tag, ms, suffix, mtime, size):
-  return '%s/%s.%014d.%s.%d.%d' % (fpath, tag, ms, suffix, mtime, size)
+PARSE_REV_FILENAME = regexp.MustCompile('^(r|v[a-z0-9_]+)[.](\w+)[.](\w+)[.]([-0-9]+)[.]([-0-9]+)(.*)$').FindStringSubmatch
 
-PARSE_REV_FILENAME = regexp.MustCompile('^r?[.]?r?[.]?(\w+)[.](\w+)[.]([-0-9]+)[.]([-0-9]+)(.*)$').FindStringSubmatch
+V_DOT = regexp.MustCompile('^(v[a-z0-9_]+)[.](.*)$').FindStringSubmatch
+V_HAT = regexp.MustCompile('^(v[a-z0-9_]+)\\^(.*)$').FindStringSubmatch
 
 # Extracts bundle name at [2] from path to bundle.
 PARSE_BUNDLE_PATH = regexp.MustCompile('(^|.*/)b[.]([A-Za-z0-9_]+)$').FindStringSubmatch
@@ -89,13 +93,13 @@ class Base:
     return [x for x, isdir, _, sz in .List4(d, pw) if not isdir and sz]
 
   #def ReadFile(path, pw=None, raw=None, rev=None):
-  #  return ReadFile(self, path=path, pw=pw, raw=raw, rev=rev)
+  #  return ReadFile(self, path=path, pw=pw, raw=raw, rev=rev, varient=varient)
   #
   #def WriteFile(path, body, pw=None, mtime=0, raw=None):
-  #  return WriteFile(self, path, body, pw=pw, mtime=mtime, raw=raw)
+  #  return WriteFile(self, path, body, pw=pw, mtime=mtime, raw=raw, varient=varient)
 
-  def MakeWriter(path, pw=None, mtime=0, raw=None):
-    return .MakeChunkWriter(path, pw=pw, mtime=mtime, raw=raw)
+  def MakeWriter(path, pw=None, mtime=0, raw=None, varient='r'):
+    return .MakeChunkWriter(path, pw=pw, mtime=mtime, raw=raw, varient=varient)
 
   def __str__():
     return '%T{%s}' % (self, .bname)
@@ -144,16 +148,16 @@ class WebkeyBundle(Base):
       if not .links:
         .bund = None
 
-  def MakeReader(path, pw, raw, rev=None):
+  def MakeReader(path, pw, raw, rev=None, varient='r'):
     must pw or raw
     say path, pw, raw
     if pw:
       .Link(pw)
     must .links or raw
     with defer .UnlinkIfPw(pw):
-      return .bund.MakeReader(path, pw=pw, raw=raw, rev=rev)
+      return .bund.MakeReader(path, pw=pw, raw=raw, rev=rev, varient=varient)
 
-  def MakeChunkReader(path, pw=None, raw=False):
+  def MakeChunkReader(path, pw=None, raw=False, varient='r'):
     must pw or raw
     say path, pw, raw
 
@@ -165,31 +169,31 @@ class WebkeyBundle(Base):
       .Link(pw)
     must .links or raw
     with defer .UnlinkIfPw(pw):
-      return .bund.MakeChunkReader(path, pw=pw, raw=raw)
+      return .bund.MakeChunkReader(path, pw=pw, raw=raw, varient=varient)
 
-  def MakeChunkWriter(path, pw, mtime, raw):
+  def MakeChunkWriter(path, pw, mtime, raw, varient='r'):
     must pw or raw
     say path, pw
     if pw:
       .Link(pw)
     must .links or raw
     with defer .UnlinkIfPw(pw):
-      return .bund.MakeChunkWriter(path, pw=pw, mtime=mtime, raw=raw)
+      return .bund.MakeChunkWriter(path, pw=pw, mtime=mtime, raw=raw, varient=varient)
 
-  def Stat3(path, pw=None):
+  def Stat3(path, pw=None, varient='r'):
     must pw
     if pw:
       .Link(pw)
     must .links
     with defer .UnlinkIfPw(pw):
-      return .bund.Stat3(path)
-  def List4(path, pw=None):
+      return .bund.Stat3(path, varient=varient)
+  def List4(path, pw=None, varient='r'):
     must pw
     if pw:
       .Link(pw)
     must .links
     with defer .UnlinkIfPw(pw):
-      return .bund.List4(path)
+      return .bund.List4(path, varient=varient)
 
   def ReadRawFile(rawpath):
     dont_use_key = None
@@ -213,7 +217,7 @@ class PlainBundle(Base):
     .table = table.Table(F.Join(.bundir, 'd.table'))
     os.MkdirAll(bundir, 0777)
 
-  def List4(path, pw=None):
+  def List4(path, pw=None, varient='r'):
     say 'List4', path
     dp = .dpath(path)
     vec = .TryOsReadDir(dp)
@@ -232,13 +236,13 @@ class PlainBundle(Base):
         if not revs:
           continue
         rev_name = sorted(revs)[-1] # latest.
-        _, name3, suffix3, mtime3, size3, more = PARSE_REV_FILENAME(rev_name)
+        _, varient3, name3, suffix3, mtime3, size3, more = PARSE_REV_FILENAME(rev_name)
         say s[2:], False, int(mtime3), int(size3)
         yield s[2:], False, int(mtime3), int(size3)
       else:
         log.Printf('Ignoring strange file: %q %q', path, s)
 
-  def ListRevs(path):
+  def ListRevs(path, varient='r'):
     z = []
     fp = .fpath(path)
     try:
@@ -248,13 +252,19 @@ class PlainBundle(Base):
     vec = fd.Readdir(-1)
     for info in vec:
       s = info.Name()
-      if s.startswith('r.'):
-        z.append(s[2:])
-      if s.startswith('r^'):
-        z.append(redhed.DecryptFilename(s[2:], .rhkey))
+      if varient=='r':
+        if s.startswith('r.' % varient):
+          z.append(s[2:])
+        if s.startswith('r^' % varient):
+          z.append(redhed.DecryptFilename(s[2:], .rhkey))
+      else:
+        if V_DOT(s):
+          z.append(s[2:])
+        if V_HAT(s):
+          z.append(redhed.DecryptFilename(s[2:], .rhkey))
     return z
 
-  def Stat3(path, pw=None):
+  def Stat3(path, pw=None, varient='r'):
     try:
       # First try it as a directory.
       st = os.Stat(.bpath(.dpath(path)))
@@ -264,12 +274,12 @@ class PlainBundle(Base):
 
     fpath = .fpath(path)
     fd = os.Open(.bpath(fpath))
-    rev, filename = .nameOfFileToOpen(path)
+    rev, filename = .nameOfFileToOpen(path, varient=varient)
     say rev, filename
 
     m = PARSE_REV_FILENAME(rev)
     must m, (m, rev, filename)
-    _, ts, suffix, millis, size, more = m
+    _, varient3, ts, suffix, millis, size, more = m
     return False, int(millis), int(size)
 
   def bpath(path):
@@ -292,16 +302,16 @@ class PlainBundle(Base):
     say path, z
     return z
 
-  def NewReadSeekerTimeSize(path, rev=None):
+  def NewReadSeekerTimeSize(path, rev=None, varient='r'):
     say path, rev
-    rev, name = .nameOfFileToOpen(path, rev)
+    rev, name = .nameOfFileToOpen(path, rev=rev, varient=varient)
     say name
     words = name.split('/')[-1].split('.')
     mtime, size = int(words[3]), int(words[4])
     say mtime, size, words, name
     return os.Open(name), mtime, size
 
-  def nameOfFileToOpen(path, rev=None):
+  def nameOfFileToOpen(path, rev=None, varient='r'):
     """Returns rev, raw"""
     say path
     fp = .fpath(path)
@@ -309,7 +319,7 @@ class PlainBundle(Base):
     if rev:
       # TODO -- we need plain vs. z, in case of .rhkey.
       return F.Join(fp, rev), .bpath(F.Join(fp, rev))
-    tails = sorted([str(f) for f in osTailGlob(F.Join(.bpath(fp), 'r.*'))])
+    tails = sorted([str(f) for f in osTailGlob(F.Join(.bpath(fp), '%s.*' % varient))])
     raws = [F.Join(.bpath(fp), g) for g in tails]
 
     say raws
@@ -321,7 +331,7 @@ class PlainBundle(Base):
     say path, rev, raw
     return rev, raw
 
-  def MakeReader(path, pw, raw, rev=None):
+  def MakeReader(path, pw, raw, rev=None, varient='r'):
     # Raw doesn't matter, on a Plain Bundle file.
     must not pw
     say path, raw, rev
@@ -329,17 +339,17 @@ class PlainBundle(Base):
       say (.bundir, path)
       return os.Open(F.Join(.bundir, path))
     else:
-      rev, filename = .nameOfFileToOpen(path=path, rev=rev)
+      rev, filename = .nameOfFileToOpen(path=path, rev=rev, varient=varient)
       say rev, filename, (path, rev)
       return os.Open(filename)
 
-  def MakeChunkReader(path, pw, raw=False, rev=None):
-    return ChunkReaderAdapter(.MakeReader(path=path, pw=pw, raw=raw, rev=rev))
+  def MakeChunkReader(path, pw, raw=False, rev=None, varient='r'):
+    return ChunkReaderAdapter(.MakeReader(path=path, pw=pw, raw=raw, rev=rev, varient=varient))
 
-  def MakeChunkWriter(path, pw, mtime, raw):
+  def MakeChunkWriter(path, pw, mtime, raw, varient='r'):
     must not pw
     say path, pw
-    cw = ChunkWriter(self, None, path, mtime, raw)
+    cw = ChunkWriter(self, None, path, mtime, raw, varient=varient)
     say str(cw)
     return cw
 
@@ -369,7 +379,7 @@ class RedhedBundle(Base):
     say z
     return z
 
-  def List4(path, pw=None):
+  def List4(path, pw=None, varient='r'):
     say 'List4', path
     dp = .dpath(path)
     vec = .TryOsReadDir(dp)
@@ -390,19 +400,19 @@ class RedhedBundle(Base):
         revs = []
         for x in xrevs:
           rev = redhed.DecryptFilename(x, .rhkey)
-          if rev.startswith('r.'):
+          if rev.startswith('%s.' % varient):
             revs.append(rev)
         if revs:
           rev_name = sorted(revs)[-1] # latest.
           m = PARSE_REV_FILENAME(rev_name)
           if not m:
             raise 'Cannot PARSE_REV_FILENAME: ' + repr((rev_name, dp, s))
-          _, name3, suffix3, millis, size3, more = m
+          _, varient3, name3, suffix3, millis, size3, more = m
           yield s[2:], False, int(millis), int(size3)
       else:
         log.Printf('Ignoring strange file: %q %q', path, s)
 
-  def ListRevs(path):
+  def ListRevs(path, varient='r'):
     z = []
     fp = .fpath(path)
     try:
@@ -416,7 +426,7 @@ class RedhedBundle(Base):
         z.append(redhed.DecryptFilename(s, .rhkey))
     return sorted(z)
 
-  def Stat3(path, pw=None):
+  def Stat3(path, pw=None, varient='r'):
     dpath = .dpath(path)
     say path, dpath, pw
     try:
@@ -427,12 +437,12 @@ class RedhedBundle(Base):
       pass
 
     say path, dpath, pw
-    rev, filename = .nameOfFileToOpen(path)
+    rev, filename = .nameOfFileToOpen(path, varient='r')
     say rev, filename
 
     m = PARSE_REV_FILENAME(rev)
     must m, (m, rev, filename)
-    _, ts, suffix, millis, size, more = m
+    _, varient3, ts, suffix, millis, size, more = m
     return False, int(millis), int(size)
 
   def findOrConjure(xdir, s):
@@ -488,10 +498,10 @@ class RedhedBundle(Base):
     say "zyxfff", path, dp, fname, fpart, xpart, z
     return z
 
-  def NewReadSeekerTimeSize(path, rev=None):
+  def NewReadSeekerTimeSize(path, rev=None, varient='r'):
     say path, rev
     if .rhkey:
-      rev, xname = .nameOfFileToOpen(path, rev)
+      rev, xname = .nameOfFileToOpen(path, rev=rev, varient=varient)
       say xname
       fd = os.Open(.bpath(xname))
       rs = redhed.NewReader(fd, .rhkey)
@@ -499,14 +509,14 @@ class RedhedBundle(Base):
       return rs, mtime, size
       # TODO -- how will we Close?
     else:
-      rev, name = .nameOfFileToOpen(path, rev)
+      rev, name = .nameOfFileToOpen(path, rev=rev, varient=varient)
       say name
       words = name.split('/')[-1].split('.')
       mtime, size = int(words[2]), int(words[3])
       say mtime, size, words, name
       return os.Open(.bpath(name)), mtime, size
 
-  def nameOfFileToOpen(path, rev=None):
+  def nameOfFileToOpen(path, rev=None, varient='r'):
     """Returns rev, raw"""
     say path
     fp = .fpath(path)
@@ -534,23 +544,23 @@ class RedhedBundle(Base):
     say path, rev, raw
     return rev, raw
 
-  def MakeReader(path, pw, raw, rev=None):
+  def MakeReader(path, pw, raw, rev=None, varient='r'):
     if raw:
       assert not pw
       assert not rev
       return os.Open(F.Join(.bundir, path))
 
     say path, raw, rev
-    rev, filename = .nameOfFileToOpen(path=path, rev=rev)
+    rev, filename = .nameOfFileToOpen(path=path, rev=rev, varient=varient)
     fd = os.Open(filename)
     return redhed.NewReader(fd, .rhkey)
 
-  def MakeChunkReader(path, pw, raw=False, rev=None):
-    return ChunkReaderAdapter(.MakeReader(path=path, pw=pw, raw=raw, rev=rev))
+  def MakeChunkReader(path, pw, raw=False, rev=None, varient='r'):
+    return ChunkReaderAdapter(.MakeReader(path=path, pw=pw, raw=raw, rev=rev, varient=varient))
 
-  def MakeChunkWriter(path, pw, mtime, raw):
+  def MakeChunkWriter(path, pw, mtime, raw, varient='r'):
     say path, pw
-    z = ChunkWriter(self, .rhkey, path, mtime, raw)
+    z = ChunkWriter(self, .rhkey, path, mtime, raw, varient=varient)
     say z
     return z
 
@@ -619,13 +629,13 @@ class ChunkReaderAdapter:
       `
 
 class chunkReader:
-  def __init__(bund, rhkey, path, raw):
+  def __init__(bund, rhkey, path, raw, varient='r'):
     if raw:
       .fd = os.Open(F.Join(bund.bundir, path))
       .r = bufio.NewReader(.fd)
     else:
       say bund, rhkey, path
-      rev1, path1 = bund.nameOfFileToOpen(path)
+      rev1, path1 = bund.nameOfFileToOpen(path, varient=varient)
       say path1
       path2 = F.Join(bund.bundir, path1)
       say path2
@@ -688,7 +698,7 @@ native:
   `
 
 class ChunkWriter:
-  def __init__(bund, rhkey, path, mtime, raw):
+  def __init__(bund, rhkey, path, mtime, raw, varient='r'):
     path = P.Clean(P.Join('.', path))
     say path, mtime, raw
     must not strings.HasPrefix(path, '%')
@@ -697,20 +707,21 @@ class ChunkWriter:
     .path = path
     .mtime = mtime
     .raw = raw
+    .varient = varient
     if .raw:
+      say 'FRODO RAW', type(bund), bund.bname, bund.bundir, rhkey, path, mtime, raw, varient
       .tmp = F.Join(.bund.bundir, 'tmp.ChunkWriter.%d' % TheSerial.Recv())
       os.MkdirAll(F.Dir(.tmp), 0777)
       .fd = os.Create(.tmp)
       .w = bufio.NewWriter(.fd)
     else:
+      say 'FRODO COOKED', type(bund), bund.bname, bund.bundir, rhkey, path, mtime, raw, varient
       .fd = None
       .w = redhed.NewStreamWriter(.bund.bundir, rhkey, redhed.Magic2, mtime, .fnGetName)
 
   def WriteChunk(bb):
     while bb:
-      say len(bb)
       c = .w.Write(bb)
-      say c
       must c > 0
       bb = bb[c:]
   def Close():
@@ -723,9 +734,6 @@ class ChunkWriter:
       os.Rename(.tmp, target)
       .RawDest = .path
     else:
-      say str(.w)
-      say .w
-      say str(.w)
       .w.Close()
       .RawDest = .w.RawDest
     say .raw, .path, .RawDest
@@ -750,29 +758,14 @@ class ChunkWriter:
     .w = None
 
   def fnGetName(w):
-    say .bund.bundir, .path
-    #if .bund.rhkey:
-    #  .fpath = .bund.fpath(.path)
-    #else:
-    #  .fpath = .bund.fpath(.path)
     try:
       vec = .path.split('/')
-      say vec
       f = vec.pop()
-      say vec, f
       dpath = F.Join(F.Join(*[('d.%s' % x) for x in vec]), 'f.%s' % f)
-      say dpath
       now = int(time.Now().UnixNano() / 1000000)  # timestamp is now, even if mtime is old,
-      say now
-      path = P.Join(dpath, 'r.%014d._.%d.%d.%s' % (now, w.MTimeMillis, w.Size, hex.EncodeToString(w.Hash[:9])))
-      say path
-      say 111
+      path = P.Join(dpath, '%s.%014d._.%d.%d.%s' % (.varient, now, w.MTimeMillis, w.Size, hex.EncodeToString(w.Hash[:9])))
     except as ex:
-      say 222
-      say ex
-    say 333, path
-    #say .path, .fpath, dpath, path
-    #say .path, path
+      raise ex
     return path
 
 native:
@@ -807,7 +800,7 @@ def RawFileExits(bund, path):
   # If we can parse the basename, check file length.
   m3 = PARSE_REV_FILENAME(basename)
   if m3:
-    _, name3, suffix3, mtime3, size3, more3 = m3
+    _, varient3, name3, suffix3, mtime3, size3, more3 = m3
     size = int(size3)
     if size >= 0:
       try:
