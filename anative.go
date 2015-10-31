@@ -6,9 +6,10 @@ import (
 	_ "github.com/gdamore/mangos"
 	_ "github.com/huandu/skiplist"
 	_ "github.com/microcosm-cc/bluemonday"
+	_ "github.com/nfnt/resize"
 	_ "github.com/russross/blackfriday"
-	_ "golang.org/x/crypto/scrypt"
 	_ "github.com/syndtr/goleveldb/leveldb"
+	_ "golang.org/x/crypto/scrypt"
 )
 
 import (
