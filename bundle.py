@@ -5,7 +5,7 @@ from go import path/filepath as F
 from go import crypto/md5, crypto/sha256, crypto/rand
 from go import github.com/strickyak/redhed
 from . import  A, pubsub, sym, table
-#from . import  resize
+from . import  resize
 from lib import sema
 
 DIR_PERM = 0755
@@ -22,16 +22,21 @@ def ReadFile(bund, path, pw=None, raw=None, rev=None, varient='r'):
   return w.String()
 
 def WriteFile(bund, path, body, pw=None, mtime=0, raw=None, varient='r'):
-  say bund, path, len(body), pw, raw
+  if not mtime:
+    mtime = NowMillis()
+  say 'FRODO WriteFile', bund, path, len(body), pw, raw, mtime, varient
   r = ioutil.NopCloser(bytes.NewReader(byt(body)))
-  w = bund.MakeWriter(path, pw=None, mtime=0, raw=None, varient=varient)
+  w = bund.MakeWriter(path, pw=None, mtime=mtime, raw=None, varient=varient)
   io.Copy(w, r)
   say bund, path, len(body), pw
   w.Close()
   r.Close()
 
-  #if not raw:
-  #  resize.MakeThumbnails(bund, path, body, pw)
+  if not raw and varient == 'r':
+    try:
+      resize.MakeThumbnails(bund, path, body, pw, mtime, WriteFile)
+    except as ex:
+      say ex
 
 def ListDirs(b, d, pw=None):
   say 'YAK-ListDirs', b

@@ -127,14 +127,18 @@ class Aphid:
       assert path[:len(t)] == t
       assert path[len(t)] == '/'
       fpath = path[len(t)+1:]  # Remove prefix and one '/'
+
+      body = ioutil.ReadFile(path)
+      bundle.WriteFile(bund, fpath, body, pw=None, mtime=0, raw=False)
   
-      fd = os.Open(path)
-      with defer fd.Close():
-        br = bufio.NewReader(fd)
-        cr = bundle.ChunkReaderAdapter(br)
-        cw = bund.MakeWriter(fpath, pw=None, mtime=0, raw=None)
-        bundle.CopyChunks(cw, cr)
-        cw.Close()
+      #fd = os.Open(path)
+      #with defer fd.Close():
+      #  br = bufio.NewReader(fd)
+      #  cr = bundle.ChunkReaderAdapter(br)
+      #  cw = bund.MakeWriter(fpath, pw=None, mtime=0, raw=None)
+      #  bundle.CopyChunks(cw, cr)
+      #  cw.Close()
+
       return None  # No error.
     say '@@@ walking', t, fn
     F.Walk(t, fn)
