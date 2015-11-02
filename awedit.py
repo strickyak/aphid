@@ -84,7 +84,7 @@ class Master:
             say d
             .t.ExecuteTemplate(w, 'DIR', util.NativeMap(d))
           else:
-            br = .bund.MakeReader(path, pw=None, raw=False, rev=None)
+            br, _ = .bund.MakeReaderAndRev(path, pw=None, raw=False, rev=None)
             http.ServeContent(w, r, path, adapt.UnixToTime(modTime), br)
 
 HEAD = `

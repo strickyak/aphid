@@ -42,7 +42,7 @@ class Among:
   def BestEffortCallAllOthers(proc_name, *args, **kw):
     say proc_name, args, kw
     for name, conn in .conn_map.items():
-      say name, conn
+      say name
       go conn.client.Call(proc_name, *args, **kw)
 
   def WriteFileSyncronizerFunc(thing):

@@ -721,7 +721,7 @@ class Curator:
             ct = query.get('ct')
             if ct:
               w.Header().Set('Content-Type', ct)
-            br = .bund.MakeReader(fname, pw=None, raw=False, rev=None)
+            br, _ = .bund.MakeReaderAndRev(fname, pw=None, raw=False, rev=None)
             http.ServeContent(w, r, fname, adapt.UnixToTime(modTime), br)
           else:
             raise 'Cannot view empty or deleted or nonexistant file: %q' % fname

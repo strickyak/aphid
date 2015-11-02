@@ -94,7 +94,7 @@ def Do1Bundle(b):
   say vec
   must vec == [("file1", False, T1, 6)]
 
-  r = b.MakeReader('/d1/d2/file1', None, None)
+  r, _ = b.MakeReaderAndRev('/d1/d2/file1', None, None)
   say r
   d6 = ioutil.ReadAll(r)
   say d6
@@ -116,7 +116,7 @@ def Do1Bundle(b):
   say vec
   must vec == [("file1", False, T2, 8)]
 
-  r = b.MakeReader('/d1/d2/file1', None, None)
+  r, _ = b.MakeReaderAndRev('/d1/d2/file1', None, None)
   d8 = ioutil.ReadAll(r)
   r.Close()
   must d8 == byt('samwise\n')

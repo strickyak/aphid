@@ -81,7 +81,7 @@ class BundDir:
           if isDir:
             http.Redirect(w, r, path + '/', http.StatusMovedPermanently)
 
-          br = .bund.MakeReader(wpath, pw=pw, raw=False, rev=None)
+          br, _ = .bund.MakeReaderAndRev(wpath, pw=pw, raw=False, rev=None)
           http.ServeContent(w, r, path, adapt.UnixToTime(modTime), br)
 
     except as ex:
