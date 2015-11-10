@@ -72,6 +72,7 @@ def Load(filename=None):
   """Load the ring dict from the file."""
   global RingDict, Ring
   filename = filename if filename else RingFilename.X
+  say 'Loading Keyring', filename
   s = str(ioutil.ReadFile(filename)).strip()
   if s:
     RingDict = data.Eval(s)
