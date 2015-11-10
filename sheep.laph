@@ -1,7 +1,6 @@
 hosts = {
-  node1 = { num = 31 ; ip = 198.199.119.196 }
-  jig1 =  { num = 32 ; ip = 162.243.222.110 }
-  lid1 =  { num = 33 ; ip = 208.68.37.161   }
+  node1 = { ip = 198.199.119.196 }
+  jig1 =  { ip = 162.243.222.110 }
 }
 
 _job_template = {
@@ -16,9 +15,9 @@ _job_template = {
   }
 
   peers = {
-    node1 = { host = $/hosts/node1/ip ; port = 81 ; name = node1 ; num = $/hosts/node1/num ; }
-    jig1 = { host = $/hosts/jig1/ip  ; port = 81 ; name = jig1  ; num = $/hosts/jig1/num  ; }
-    lid1 = { host = $/hosts/lid1/ip  ; port = 81 ; name = lid1  ; num = $/hosts/lid1/num  ; }
+    node1 = { host = $/hosts/node1/ip ; port = 81 ; name = node1 ; }
+    jig1 = { host = $/hosts/jig1/ip  ; port = 81 ; name = jig1  ; }
+    lid1 = { host = $/hosts/lid1/ip  ; port = 81 ; name = lid1  ; }
   }
 
   ports = {
