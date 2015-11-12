@@ -153,13 +153,26 @@ def Serve(d, bind):
 
     go Answer(d, buf, n, addr, conn)
 
+def Just_A_Answers(d, name):
+  try:
+    vec = d.get(name)
+    say 'Just_A_Answers BEFORE STAR', name, vec
+    if not vec:
+      vec = FindStarRecords(d, name, dns.A4)
+    say 'Just_A_Answers WITH STAR', name, vec
+    return [rr for rr in vec if rr.typ == dns.A4]
+  except:
+    return []
+
 def Answer(d, buf, n, addr, conn):
   try:
     hexdump.HexDump(buf[:n], 'Packet IN')
     q = dns.ReadQuestion(buf, n)
     vec = d.get(q.name)
+    say 'BEFORE STAR', q.name, vec
     if not vec:
-      vec = FindStarRecords(d, q.name, q.typ)
+      vec = FindStarRecords(d, q.name, q.typ) + FindStarRecords(d, q.name, dns.CNAME)
+    say 'WITH STAR', q.name, vec
     buf2 = mkbyt(UDPMAX)
     w = dns.Writer(buf2)
     if vec:
@@ -172,11 +185,26 @@ def Answer(d, buf, n, addr, conn):
           if q.typ == 255 or rr.typ == q.typ:
             rr.WriteRR(w)
       else:
-        soa = FindSOA(d, q.name)
-        w.WriteHead2(1, na, int(bool(soa)), 0)
-        w.WriteQuestion(q)
-        if soa:
-          soa.WriteRR(w)
+        cvec = d.get(q.name)
+        say 'CNAME BEFORE STAR', q.name, cvec
+        if not cvec:
+          cvec = FindStarRecords(d, q.name, dns.CNAME)
+        say 'CNAME WITH STAR', q.name, cvec
+        answers = [rr for rr in cvec if rr.typ == dns.CNAME]
+        for a in answers:
+          answers += Just_A_Answers(d, a.targ)
+
+        if answers:
+          w.WriteHead2(1, len(answers), 0, 0)
+          w.WriteQuestion(q)
+          for c in answers:
+            c.WriteRR(w)
+        else:
+          soa = FindSOA(d, q.name)
+          w.WriteHead2(1, 0, int(bool(soa)), 0)
+          w.WriteQuestion(q)
+          if soa:
+            soa.WriteRR(w)
     else:
       soa = FindSOA(d, q.name)
       w.WriteHead1(q.serial, dns.NAME_ERROR)
@@ -192,6 +220,7 @@ def Answer(d, buf, n, addr, conn):
     say 'CAUGHT', ex
 
 def FindStarRecords(d, name, typ):
+  z = []
   words = name.split('.')
   for i in range(len(words)):
     star_domain = '*.' + '.'.join(words[i:])
@@ -202,12 +231,15 @@ def FindStarRecords(d, name, typ):
       for rr in vec:
         say rr
         if rr.typ == typ:
-          z = rr.Clone()
-          if not z:
+          c = rr.Clone()
+          if not c:
             continue  # Some record types (SOA, NS) cannot be cloned.
-          z { name: name }
-          say z
-          return [z]
+          c { name: name }
+          say c
+          z.append(c)
+      if z:
+        return z
+  return z
 
 def FindSOA(d, name):
   words = name.split('.')
