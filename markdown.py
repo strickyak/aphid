@@ -11,8 +11,13 @@ TOML_FRONT_MATTER = regexp.MustCompile(`(?s)^[+][+][+]\s*\n(.*?\n)[+][+][+]\s*\n
 
 CR = regexp.MustCompile("\r")
 
+HACK_JS = regexp.MustCompile(`([a-z][-a-z0-9_]+)[:]`)
 def EvalJS(s):
-  f = data.Eval(s)
+  # HACK to quote keys that were written in jsonnet.
+  t = str(HACK_JS.ReplaceAll(s, `"$1":`))
+  #say s
+  #say t
+  f = data.Eval(t)
   return f
 
 def EvalToml(s):
