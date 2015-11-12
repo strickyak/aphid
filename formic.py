@@ -441,6 +441,8 @@ class Curator:
     .config = config
     .pwName = config['pw']
     .wantHash = keyring.Ring[.pwName].doubleMD5
+    #say keyring.Ring[.pwName]
+    #say .pwName, .wantHash
     .ReloadTemplates()
 
   def ReloadTemplates():
@@ -459,15 +461,16 @@ class Curator:
     # Hash the given password into hex.
     hashed2 = conv.DoubleMD5(pw)
 
+    #say user, hashed2, .wantHash
     if hashed2 != .wantHash or not len(user):
       w.Header().Set("WWW-Authenticate", 'Basic realm="%s"' % root)
       w.WriteHeader(401)
       print >>w, 'Wrong User or Password -- Hit RELOAD and try again.'
       return
 
-    say path
+    #say path
     cmd = P.Base(path)
-    say cmd
+    #say cmd
     query = util.ParseQuery(r)
     fname = query.get('f', '/')
 
@@ -482,7 +485,7 @@ class Curator:
               Site=.master.site,
               Root=root,
               )
-          say d
+          #say d
           .t.ExecuteTemplate(w, 'CURATE', util.NativeMap(d))
 
         case '**site':
@@ -528,10 +531,10 @@ class Curator:
           .t.ExecuteTemplate(w, 'DELETE', util.NativeMap(d))
 
         case '*attach_media_submit':
-          say query
+          #say query
 
           r.ParseMultipartForm(1024*1024)
-          say r.MultipartForm.File['file'][0].Header
+          #say r.MultipartForm.File['file'][0].Header
           cd = r.MultipartForm.File['file'][0].Header.Get('Content-Disposition')
           say cd
           match = MATCH_FILENAME(cd)
@@ -585,9 +588,9 @@ class Curator:
             return
 
           edit_path = query.get('EditPath', '')
-          say edit_path
+          #say edit_path
           edit_path = edit_path.strip().lower() if edit_path else ''
-          say edit_path
+          #say edit_path
           if edit_path:
             m = MatchMdEditName(edit_path)
             if not m:
