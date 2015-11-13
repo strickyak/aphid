@@ -62,7 +62,7 @@ def NowMillis():
 
 PARSE_REV_FILENAME = regexp.MustCompile('^(r|v[a-z0-9_]+)[.](\w+)[.](\w+)[.]([-0-9]+)[.]([-0-9]+)(.*)$').FindStringSubmatch
 
-V_DOT = regexp.MustCompile('^(v[a-z0-9_]+)[.](.*)$').FindStringSubmatch
+V_DOT = regexp.MustCompile('^v_([0-9]+)_([0-9]+)_([a-z]+)[.](.*)$').FindStringSubmatch
 V_HAT = regexp.MustCompile('^(v[a-z0-9_]+)\\^(.*)$').FindStringSubmatch
 
 # Extracts bundle name at [2] from path to bundle.
@@ -247,7 +247,7 @@ class PlainBundle(Base):
       say 'ListRevs Open', path, fp, varient
       fd = os.Open(.bpath(fp))
     except as ex:
-      say 'ListRevs except', path, fp, ex 
+      say 'ListRevs except', path, fp, ex
       return z
     vec = fd.Readdir(-1)
     say 'ListRevs vec', path, fp, vec, varient
@@ -262,14 +262,62 @@ class PlainBundle(Base):
         else:
           say 'Ignore', s
       else:
-        if V_DOT(s):
+        raise varient  # TODO -- varient obsolete here.
+      say 'ListRevs append', path, len(z), z[-1] if z else None
+    say 'ListRevs return', z
+    return z
+
+
+  def ListImageVarients(path, rev=None):
+    fp = .fpath(path)
+    try:
+      say 'ListImageVarients Open', path, fp
+      fd = os.Open(.bpath(fp))
+    except as ex:
+      say 'ListImageVarients except', path, fp, ex
+      return None
+    vec = fd.Readdir(-1)
+    say 'ListImageVarients vec', path, fp, vec
+
+    if not rev:
+      z = []
+      for info in vec:
+        s = info.Name()
+        say 'ListImageVarients info', path, fp, s
+        if s.startswith('r.'):
           z.append(s)
-        elif V_HAT(s):
+        elif s.startswith('r^'):
           z.append(redhed.DecryptFilename(s[2:], .rhkey))
         else:
           say 'Ignore', s
-      say 'ListRevs append', path, len(z), z[-1] if z else None
-    say 'ListRevs return', z
+      rev = sorted(z)[-1]
+
+    z = []
+    for info in vec:
+      s = info.Name()
+      say 'ListImageVarients CONSIDER', s
+      m = V_DOT(s)
+      if m:
+        _, wid, hei, kind, tail = m
+        if tail != rev[2:]:
+          say 'ListImageVarients CONTINUE', s, tail, rev
+          continue
+        z.append((s, int(wid), int(hei)))
+        say 'ListImageVarients APPEND', s, int(wid), int(hei)
+      elif V_HAT(s):
+        x = redhed.DecryptFilename(s[2:], .rhkey)
+        m = V_DOT(x)
+        if m:
+          _, wid, hei, kind, tail = m
+          if tail != rev: continue
+          z.append(redhed.DecryptFilename(s[2:], .rhkey))
+          z.append((s, int(wid), int(hei)))
+        else:
+          raise x
+      else:
+        say 'Ignore', s
+      say 'ListImageVarients append', path, len(z), z[-1] if z else None
+    say 'ListImageVarients return', z
     return z
 
   def Stat3(path, pw=None, rev=None, varient='r', nodir=False):
@@ -331,10 +379,9 @@ class PlainBundle(Base):
     tails = sorted([str(f) for f in osTailGlob(F.Join(.bpath(fp), '%s.*' % varient))])
     raws = [F.Join(.bpath(fp), g) for g in tails]
 
-    #say raws
     if not raws:
       raise 'no such file: bundle=%s path=%s' % (.bname, path)
-    
+
     rev = tails[-1]
     raw = raws[-1]  # The latest one is last, in sorted order.
     say path, rev, raw
