@@ -243,9 +243,7 @@ class FormicMaster:
 
   def Handle2(w, r):
     try:
-      say 'Handle2'
       host, extra, path, root = util.HostExtraPathRoot(r)
-      say host, extra, path, root
       return .Handle5(w, r, host, path, root)
     except as ex:
       say ex
@@ -254,12 +252,12 @@ class FormicMaster:
       return # raise ex
 
   def Handle5(w, r, host, path, root):
-    say 'Handle5'
-    # Special Commands.
+    query = util.ParseQuery(r)
+
+    # Special Curator Commands.
     m = MatchCurator(path)
     if m:
       _, cmd = m
-      say m, host, cmd, root
       .curator.Handle5(w, r, host=host, path=cmd, root=root)
       return
 
@@ -267,15 +265,45 @@ class FormicMaster:
       raise 'Dotfile in path not allowed: %q' % path
 
     isStatic = False
+    staticPath = J('/formic/static', path)
     try:
-      isDir, modTime, fSize = .bund.Stat3(J('/formic/static', path), pw=None)
+      isDir, modTime, fSize = .bund.Stat3(staticPath, pw=None)
+      say 'IS_STATIC', staticPath
       say isDir, modTime, fSize, path
       isStatic = fSize and not isDir
     except:
+      say 'IS_STATIC_FAIL'
       pass
 
     if isStatic:
-      rs, nanos, size = .bund.NewReadSeekerTimeSize(J('/formic/static', path))
+      # Does it have varients?
+      varients = .bund.ListImageVarients(staticPath, None)
+      say 'VARIENTS', varients
+
+      # And do we have maximum sizes?
+      maxh = int(query.get('maxh', 0))
+      maxw = int(query.get('maxw', 0))
+      zvar, zbig, zw, zh = None, 0, 0, 0
+      minvar, minbig, minw, minh = None, 999999999999, 0, 0
+      if varients and (maxh or maxw):
+        for vname, vw, vh in varients:
+          big = vh + vw
+          say big, vh, vw, vname
+          if big < minbig:
+              minvar, minbig, minw, minh = vname, big, vw, vh
+              say minvar, minbig, minw, minh
+          if (not maxh or vh <= maxh) and (not maxw or vw <= maxw):
+            if big > zbig:
+              zvar, zbig, zw, zh = vname, big, vw, vh
+              say zvar, zbig, zw, zh
+      say 'VARIENT', zvar, zbig, zw, zh
+
+      # If all are too big, use the smallest.
+      if not zvar:
+        if (maxh or maxw) and minvar:
+          zvar = minvar
+
+      rs, nanos, size = .bund.NewReadSeekerTimeSize(staticPath, rev=zvar)
       http.ServeContent(w, r, r.URL.Path, time.Unix(0, nanos), rs)
       return
 
@@ -468,9 +496,7 @@ class Curator:
       print >>w, 'Wrong User or Password -- Hit RELOAD and try again.'
       return
 
-    #say path
     cmd = P.Base(path)
-    #say cmd
     query = util.ParseQuery(r)
     fname = query.get('f', '/')
 
