@@ -173,7 +173,7 @@ class FormicMaster:
               Identifier: pname,
               Menu: which_menu,
               Name: j_menu.get('name', pname),
-              URL: '/%s' % pname,
+              URL: '%s' % pname,
               Weight: j_menu.get('weight', 0),
               Pre: '', Post: '',
               }
