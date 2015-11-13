@@ -19,6 +19,8 @@ class Mux:
     .paths = {}
 
   def HandleFunc(path, func):
+    if '/' not in path:
+      path += '/'
     .mux.HandleFunc(path, func)
     .paths[path] = func
 
