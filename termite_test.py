@@ -2,7 +2,7 @@ from go import bytes, os, io, io/ioutil
 from go import mime/multipart, net/http
 from go import encoding/base64
 from go import path/filepath as FP
-from . import A, au, bundle, keyring, launch, sym, util
+from . import A, au, bundle, flag, keyring, launch, sym, util
 
 Ring = None
 
@@ -102,8 +102,11 @@ def HttpFinishReq(req, ct, pw):
   say z99, resp
   return z99
 
+SLEEP = flag.Int('sleep', 1, 'Extra final sleep time')
+
 def main(args):
   global Ring
+  args = flag.Munch(args)
 
   keyring.RingFilename.X = 'termite.ring'
   launch.SEEDDIR.X = 'termite.seed'
@@ -208,3 +211,4 @@ def main(args):
   say z2
 
   say "OKAY termite_test.py"
+  A.Sleep(SLEEP.X)
