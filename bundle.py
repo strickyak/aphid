@@ -661,18 +661,20 @@ class ChunkReaderAdapter:
 
   def Close():
     say 'Close'
-    try:
-      .r.Close()
-      .r = None
-    except:
-      pass
+    if .r:
+      try:
+        .r.Close()
+        .r = None
+      except:
+        pass
   def Dispose():
     say 'Dispose'
-    try:
-      .r.Close()
-      .r = None
-    except:
-      pass
+    if .r:
+      try:
+        .r.Close()
+        .r = None
+      except:
+        pass
 
   def SafeReadChunk(n):
     native:
