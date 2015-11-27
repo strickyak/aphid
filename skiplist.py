@@ -16,14 +16,14 @@ class SkipList:
       v, ok = .sl.GetValue(str(k))
       return v if ok else None
 
-  def Set(k, v):
+  def Put(k, v):
     "Set the value for string key k to v."
     .mu.Lock()
     with defer .mu.Unlock():
       .sl.Set(str(k), v)
 
-  def Remove(k):
-    "Remove item at string key k, returning the removed value, or None if not found."
+  def Delete(k):
+    "Delete item at string key k, returning the removed value, or None if not found."
     .mu.Lock()
     with defer .mu.Unlock():
       e = .sl.Remove(str(k))

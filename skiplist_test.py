@@ -17,7 +17,7 @@ def main(args):
   # First try it with ints as values.
   d = skiplist.SkipList()
   for i in range(1000):
-    d.Set(i, i*i)
+    d.Put(i, i*i)
 
   must int(d.Get(10)) == 100
   for i in range(1000):
@@ -36,7 +36,7 @@ def main(args):
   # First try it with objects as values.
   d2 = skiplist.SkipList()
   for i in range(1000):
-    d2.Set(i, Number(i*i))
+    d2.Put(i, Number(i*i))
 
   must d2.Get(10).x == 100
   for i in range(1000):
@@ -59,7 +59,7 @@ def main(args):
       break
     if len(k) == 3:
       # It seems to be safe to delete as we iterate.
-      z += d2.Remove(k).x
+      z += d2.Delete(k).x
   must z == sum([(x+200)*(x+200) for x in range(100)])
 
   # Now sum the remaining cells.
