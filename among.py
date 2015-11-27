@@ -124,7 +124,7 @@ class Conn:
       t = .client.RPing()
       now = A.NowNanos()
       .lasttime = A.NowSecs()
-      say (.my_id, .peer_id, .peer_where), (then, t, now), (now-t), (now-then), .lasttime
+      say (.among.my_id, .peer_id, .peer_where), (then, t, now), (now-t), (now-then), .lasttime
     except as ex:
       say 'EXCEPTION', ex
 
