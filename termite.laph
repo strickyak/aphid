@@ -37,10 +37,7 @@ job:termite11 = {
   }
 
   zones = {
-#    aphid.cc = {
-#      bundle = termite0
-#      zonefile = dns/aphid.cc
-#    }
+    aphid.cc = { bundle = termite0 ; zonefile = dns/aphid.cc }
   }
 
   webs = {

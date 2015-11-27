@@ -370,9 +370,9 @@ class PlainBundle(Base):
 
   def nameOfFileToOpen(path, rev=None, varient='r'):
     """Returns rev, raw"""
-    say path
+    say .bundir, .bname, path
     fp = .fpath(path)
-    say fp
+    say .bundir, .bname, fp
     if rev:
       # TODO -- we need plain vs. z, in case of .rhkey.
       return F.Join(fp, rev), .bpath(F.Join(fp, rev))

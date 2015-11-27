@@ -13,13 +13,16 @@ def Clear():
     if not d.endswith('local'):
       for b in ['b.termite0', 'b.termite1', 'b.termite2', 'b.termite3']:
         os.Mkdir(FP.Join(d, b), 0777)
-    os.Symlink('b.termite3', FP.Join(d, 'b.termite3peek')) 
+    else: os.Symlink('b.termite3', FP.Join(d, 'b.termite3peek')) 
 
   os.MkdirAll('__termite_local/termite0/dns', 0777)
   ioutil.WriteFile(
       '__termite_local/termite0/dns/aphid.cc',
       'aphid.cc. IN NS cubic.yak.net.\n',
       0666)
+  jpg = ioutil.ReadFile('termite.jpg')
+  os.MkdirAll('__termite_local/termite0/web/media', 0777)
+  ioutil.WriteFile('__termite_local/termite0/web/media/termite.jpg', jpg, 0666)
 
 def CopyFilesDirToDir(dest, src):
   say dest, src
@@ -103,6 +106,7 @@ def main(args):
   global Ring
 
   keyring.RingFilename.X = 'termite.ring'
+  launch.SEEDDIR.X = 'termite.seed'
   Clear()
   quit = rye_chan(1)
 

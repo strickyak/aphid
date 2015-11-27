@@ -114,7 +114,9 @@ class Aphid:
               self, bname, topdir=.f_topdir, suffix='0',
               webkeyid=keyid, xorkey=key.b_xor, basekey=key.base)
       if SEEDDIR.X:
+        say SEEDDIR.X, bname, '.LoadBundleSeedFiles ('
         .LoadBundleSeedFiles(bname, .bundles[bname], SEEDDIR.X)
+        say SEEDDIR.X, bname, '.LoadBundleSeedFiles )'
 
     go rbundle.RBundleServer(self, '%s:%d' % (.f_ip, .p_rpc), keyring.Ring).ListenAndServe()
 
@@ -130,8 +132,10 @@ class Aphid:
       assert path[len(t)] == '/'
       fpath = path[len(t)+1:]  # Remove prefix and one '/'
 
+      say bname, path, 'COPY ('
       body = ioutil.ReadFile(path)
       bundle.WriteFile(bund, fpath, body, pw=None, mtime=0, raw=False)
+      say bname, path, 'COPY )'
   
       #fd = os.Open(path)
       #with defer fd.Close():
@@ -227,7 +231,7 @@ class Aphid:
         say 'stash alias %q' % k
 
     ## Misc
-    #.mux.HandleFunc('/@@quit', lambda w, r: .quit.Put(1))
+    .mux.HandleFunc('/@quitquitquit', lambda w, r: .quit.Put(1))
 
     # Go Serve.
     say 'SERVING', .server
