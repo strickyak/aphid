@@ -1,6 +1,7 @@
 from go import bufio, fmt, os, time
 from go import path/filepath as F
 from . import A, skiplist
+from lib import data
 
 class Table:
   # Construct with dpath where the t.* files are, and they will be loaded.
@@ -35,10 +36,10 @@ class Table:
     else:
       return None
 
-  def Set(k, v):
+  def Put(k, v):
     .PrepareToWrite()
     ts = .Stamp()
-    .sk.Set(k, (ts, v))
+    .sk.Put(k, (ts, v))
     if v is None:
       print >>.w, '-%s\t%s' % (ts, k)
     else:
@@ -78,7 +79,7 @@ class Table:
       rec = .sk.Get(k)
       old_ts = rec[0] if rec else ''
       if ts >= old_ts:
-        .sk.Set(k, (ts, v))
+        .sk.Put(k, (ts, v))
 
 def ReadFileLines(filename):
   r = os.Open(filename)
@@ -87,3 +88,22 @@ def ReadFileLines(filename):
     while sc.Scan():
       yield sc.Text()
     sc.Err() # Raise error, if any.
+
+#Encode = conv.EncodeCurlyWeak
+#Decoee = conv.DecodeCurly 
+
+class Fields:
+  def __init__(table, indexed_fields):
+    .table = table
+    .indexed_fields = indexed_fields
+
+  def Get(bname, fname, key):
+    k = '%s!%s!%s' % (bname, fname, key)
+    vv = .table.Get(k)
+    return data.Eval(vv)
+
+  def Put(bname, fname, key, val):
+    k = '%s!%s!%s' % (bname, fname, key)
+    .table.Put(k, repr(val))
+
+  pass # TODO
