@@ -6,37 +6,41 @@ from . import A, au, bundle, flag, keyring, launch, sym, util
 
 Ring = None
 
-def Clear():
+def ClearAndInitSubdirectories():
   for d in ['__termite_local', '__termite__termite11', '__termite__termite12', '__termite__termite13']:
     os.RemoveAll(d)
     os.Mkdir(d, 0777)
     if not d.endswith('local'):
       for b in ['b.termite0', 'b.termite1', 'b.termite2', 'b.termite3']:
         os.Mkdir(FP.Join(d, b), 0777)
-    else: os.Symlink('b.termite3', FP.Join(d, 'b.termite3peek')) 
+    else:
+      # termite3peek (sym) is a dup of termite3 (websym)
+      os.Symlink('b.termite3', FP.Join(d, 'b.termite3peek')) 
 
   os.MkdirAll('__termite_local/termite0/dns', 0777)
   ioutil.WriteFile(
       '__termite_local/termite0/dns/aphid.cc',
-      'aphid.cc. IN NS cubic.yak.net.\n',
+      'aphid.cc. IN A 127.0.0.1\n',
       0666)
   jpg = ioutil.ReadFile('termite.jpg')
   os.MkdirAll('__termite_local/termite0/web/media', 0777)
   ioutil.WriteFile('__termite_local/termite0/web/media/termite.jpg', jpg, 0666)
 
-def CopyFilesDirToDir(dest, src):
-  say dest, src
-  os.MkdirAll(dest, 0777)
-  for f in FP.Glob(FP.Join(src, '*')):
-    say f, dest
-    b = FP.Base(f)
-    r = os.Open(FP.Join(src, b))
-    w = os.Create(FP.Join(dest, b))
-    io.Copy(w, r)
-    w.Close()
-    r.Close()
+#def ShallowCopyFilesToDirFromDir(dest, src):
+#  """Shallow Copy of files from second dir to first."""
+#  say dest, src
+#  os.MkdirAll(dest, 0777)
+#  for f in FP.Glob(FP.Join(src, '*')):
+#    say f, dest
+#    b = FP.Base(f)
+#    r = os.Open(FP.Join(src, b))
+#    w = os.Create(FP.Join(dest, b))
+#    io.Copy(w, r)
+#    w.Close()
+#    r.Close()
 
 def Cmp(file1, file2):
+  """Assert the contents of two named files are equal."""
   say file1
   say file2
   x1 = ioutil.ReadFile(file1)
@@ -45,28 +49,30 @@ def Cmp(file1, file2):
   must x1 == x2
 
 def Glob1(*names):
+  """Join and Glob and assert exactly 1 result."""
   say names
   vec = FP.Glob(FP.Join('.', *names))
   say names, vec
   must len(vec) == 1
   return vec[0]
 
-def LoadTermite(i, t3_rpc):
+def PushLocalToTermiteBundle(i, t3_rpc):
   say i
-  for cmd in ['BigLocalDir', 'BigRemoteDir', 'SPush', 'BigLocalDir', 'BigRemoteDir']:
-    say '@@@@@@@@@@@@@@@@@@@@@@@@@ Building:', i, cmd
-    # bund = 'termite%d' % i if i<3 else 'termite%dpeek' % i
-    bund = 'termite%d' % i
-    pw = 'password' if i>2 else ''
-    fullcmd = [
-        '--bund=%s' % bund, '--dir=./__termite_local', '--server=127.0.0.1:%s' % t3_rpc,
-        '--cid=91', '--sid=92', '--exit=0', '--pw=%s' % pw,
-        cmd]
-    say '@@@@@@@@@@@@@@@@@@@@@@@@@ Running:', i, fullcmd
-    au.main(fullcmd)
-    say '@@@@@@@@@@@@@@@@@@@@@@@@@ Ran:', i
-    if cmd == 'SPush':
+  for cmd in ['BigLocalDir', 'BigRemoteDir', 'SPush', 'SLEEP', 'BigLocalDir', 'BigRemoteDir']:
+    if cmd == 'SLEEP':
+      say 'LLLLLL Sleeping', 1
       A.Sleep(1)
+    else:
+      say 'LLLLLL Building:', i, cmd
+      bund = 'termite%d' % i
+      pw = 'password' if i>2 else ''
+      fullcmd = [
+          '--bund=%s' % bund, '--dir=./__termite_local', '--server=127.0.0.1:%s' % t3_rpc,
+          '--cid=91', '--sid=92', '--exit=0', '--pw=%s' % pw,
+          cmd]
+      say 'LLLLLL Running:', i, fullcmd
+      au.main(fullcmd)
+      say 'LLLLLL Ran:', i
 
 def HttpUpload(url, basename, params, r, pw=None):
   # Thanks: http://matt.aimonetti.net/posts/2013/07/01/golang-multipart-file-upload-example/
@@ -108,42 +114,34 @@ def main(args):
   global Ring
   args = flag.Munch(args)
 
+  # We will need keys for sym & websym bundles.
   keyring.RingFilename.X = 'termite.ring'
+  # Must load zone 'aphid.cc' from Seed Dir before starting Aphids.
   launch.SEEDDIR.X = 'termite.seed'
-  Clear()
+
+  ClearAndInitSubdirectories()
   quit = rye_chan(1)
 
   t1 = launch.Aphid(quit=quit, filename='termite.laph:job:termite11')
   t2 = launch.Aphid(quit=quit, filename='termite.laph:job:termite12')
   t3 = launch.Aphid(quit=quit, filename='termite.laph:job:termite13')
+  t3.StartAll()
+
   t1_http = t1.laph.Eval('/job:termite11/ports/http')
   say t1_http
   t3_rpc = t3.laph.Eval('/job:termite13/ports/rpc')
   say t3_rpc
-
-  say t1
-  say t2
-  say t3
-
-  t3.StartAll()
   Ring = t3.ring
 
-  bt2 = t3.bundles['termite2']
-  say bt2, bt2.bundir
-  bundle.WriteFile(bt2, 'abcde/lmnop/wxyz.txt', 'oscar meyer wiener')
+  a3_b2 = t3.bundles['termite2']
+  say a3_b2, a3_b2.bundir
+  bundle.WriteFile(a3_b2, 'abcde/lmnop/wxyz.txt', 'oscar meyer wiener')
   say 'Wrote it'
-  x = bundle.ReadFile(bt2, 'abcde/lmnop/wxyz.txt')
+  x = bundle.ReadFile(a3_b2, 'abcde/lmnop/wxyz.txt')
   say 'Red it', x
 
   A.Sleep(1)
-  LoadTermite(0, t3_rpc=t3_rpc)
-
-  CopyFilesDirToDir(
-      '__termite__termite11/b.termite0/d.dns/f.aphid.cc/',
-      '__termite__termite13/b.termite0/d.dns/f.aphid.cc/')
-  CopyFilesDirToDir(
-      '__termite__termite12/b.termite0/d.dns/f.aphid.cc/',
-      '__termite__termite13/b.termite0/d.dns/f.aphid.cc/')
+  PushLocalToTermiteBundle(0, t3_rpc=t3_rpc)
 
   t1.StartAll()
   A.Sleep(1)
@@ -159,7 +157,7 @@ def main(args):
         HELLO_APHID,
         0666)
     say i
-    LoadTermite(i, t3_rpc=t3_rpc)
+    PushLocalToTermiteBundle(i, t3_rpc=t3_rpc)
     A.Sleep(1)
     say i
 
@@ -183,7 +181,7 @@ def main(args):
     #    Glob1('__termite__termite12/b.termite%d/d.web/d.frog/f.index.html/r.*.13.*' % i))
 
   # Install a template for /formic/layouts/_default/single.html
-  buf = bytes.NewBuffer('Default Single Template\n')
+  buf = bytes.NewBuffer('<html><body>Default Single Template: (((Title: {{$.Title}})))</body></html>\n')
   z0 = HttpUpload(
       url='http://localhost:%s/@termite1.formic/*attach_media_submit?' % t1_http,
       basename='single.html',
@@ -208,7 +206,7 @@ def main(args):
   # Get the home page.
   A.Sleep(1)
   z2 = HttpMethod('GET', 'http://localhost:%s/@termite1.formic/home?' % t1_http, body='', pw='password')
-  say z2
+  must z2 == byt("<html><body>Default Single Template: (((Title: HomePage)))</body></html>\n")
 
   say "OKAY termite_test.py"
   A.Sleep(SLEEP.X)
