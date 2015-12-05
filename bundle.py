@@ -2,7 +2,7 @@ from go import bufio, bytes, io, log, os, regexp, strings, sync, time
 from go import io/ioutil, encoding/hex
 from go import path as P
 from go import path/filepath as F
-from go import crypto/md5, crypto/sha256, crypto/rand
+from go import crypto/sha256, crypto/rand
 from go import github.com/strickyak/redhed
 from . import  A, pubsub, sym, table
 from . import  resize
