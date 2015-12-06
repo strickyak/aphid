@@ -13,7 +13,7 @@ FILE_PERM = 0644
 
 TheSerial = sema.Serial()
 
-def ReadFile(bund, path, pw=None, raw=None, rev=None, varient='r'):
+def ReadFile(bund :Base, path :str, pw:str|byt?=None, raw:bool?=None, rev:str?=None, varient:str='r'):
   r, rev_out = bund.MakeReaderAndRev(path, pw=pw, raw=raw, rev=rev, varient=varient)
   say bund, path, rev, rev_out
   w = go_new(bytes.Buffer)
@@ -21,7 +21,7 @@ def ReadFile(bund, path, pw=None, raw=None, rev=None, varient='r'):
   r.Close()
   return w.String()
 
-def WriteFile(bund, path, body, pw=None, mtime=0, raw=None, varient='r', suffix=''):
+def WriteFile(bund :Base, path :str, body :str|byt, pw=None, mtime:int=0, raw:bool?=None, varient:str='r', suffix:str=''):
   if not mtime:
     mtime = NowMillis()
   say 'FRODO WriteFile', bund, path, len(body), pw, raw, mtime, varient, suffix
