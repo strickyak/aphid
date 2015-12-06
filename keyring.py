@@ -8,16 +8,31 @@ RingDict = {}
 Ring = {}
 
 RingFilename = flag.String('ring', '', 'name of keyring file')
+RingSecret = flag.String('secret', '', 'passphrase of keyring file')
 
 RE_HEX = regexp.MustCompile('^[0-9a-f]+$').FindString
 RE_BASE64 = regexp.MustCompile('^[-A-Za-z0-9_]+$').FindString
+
+SavedSecretCipher = None
+def LazySecretCipher():
+  if not SavedSecretCipher:
+    SavedSecretCipher = sym.Cipher(sha256.Sum256(RingSecret.X))
+  return SavedSecretCipher
+
+def SealWithSecret(plain):
+  return conv.Encode64(LazySecretCipher().Seal(plain, 'WithSecret'))
+
+def OpenWithSecret(encrypted):
+  plain, serial = LazySecretCipher().Open(conv.Decode64(encrypted))
+  must serial == 'WithSecret'
+  return plain
 
 class DhKey:
   def __init__(d):
     say d
     .id = d['id']
     .pub = d['pub']
-    .sec = d.get('sec')
+    .sec = d.get('sec') if d.get('sec') else OpenWithSecret(d['Xsec']) if d.get('Xsec') else None
     must RE_BASE64(.pub)
     .o_pub = dh.Big(.pub)  # big.Int
     if .sec:
@@ -28,7 +43,7 @@ class SymKey:
   def __init__(d):
     .id = d['id']
     .num = d['num']
-    .sym = d['sym']
+    .sym = d['sym'] if d.get('sym') else conv.EncodeHex(OpenWithSecret(d['Xsym']))
     must RE_HEX(.sym)
     must len(.sym)== sym.KEY_HEX_LEN
     .b_sym = sym.DecodeHex(.sym)
@@ -37,17 +52,18 @@ class WebKey:
   def __init__(d):
     .id = d['id']
     .num = d['num']
-    .xor = d['xor']
+    .xor = d['xor'] if d.get('xor') else OpenWithSecret(d['Xxor'])
     .base = d['base']
     say .id, .xor, .base, d
     must RE_HEX(.xor)
     must len(.xor)== sym.KEY_HEX_LEN
     .b_xor = sym.DecodeHex(.xor)
 
-class Pw:
+class HashedPw:
   def __init__(d):
     .id = d['id']
-    .doubleMD5 = d['doubleMD5']
+    .doubleHash = d['doubleHash'] if d.get('doubleHash') else OpenWithSecret(d['XdoubleHash'])
+    .salt = d['salt']
 
 def CompileDicts(d):
   """CompileDicts the dict of dicts into the dict of objects."""
@@ -55,9 +71,9 @@ def CompileDicts(d):
   say d
   for k, v in d.items():
     say k, v
-    switch v['type']:
-      case 'pw/doubleMD5':
-        ring[k] = Pw(v)
+    switch v['TYPE']:
+      case 'pw/doubleHash':
+        ring[k] = HashedPw(v)
       case 'dh':
         ring[k] = DhKey(v)
       case 'sym/aes256':
@@ -65,7 +81,7 @@ def CompileDicts(d):
       case 'web/aes256':
         ring[k] = WebKey(v)
       default:
-        raise 'Unknown Type', v['type']
+        raise 'Unknown Type', v['TYPE']
   return ring
 
 def Load(filename=None):
@@ -104,22 +120,26 @@ def main(args):
     case "mkpw":
       key_id = args.pop(0)
       pw = args.pop(0)
+      hex_salt = conv.EncodeHex(sym.RandomKey())
       RingDict[key_id] = dict(
           id=key_id,
-          type='pw/doubleMD5',
-          doubleMD5=conv.DoubleMD5(pw)
+          TYPE='pw/doubleHash',
+          salt=hex_salt,
+          doubleHash=None if RingSecret.X else conv.DoubleHash(pw, hex_salt),
+          XdoubleHash=SealWithSecret(conv.DoubleHash(pw, hex_salt)) if RingSecret.X else None,
           )
 
     case "mkdh":
       key_id = args.pop(0)
       must not args
 
-      obj = dh.Forge(group=dh.GROUP)
+      pair = dh.Forge(group=dh.GROUP)
       RingDict[key_id] = dict(
           id=key_id,
-          type='dh',
-          pub=dh.String(obj.pub),
-          sec=dh.String(obj.sec),
+          TYPE='dh',
+          pub=dh.String(pair.pub),
+          sec=None if RingSecret.X else dh.String(pair.sec),
+          Xsec=SealWithSecret(dh.String(pair.sec)) if RingSecret.X else None,
           )
 
     case "mksym":
@@ -133,8 +153,9 @@ def main(args):
       RingDict[key_id] = dict(
           num=key_num,
           id=key_id,
-          type='sym/aes256',
-          sym=conv.EncodeHex(bb),
+          TYPE='sym/aes256',
+          sym=None if RingSecret.X else conv.EncodeHex(bb),
+          Xsym=SealWithSecret(bb) if RingSecret.X else None,
           )
       say RingDict
 
@@ -164,8 +185,9 @@ def main(args):
           num=key_num,
           id=key_id,
           base=key_base,
-          type='web/aes256',
-          xor=conv.EncodeHex(xorkey),
+          TYPE='web/aes256',
+          xor=None if RingSecret.X else conv.EncodeHex(xorkey),
+          Xxor=SealWithSecret(xorkey) if RingSecret.X else None,
           )
 
     default:

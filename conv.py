@@ -1,16 +1,23 @@
+from go import fmt, regexp, unicode/utf8
+from go import crypto/sha256
 from go import encoding/base64, encoding/ascii85
 from go import encoding/hex as H 
-from go import fmt, regexp, unicode/utf8, crypto/md5
 
 ##
-##  Double-MD5 Hash
+##  Double Hash
 ##
 
-def DoubleMD5(pw):
-  """Double MD5 with newlines and hexing."""
-  hashed = '%x' % md5.Sum('%s\n' % pw)
-  hashed2 = '%x' % md5.Sum('%s\n' % hashed)
-  return hashed2
+# You can verify DoubleHash with the linux sha256sum command:
+# $ conv/conv DoubleHash one two
+# 7306633bc4e3daa2f4a2883b03fca1e44bbb0746635daf73263233f13e055b76
+# $ echo DoubleHash:one:two | sha256sum
+# 290d0000d2bf5d44ff3a1c17f4a87f4086b296e99a3ef0cb32859b23040eeedb -
+# $ echo DoubleHash:290d0000d2bf5d44ff3a1c17f4a87f4086b296e99a3ef0cb32859b23040eeedb:two | sha256sum 
+# 7306633bc4e3daa2f4a2883b03fca1e44bbb0746635daf73263233f13e055b76  -
+def DoubleHash(pw, salt):
+  """Double Hash with newlines and hexing."""
+  t = '%x' % sha256.Sum256('DoubleHash:%s:%s\n' % (pw, salt))
+  return '%x' % sha256.Sum256('DoubleHash:%s:%s\n' % (t, salt))
 
 ##
 ##  Base85
@@ -100,3 +107,10 @@ def DecodeCurly(s):
     return ''
   else:
     return RE_CURLIED.ReplaceAllStringFunc(s, lambda x: fmt.Sprintf('%c', int(x[1:-1])))
+
+def main(args):
+  cmd = args.pop(0)
+  if cmd == 'DoubleHash':
+    pw = args.pop(0)
+    salt = args.pop(0)
+    print DoubleHash(pw, salt)

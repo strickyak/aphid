@@ -468,7 +468,8 @@ class Curator:
     .bund = bund
     .config = config
     .pwName = config['pw']
-    .wantHash = keyring.Ring[.pwName].doubleMD5
+    .wantHash = keyring.Ring[.pwName].doubleHash
+    .wantSalt = keyring.Ring[.pwName].salt
     #say keyring.Ring[.pwName]
     #say .pwName, .wantHash
     .ReloadTemplates()
@@ -487,7 +488,7 @@ class Curator:
     say user, host, path, root
 
     # Hash the given password into hex.
-    hashed2 = conv.DoubleMD5(pw)
+    hashed2 = conv.DoubleHash(pw, .wantSalt)
 
     #say user, hashed2, .wantHash
     if hashed2 != .wantHash or not len(user):
