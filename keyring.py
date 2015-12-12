@@ -11,7 +11,7 @@ RingFilename = flag.String('ring', '', 'name of keyring file')
 RingSecret = flag.String('secret', '', 'passphrase of keyring file')
 
 RE_HEX = regexp.MustCompile('^[0-9a-f]+$').FindString
-RE_BASE64 = regexp.MustCompile('^[-A-Za-z0-9_]+$').FindString
+RE_BASE64 = regexp.MustCompile('^[-A-Za-z0-9_=]+$').FindString
 
 SavedSecretCipher = None
 def LazySecretCipher():
