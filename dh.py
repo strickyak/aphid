@@ -2,9 +2,8 @@ from go import math/big
 from go import crypto/rand as crand
 from . import conv
 
-def Big(s):
+def Big(s :str|byt):
   must s
-  must type(s) == str, '%v' % type(s), '%T' % s
   return big.NewInt(0).SetBytes(conv.Decode64(s))
 
 def String(x):
