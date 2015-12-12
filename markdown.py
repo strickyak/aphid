@@ -1,4 +1,4 @@
-from go import bytes, regexp
+from go import bytes, io/ioutil, os, regexp
 from go import html/template
 from go import github.com/BurntSushi/toml
 from go import github.com/microcosm-cc/bluemonday
@@ -59,3 +59,9 @@ def ProcessWithFrontMatter(text):
   h = TranslateMarkdown(md)
   say f, md, h 
   return f, md, h 
+
+def main(args):
+  s = ioutil.ReadAll(os.Stdin)
+  f, md, h = ProcessWithFrontMatter(s)
+  print >> os.Stderr, repr(f)
+  print h
