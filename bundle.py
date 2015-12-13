@@ -197,11 +197,96 @@ class WebkeyBundle(Base):
     dont_use_key = None
     b = PlainBundle(.aphid, .bname, .bundir, .suffix, keyid=dont_use_key, key=dont_use_key)
     return b.ReadRawFile(rawpath)
+
   def WriteRawFile(rawpath, data):
     dont_use_key = None
     b = PlainBundle(.aphid, .bname, .bundir, .suffix, keyid=dont_use_key, key=dont_use_key)
     return b.WriteRawFile(rawpath, data)
 
+class PosixBundle(Base):
+  def __init__(aphid :object?, bname :str, bundir :str, suffix, keyid=None, key=None):
+    say bname, bundir, suffix, keyid, key
+    .aphid = aphid
+    .bus = aphid.bus if .aphid else None
+    .bname = bname
+    .bundir = bundir
+    must not keyid
+    must not key
+    .table = table.Table(F.Join(.bundir, 'd.table'))
+    os.MkdirAll(bundir, 0777)
+
+  def CheckPath(path:str):
+    """Throw if path is not allowed."""
+    if path.find('../') >= 0:
+      raise 'Bad Path: %q' % path
+    if path.find('/.') >= 0:
+      raise 'Bad Path: %q' % path
+
+  def List4(path, pw=None, varient='r'):
+    """Yield tuples of (name, isDir, mtime, size)."""
+    must not pw
+    .CheckPath(path)
+    p = P.Join(.bundir, path)
+    say p
+    try:
+      fd = os.Open(p)
+      vec = fd.Readdir(-1)
+    except:
+      return
+    for e in vec:
+      name = e.Name()
+      if name.startswith('.'):
+        continue
+      if e.IsDir():
+        yield name, True, e.ModTime().Unix(), 0
+      else:
+        yield name, False, e.ModTime().Unix(), e.Size()
+
+  def ListRevs(path, varient='r'):
+    raise 'Not Implemented'
+
+  def ListImageVarients(path, rev=None):
+    raise 'Not Implemented'
+
+  def Stat3(path, pw=None, rev=None, varient='r', nodir=False):
+    """Returns isDir, mtime, size."""
+    #must not rev
+    #must not pw
+    .CheckPath(path)
+    p = P.Join(.bundir, path)
+    st = os.Stat(p)
+    if st.IsDir():
+      say p, True, st.ModTime().Unix(), 0
+      return True, st.ModTime().Unix(), 0
+    else:
+      say p, False, st.ModTime().Unix(), st.Size()
+      return False, st.ModTime().Unix(), st.Size()
+
+  def NewReadSeekerTimeSize(path, rev=None, varient='r'):
+    .CheckPath(path)
+    p = P.Join(.bundir, path)
+    isDir, mt, sz = .Stat3(path, rev, varient)
+    must not isDir
+    return os.Open(p), mt, sz
+
+  def MakeReaderAndRev(path, pw, raw, rev=None, varient='r'):
+    .CheckPath(path)
+    p = P.Join(.bundir, path)
+    isDir, mt, sz = .Stat3(path, rev, varient)
+    must not isDir
+    return os.Open(p), None  # Plain Revs not implemented yet.
+
+  def MakeChunkReader(path, pw, raw=False, rev=None, varient='r'):
+    r, _ = .MakeReaderAndRev(path=path, pw=pw, raw=raw, rev=rev, varient=varient)
+    return ChunkReaderAdapter(r)
+
+  def MakeChunkWriter(path, pw, mtime, raw, varient='r', suffix=''):
+    .CheckPath(path)
+    p = P.Join(.bundir, path)
+    dp = P.Dir(p)
+    os.MkdirAll(dp, 0777)
+    fd = os.Create(p)
+    return ChunkWriterAdapter(fd)
 
 class PlainBundle(Base):
   def __init__(aphid, bname, bundir, suffix, keyid=None, key=None):
@@ -648,6 +733,12 @@ class ChunkWriterAdapter:
       say .w
       .w.Close()
       .w = None
+
+native: `
+    func (self *C_ChunkWriterAdapter) Write(p []byte) (n int, err error) {
+      return self.M_w.Contents().(io.Writer).Write(p)
+    }
+  `
 
 class ChunkReaderAdapter:
   def __init__(r):

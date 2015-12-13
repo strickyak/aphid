@@ -26,19 +26,6 @@ def ClearAndInitSubdirectories():
   os.MkdirAll('__termite_local/termite0/web/media', 0777)
   ioutil.WriteFile('__termite_local/termite0/web/media/termite.jpg', jpg, 0666)
 
-#def ShallowCopyFilesToDirFromDir(dest, src):
-#  """Shallow Copy of files from second dir to first."""
-#  say dest, src
-#  os.MkdirAll(dest, 0777)
-#  for f in FP.Glob(FP.Join(src, '*')):
-#    say f, dest
-#    b = FP.Base(f)
-#    r = os.Open(FP.Join(src, b))
-#    w = os.Create(FP.Join(dest, b))
-#    io.Copy(w, r)
-#    w.Close()
-#    r.Close()
-
 def Cmp(file1, file2):
   """Assert the contents of two named files are equal."""
   say file1
@@ -172,13 +159,6 @@ def main(args):
       y = bundle.ReadFile(t.bundles['termite%d' % i], 'web/frog/index.html', pw=pw)
       print x, y
       must byt(x)==byt(y), (i, str(t), x, y)
-
-    #Cmp(Glob1('__termite__termite13/b.termite%d/d.web/d.frog/f.index.html/r.*.13.*' % i),
-    #    Glob1('__termite_local/termite0/web/frog/index.html'))
-    #Cmp(Glob1('__termite__termite13/b.termite%d/d.web/d.frog/f.index.html/r.*.13.*' % i),
-    #    Glob1('__termite__termite11/b.termite%d/d.web/d.frog/f.index.html/r.*.13.*' % i))
-    #Cmp(Glob1('__termite__termite13/b.termite%d/d.web/d.frog/f.index.html/r.*.13.*' % i),
-    #    Glob1('__termite__termite12/b.termite%d/d.web/d.frog/f.index.html/r.*.13.*' % i))
 
   # Install a template for /formic/layouts/_default/single.html
   buf = bytes.NewBuffer('<html><body>Default Single Template: (((Title: {{$.Title}})))</body></html>\n')

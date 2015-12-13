@@ -99,6 +99,8 @@ class Aphid:
     for bname, bx in .x_bundles.items():
       bundir = F.Join(.f_topdir, 'b.%s' % bname)
       switch bx['kind']:
+        case 'posix':
+          .bundles[bname] = bundle.PosixBundle(self, bname=bname, bundir=bundir, suffix='0')
         case 'plain':
           .bundles[bname] = bundle.PlainBundle(self, bname=bname, bundir=bundir, suffix='0')
         case 'sym':

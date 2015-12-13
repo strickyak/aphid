@@ -100,7 +100,8 @@ class ServerConn:
       if tup is None:
         break
       serial, result, err = tup
-      #say serial, result, err
+      say serial, result, err
+      say type(serial), type(result), type(err)
 
       p = .sealer.Seal(rye_pickle( (serial, result, err) ), serial)
       WriteChunk(.conn, p)
