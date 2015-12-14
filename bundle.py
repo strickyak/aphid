@@ -735,7 +735,6 @@ class ChunkWriterAdapter:
       if .publisher:
         .publisher()
 
-
   def Dispose():
     .Close()
 
