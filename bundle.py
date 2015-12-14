@@ -221,11 +221,12 @@ class PosixBundle(Base):
       raise 'Bad Path: %q' % path
     if path.find('/.') >= 0:
       raise 'Bad Path: %q' % path
+    return P.Clean(path)
 
   def List4(path, pw=None, varient='r'):
     """Yield tuples of (name, isDir, mtime, size)."""
     must not pw
-    .CheckPath(path)
+    path = .CheckPath(path)
     p = P.Join(.bundir, path)
     say p
     try:
@@ -252,7 +253,7 @@ class PosixBundle(Base):
     """Returns isDir, mtime, size."""
     #must not rev
     #must not pw
-    .CheckPath(path)
+    path = .CheckPath(path)
     p = P.Join(.bundir, path)
     st = os.Stat(p)
     if st.IsDir():
@@ -263,14 +264,14 @@ class PosixBundle(Base):
       return False, st.ModTime().Unix(), st.Size()
 
   def NewReadSeekerTimeSize(path, rev=None, varient='r'):
-    .CheckPath(path)
+    path = .CheckPath(path)
     p = P.Join(.bundir, path)
     isDir, mt, sz = .Stat3(path, rev, varient)
     must not isDir
     return os.Open(p), mt, sz
 
   def MakeReaderAndRev(path, pw, raw, rev=None, varient='r'):
-    .CheckPath(path)
+    path = .CheckPath(path)
     p = P.Join(.bundir, path)
     isDir, mt, sz = .Stat3(path, rev, varient)
     must not isDir
@@ -281,12 +282,16 @@ class PosixBundle(Base):
     return ChunkReaderAdapter(r)
 
   def MakeChunkWriter(path, pw, mtime, raw, varient='r', suffix=''):
-    .CheckPath(path)
+    path = .CheckPath(path)
     p = P.Join(.bundir, path)
     dp = P.Dir(p)
     os.MkdirAll(dp, 0777)
     fd = os.Create(p)
-    return ChunkWriterAdapter(fd)
+    def publish():
+      if .bus:
+        t = pubsub.Thing(origin=None, key1='WriteFile', key2=.bname, props=dict(rawpath=path, DEBUG_path=p))
+        .bus.Publish(t)
+    return ChunkWriterAdapter(fd, publisher=publish)
 
 class PlainBundle(Base):
   def __init__(aphid, bname, bundir, suffix, keyid=None, key=None):
@@ -712,8 +717,9 @@ class RedhedBundle(Base):
     return z
 
 class ChunkWriterAdapter:
-  def __init__(w):
+  def __init__(w, publisher=None):
     .w = w
+    .publisher = publisher
 
   def WriteChunk(buf):
     c = .w.Write(byt(buf))
@@ -726,13 +732,12 @@ class ChunkWriterAdapter:
       say .w
       .w.Close()
       .w = None
+      if .publisher:
+        .publisher()
+
 
   def Dispose():
-    say 'Dispose', .w
-    if .w:
-      say .w
-      .w.Close()
-      .w = None
+    .Close()
 
 native: `
     func (self *C_ChunkWriterAdapter) Write(p []byte) (n int, err error) {

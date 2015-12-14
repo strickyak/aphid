@@ -30,7 +30,7 @@ job:termite11 = {
 
   bundles = {
     termite0 = { kind = plain }
-    termite1 = { kind = plain }
+    termite1 = { kind = posix }
     termite2 = { kind = sym ; key = YAK }
     termite3 = { kind = websym ; key = WLM }
     termite3peek = { kind = sym ; key = BLM }
