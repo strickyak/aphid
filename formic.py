@@ -725,7 +725,7 @@ class Curator:
         case '**edit_text':
           edittext = bundle.ReadFile(.bund, fname, pw=None)
           d = dict(Title='VIEW TEXT: %q' % fname,
-                   Submit='%s**edit_text_submit?f=%s' % (root, fname),
+                   Submit='**edit_text_submit?f=%s' % fname,
                    Filepath=fname,
                    EditText=edittext,
                    Root=root,
