@@ -15,6 +15,17 @@ def Nav(top, *keys):
 #MATCH_HOST_IN_PATH = regexp.MustCompile('/+@([-A-Za-z0-9.]+)($|/.*$)').FindStringSubmatch
 MATCH_HOST_IN_PATH = regexp.MustCompile('/@([-A-Za-z0-9.]+)([*]+|@\\w+)?($|/.*$)').FindStringSubmatch
 
+def ConvertToNanos(x):
+  x = int(x)
+  if x < 5000000000:
+    return x * 1000000000
+  if x < 5000000000000:
+    return x * 1000000
+  if x < 5000000000000000:
+    return x * 1000
+  return x
+
+
 def HostExtraPathRoot(r):
   path = r.URL.Path
   m = MATCH_HOST_IN_PATH(path)

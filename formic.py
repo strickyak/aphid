@@ -303,7 +303,8 @@ class FormicMaster:
         if (maxh or maxw) and minvar:
           zvar = minvar
 
-      rs, nanos, size = .bund.NewReadSeekerTimeSize(staticPath, rev=zvar)
+      rs, mtime, size = .bund.NewReadSeekerTimeSize(staticPath, rev=zvar)
+      nanos = util.ConvertToNanos(mtime)
       http.ServeContent(w, r, r.URL.Path, time.Unix(0, nanos), rs)
       return
 
