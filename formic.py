@@ -5,6 +5,8 @@ from . import A, atemplate, bundle, keyring, markdown, pubsub, util
 from . import adapt, basic, conv, flag
 from lib import data
 
+STATIC_MAX_AGE = 300
+
 F = fmt.Sprintf
 Nav = util.Nav
 HUGO_TIME_FORMAT = '2006-01-02T15:04:05-07:00'
@@ -217,6 +219,7 @@ class FormicMaster:
       BaseURL: site_d.get('baseurl', 'http://127.0.0.1/...FixTheBaseURL.../'),
       Media: media_by,
     }
+
     # Pages link back up to Site
     for pname, p in page_d.items():
       p.Site = .site
@@ -303,9 +306,11 @@ class FormicMaster:
         if (maxh or maxw) and minvar:
           zvar = minvar
 
-      rs, mtime, size = .bund.NewReadSeekerTimeSize(staticPath, rev=zvar)
-      nanos = util.ConvertToNanos(mtime)
-      http.ServeContent(w, r, r.URL.Path, time.Unix(0, nanos), rs)
+      # ServeContent on the static file.
+      w.Header().Set('Cache-Control', 'max-age=%s, s-maxage=%s' % (STATIC_MAX_AGE, STATIC_MAX_AGE))
+      rs, someModTime, _size = .bund.NewReadSeekerTimeSize(staticPath, rev=zvar)
+      correctModTime = time.Unix(0, util.ConvertToNanos(someModTime))
+      http.ServeContent(w, r, r.URL.Path, correctModTime, rs)
       return
 
     # We hardwire the taxonomy "tags".
