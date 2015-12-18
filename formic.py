@@ -184,7 +184,6 @@ class FormicMaster:
 
     # Sort the menus.
     for which_menu, menu in menud.items():
-      say menu
       menu2 = sorted(menu.values(), key=WeightedKey)
       say 'sorted', menu2
       menud[which_menu] = util.NativeSlice(menu2)
@@ -651,7 +650,7 @@ class Curator:
             if main_name:
               edit_menu = util.NativeMap(dict(main=util.NativeMap(dict(
                   name=main_name,
-                  weigth=main_weight,
+                  weight=main_weight,
                   ))))
             else:
               edit_menu = util.NativeMap(dict())
@@ -668,6 +667,7 @@ class Curator:
                 menu=edit_menu,
                 )))
             text = '+++\n' + toml + '\n+++\n' + edit_md
+            say text
 
             say 'bundle.WriteFile', fname, edit_title, edit_md, toml, text
           bundle.WriteFile(.bund, J('/formic/content', fname + '.md'), text, pw=None)
@@ -700,10 +700,12 @@ class Curator:
 
           text = bundle.ReadFile(.bund, filename, pw=None)
           meta, md, html = markdown.ProcessWithFrontMatter(text)
+          say meta, md, html
 
           main_d = meta.get('menu', {}).get('main')
           EditMainName = main_d.get('name', '') if main_d else ''
           EditMainWeight = main_d.get('weight', 0) if main_d else 0
+          say EditMainName, EditMainWeight
 
           d = dict(Title='Edit Page %q' % fname,
                    Submit='%s*edit_page_submit?f=%s' % (root, fname),
