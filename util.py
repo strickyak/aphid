@@ -88,9 +88,9 @@ native:
 def NativeSlice(vec):
   native:
     `
-      z := make(NativeSlice, a_vec.Len())
-      for i, e := range a_vec.List() {
-         z[i] = e.Contents()
+      z := make(NativeSlice, a_vec.Self.Len())
+      for i, e := range a_vec.Self.List() {
+         z[i] = e.Self.Contents()
       }
       return MkGo(z)
     `
@@ -98,8 +98,8 @@ def NativeMap(d):
   native:
     `
       z := make(NativeMap)
-      for k, v := range a_d.Dict() {
-         z[k] = v.Contents()
+      for k, v := range a_d.Self.Dict() {
+         z[k] = v.Self.Contents()
       }
       return MkGo(z)
     `

@@ -34,7 +34,7 @@ native:
   `
     func (self *C_idRemoteReader) Read(p []byte) (n int, err error) {
       plen := len(p)
-      var x P
+      var x B
 
       func() {
         defer func() {
@@ -50,9 +50,9 @@ native:
       }()
 
       if err == nil {
-        xb := x.Bytes()
+        xb := x.Self.Bytes()
         copy(p, xb)
-        n = x.Len()
+        n = x.Self.Len()
       }
       return
     }
