@@ -237,20 +237,20 @@ class Aphid:
 
     # Go Serve.
     say 'SERVING', .server
-    .server = go_new(http.Server) {
-      Addr: '%s:%d' % (.f_ip, .p_http),
-      Handler: .mux.mux,
-      ReadTimeout:    10 * time.Second,
-      WriteTimeout:   10 * time.Second,
-    }
+    .server = setattrs(go_new(http.Server),
+      Addr= '%s:%d' % (.f_ip, .p_http),
+      Handler= .mux.mux,
+      ReadTimeout=    10 * time.Second,
+      WriteTimeout=   10 * time.Second,
+    )
     go .server.ListenAndServe()
     if .p_https:
-      .tlsserver = go_new(http.Server) {
-        Addr: '%s:%d' % (.f_ip, .p_https),
-        Handler: .mux.mux,
-        ReadTimeout:    10 * time.Second,
-        WriteTimeout:   10 * time.Second,
-      }
+      .tlsserver = setattrs(go_new(http.Server),
+        Addr= '%s:%d' % (.f_ip, .p_https),
+        Handler= .mux.mux,
+        ReadTimeout=    10 * time.Second,
+        WriteTimeout=   10 * time.Second,
+      )
       go .tlsserver.ListenAndServeTLS("cacert.pem", "privkey.pem")
 
   def StartAmong():

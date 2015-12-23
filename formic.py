@@ -73,17 +73,17 @@ class FormicMaster:
     ts = meta.get('date') if meta else None
     ts = ts if ts else modTime.Format(HUGO_TIME_FORMAT)
     ptype = meta.get('type', '') if meta else ''
-    p = go_new(Page) {
-        Title: title,
-        Content: html,
-        Type: ptype,
-        Permalink: pname,  # TODO -- host, extra
-        Params: util.NativeMap(meta),
-        Date: time.Parse(HUGO_TIME_FORMAT, ts),
-        Section: section,
-        Slug: slug,
-        Identifier: pname,
-    }
+    p = setattrs(go_new(Page),
+        Title= title,
+        Content= html,
+        Type= ptype,
+        Permalink= pname,  # TODO -- host, extra
+        Params= util.NativeMap(meta),
+        Date= time.Parse(HUGO_TIME_FORMAT, ts),
+        Section= section,
+        Slug= slug,
+        Identifier= pname,
+    )
     p.Age = (time.Now().Unix() - p.Date.Unix()) / 86400.0
     say p.Age, time.Now().Unix(), p.Date.Unix(), p.Date
     return p
@@ -117,13 +117,13 @@ class FormicMaster:
       else:
         if sz > 0 and MatchMediaFileName(name):
           pname = J(dirname, name).strip('/')
-          p = go_new(MediaFile) {
-              Date: time.Unix(0, modTime*1000000000),
-              Size: sz,
-              Identifier: pname,
-              Slug: name,
-              Directory: dirname,
-              }
+          p = setattrs(go_new(MediaFile),
+              Date= time.Unix(0, modTime*1000000000),
+              Size= sz,
+              Identifier= pname,
+              Slug= name,
+              Directory= dirname,
+              )
           p.Age = (time.Now().Unix() - p.Date.Unix()) / 86400.0
           say pname, p.Age, time.Now().Unix(), p.Date.Unix(), p.Date, modTime
           yield pname, p
@@ -139,16 +139,16 @@ class FormicMaster:
     print media_list
 
     # Sort pages.
-    pages_by = go_new(PagesBy) {
-      ByTitle: util.NativeSlice(sorted(page_list, key=lambda x: x.Title)),
-      ByDate: util.NativeSlice(sorted(page_list, reverse=True, key=lambda x: x.Date.Unix())),
-      ByURL: util.NativeSlice(sorted(page_list, key=lambda x: x.Permalink)),
-    }
+    pages_by = setattrs(go_new(PagesBy),
+      ByTitle= util.NativeSlice(sorted(page_list, key=lambda x: x.Title)),
+      ByDate= util.NativeSlice(sorted(page_list, reverse=True, key=lambda x: x.Date.Unix())),
+      ByURL= util.NativeSlice(sorted(page_list, key=lambda x: x.Permalink)),
+    )
     # Sort media.
-    media_by = go_new(MediaBy) {
-      ByDate: util.NativeSlice(sorted(media_list, reverse=True, key=lambda x: x.Date.Unix())),
-      ByURL: util.NativeSlice(sorted(media_list, key=lambda x: x.Identifier)),
-    }
+    media_by = setattrs(go_new(MediaBy),
+      ByDate= util.NativeSlice(sorted(media_list, reverse=True, key=lambda x: x.Date.Unix())),
+      ByURL= util.NativeSlice(sorted(media_list, key=lambda x: x.Identifier)),
+    )
 
     # Visit pages, to build tags & menus.
     menud = {} ## which_menu -> pagename -> MenuEntry
@@ -171,14 +171,14 @@ class FormicMaster:
           menu = Nav(menud, which_menu)
 
           # Make new entry, and add to that menu.
-          entry = go_new(MenuEntry) {
-              Identifier: pname,
-              Menu: which_menu,
-              Name: j_menu.get('name', pname),
-              URL: '%s' % pname,
-              Weight: j_menu.get('weight', 0),
-              Pre: '', Post: '',
-              }
+          entry = setattrs(go_new(MenuEntry),
+              Identifier= pname,
+              Menu= which_menu,
+              Name= j_menu.get('name', pname),
+              URL= '%s' % pname,
+              Weight= j_menu.get('weight', 0),
+              Pre= '', Post= '',
+              )
           entry.DebugName = entry.Name + "/" + WeightedKey(entry)
           menu[pname] = entry
 
@@ -194,11 +194,11 @@ class FormicMaster:
       ## pmap :: pname -> p
       page_list = pmap.values()
 
-      tags_pages_by[t] = go_new(PagesBy) {
-        ByTitle: util.NativeSlice(sorted(page_list, key=lambda x: x.Title)),
-        ByDate: util.NativeSlice(sorted(page_list, reverse=True, key=lambda x: x.Date.Unix())),
-        ByURL: util.NativeSlice(sorted(page_list, key=lambda x: x.Permalink)),
-      }
+      tags_pages_by[t] = setattrs(go_new(PagesBy),
+        ByTitle= util.NativeSlice(sorted(page_list, key=lambda x: x.Title)),
+        ByDate= util.NativeSlice(sorted(page_list, reverse=True, key=lambda x: x.Date.Unix())),
+        ByURL= util.NativeSlice(sorted(page_list, key=lambda x: x.Permalink)),
+      )
     # Construct the site.
     try:
       site_toml = bundle.ReadFile(.bund, '/formic/config.toml', pw=None)
@@ -210,14 +210,14 @@ class FormicMaster:
     .page_d, .pages_by = page_d, pages_by
     .media_d, .media_by = media_d, media_by
     .tags, .tags_pages_by = tags, tags_pages_by
-    .site = go_new(Site) {
-      Menus: util.NativeMap(menud),
-      Pages: pages_by,
-      Sections: util.NativeMap(menud),
-      Title: site_d.get('title', '(this site needs a title)'),
-      BaseURL: site_d.get('baseurl', 'http://127.0.0.1/...FixTheBaseURL.../'),
-      Media: media_by,
-    }
+    .site = setattrs(go_new(Site),
+      Menus= util.NativeMap(menud),
+      Pages= pages_by,
+      Sections= util.NativeMap(menud),
+      Title= site_d.get('title', '(this site needs a title)'),
+      BaseURL= site_d.get('baseurl', 'http://127.0.0.1/...FixTheBaseURL.../'),
+      Media= media_by,
+    )
 
     # Pages link back up to Site
     for pname, p in page_d.items():

@@ -8,7 +8,7 @@ from go import bytes, os
 
 MAX_IMG_SIZE = 10 * 1024 * 1024  # 10MB
 
-JPEG_OPTIONS = go_new(jpeg.Options) { Quality: 90 }
+JPEG_OPTIONS = setattrs(go_new(jpeg.Options), Quality=90)
 
 def main(argv):
   w, h, filein, fileout = argv

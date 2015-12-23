@@ -224,18 +224,14 @@ def FindStarRecords(d, name, typ):
   words = name.split('.')
   for i in range(len(words)):
     star_domain = '*.' + '.'.join(words[i:])
-    say star_domain
     vec = d.get(star_domain)
     if vec:
-      say vec
       for rr in vec:
-        say rr
         if rr.typ == typ:
           c = rr.Clone()
           if not c:
             continue  # Some record types (SOA, NS) cannot be cloned.
-          c { name: name }
-          say c
+          setattrs(c, name=name)
           z.append(c)
       if z:
         return z
