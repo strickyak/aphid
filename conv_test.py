@@ -5,7 +5,7 @@ big = ''
 for i in range(256):
   big += chr(i)
 
-inputs = ['', ' ', '  ', 'a', '\0', '\0\1\0',
+inputs = ['', ' ', '  ', 'a', '\000', '\000\001\000',
           'one two three', byt('one two three'),
           'a b c',
           '\n abc {def} \007 \000 \t',

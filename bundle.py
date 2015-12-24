@@ -60,7 +60,7 @@ def TRY(fn):
 def NowMillis():
     return time.Now().UnixNano() // 1000000
 
-PARSE_REV_FILENAME = regexp.MustCompile('^(r|v[a-z0-9_]+)[.](\w+)[.](\w+)[.]([-0-9]+)[.]([-0-9]+)(.*)$').FindStringSubmatch
+PARSE_REV_FILENAME = regexp.MustCompile('^(r|v[a-z0-9_]+)[.](\\w+)[.](\\w+)[.]([-0-9]+)[.]([-0-9]+)(.*)$').FindStringSubmatch
 
 V_DOT = regexp.MustCompile('^v_([0-9]+)_([0-9]+)_([a-z]+)[.](.*)$').FindStringSubmatch
 V_HAT = regexp.MustCompile('^(v[a-z0-9_]+)\\^(.*)$').FindStringSubmatch

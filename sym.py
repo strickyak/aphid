@@ -56,28 +56,3 @@ class Cipher:
     plain = .gcm.Open(None, nonce, dark, extra)
     serial = rye_unpickle(extra)
     return plain, serial
-
-def main(argv):
-  key = byt(4 * 'ABCDEFGH')
-  c = Cipher(key)
-  plain = 'I wish I were an Oscar Meyer Wiener.'
-  serial = ('nando', 3.14159)
-  say plain, serial
-  sealed = c.Seal(plain, serial)
-  say sealed
-  recovered, extra = c.Open(sealed)
-  say recovered, extra
-  must (str(recovered), extra) == (plain, serial)
-  say c.gcm.Overhead()
-  say c.gcm.NonceSize()
-
-  for k in range(5000):
-    n = k+1
-    plain = mkbyt(n)
-    nonce = c.Nonce()
-    x = c.gcm.Seal(None, nonce, plain, "extra")
-    y = c.gcm.Open(None, nonce, x, "extra")
-    must y == plain
-    must len(x)-n == c.gcm.Overhead()
-    # say n, len(x), len(x)-n
-  say "gcm OKAY."
