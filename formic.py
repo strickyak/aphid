@@ -83,7 +83,7 @@ class FormicMaster:
         Section= section,
         Slug= slug,
         Identifier= pname,
-    )
+        )
     p.Age = (time.Now().Unix() - p.Date.Unix()) / 86400.0
     say p.Age, time.Now().Unix(), p.Date.Unix(), p.Date
     return p
@@ -143,12 +143,12 @@ class FormicMaster:
       ByTitle= util.NativeSlice(sorted(page_list, key=lambda x: x.Title)),
       ByDate= util.NativeSlice(sorted(page_list, reverse=True, key=lambda x: x.Date.Unix())),
       ByURL= util.NativeSlice(sorted(page_list, key=lambda x: x.Permalink)),
-    )
+      )
     # Sort media.
     media_by = setattrs(go_new(MediaBy),
       ByDate= util.NativeSlice(sorted(media_list, reverse=True, key=lambda x: x.Date.Unix())),
       ByURL= util.NativeSlice(sorted(media_list, key=lambda x: x.Identifier)),
-    )
+      )
 
     # Visit pages, to build tags & menus.
     menud = {} ## which_menu -> pagename -> MenuEntry
@@ -198,7 +198,7 @@ class FormicMaster:
         ByTitle= util.NativeSlice(sorted(page_list, key=lambda x: x.Title)),
         ByDate= util.NativeSlice(sorted(page_list, reverse=True, key=lambda x: x.Date.Unix())),
         ByURL= util.NativeSlice(sorted(page_list, key=lambda x: x.Permalink)),
-      )
+        )
     # Construct the site.
     try:
       site_toml = bundle.ReadFile(.bund, '/formic/config.toml', pw=None)
@@ -217,7 +217,7 @@ class FormicMaster:
       Title= site_d.get('title', '(this site needs a title)'),
       BaseURL= site_d.get('baseurl', 'http://127.0.0.1/...FixTheBaseURL.../'),
       Media= media_by,
-    )
+      )
 
     # Pages link back up to Site
     for pname, p in page_d.items():
@@ -473,6 +473,9 @@ class Curator:
     .bund = bund
     .config = config
     .pwName = config['pw']
+    say keyring.Ring[.pwName]
+    say keyring.Ring[.pwName].doubleHash
+    say keyring.Ring[.pwName].salt
     .wantHash = keyring.Ring[.pwName].doubleHash
     .wantSalt = keyring.Ring[.pwName].salt
     #say keyring.Ring[.pwName]

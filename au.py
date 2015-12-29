@@ -215,7 +215,7 @@ Ensemble = {
     'newpush': NewPush,
     'BigLocalDir': BigLocalDir,
     'BigRemoteDir': BigRemoteDir,
-}
+    }
 
 BUND = flag.String('bund', '', 'Remote bundle name.')
 DIR = flag.String('dir', '', 'Local directory to push or pull.')

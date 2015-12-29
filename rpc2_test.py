@@ -27,20 +27,20 @@ def main(args):
   ring1['1'] = dict(
     num='1', id='key1', TYPE='dh',
     pub=dh.String(obj1.pub), sec=dh.String(obj1.sec),
-  )
+    )
   ring1['2'] = dict(
     num='2', id='key2', TYPE='dh',
     pub=dh.String(obj2.pub),
-  )
+    )
 
   ring2['1'] = dict(
     num='1', id='key1', TYPE='dh',
     pub=dh.String(obj1.pub),
-  )
+    )
   ring2['2'] = dict(
     num='2', id='key2', TYPE='dh',
     pub=dh.String(obj2.pub), sec=dh.String(obj2.sec),
-  )
+    )
 
   svr = RPC2.Server(':9999', ring=keyring.CompileDicts(ring2))
   svr.Register('DemoSum', DemoSum)

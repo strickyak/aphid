@@ -6,16 +6,20 @@ def CheckBasicAuth(w, r, realm, usersToPws):
   If it returned None, it has already sent 401, and the caller should do nothing more.
   """
   try:
+    #say realm, usersToPws
     a = r.Header.Get('Authorization')
     if not a:
       raise 'Missing Authorization'
     style, encoded = a.split(' ', 1)
+    #say style, encoded
     must style == 'Basic'
     decoded = str(base64.StdEncoding.DecodeString(encoded))
     user, pw = decoded.split(':', 1)
+    #say user, pw, decoded
     if user is None:
       raise 'Empty User Name'
     wanted = usersToPws.get(user)
+    #say wanted
     if wanted is None:
       raise 'Bad User Name'
     if wanted != pw:
@@ -28,7 +32,7 @@ def CheckBasicAuth(w, r, realm, usersToPws):
     return None
 
 def GetBasicPw(w, r, realm):
-  say realm
+  #say realm
   try:
     a = r.Header.Get('Authorization')
     if not a:
@@ -37,6 +41,7 @@ def GetBasicPw(w, r, realm):
     must style == 'Basic'
     decoded = str(base64.StdEncoding.DecodeString(encoded))
     user, pw = decoded.split(':', 1)
+    #say user, pw
     return user, pw
   except:
     Fails(w, r, realm)

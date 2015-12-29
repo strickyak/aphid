@@ -19,7 +19,7 @@ RYBA_FUNCTIONS = [
   ReadWikiHeadersAndLines,
   SplitWikiHeadersAndLines,
   markdown.TranslateMarkdown,
-]
+  ]
 
 NonAlfa = regexp.MustCompile('[^A-Za-z0-9_]+')
 def SimpleFunctionName(f):
