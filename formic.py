@@ -495,8 +495,13 @@ class Curator:
     # Hash the given password into hex.
     hashed2 = conv.DoubleHash(pw, .wantSalt)
 
+    #say pw
+    #say hashed2
+    #say .wantSalt
+    #say .wantHash
     #say user, hashed2, .wantHash
-    if hashed2 != .wantHash or not len(user):
+
+    if str(hashed2) != str(.wantHash) or not len(user):
       w.Header().Set("WWW-Authenticate", 'Basic realm="%s"' % root)
       w.WriteHeader(401)
       print >>w, 'Wrong User or Password -- Hit RELOAD and try again.'
