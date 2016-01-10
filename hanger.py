@@ -2,7 +2,7 @@
    Use it within a minute, or it will be .Dispose()d.
 """
 from go import sync, time
-from lib import sema
+from rye_lib import sema
 from . import A
 
 TIMEOUT = 60

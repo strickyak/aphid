@@ -3,7 +3,7 @@ from go import html/template, net/http, io, io/ioutil
 from go import path as P
 from . import A, atemplate, bundle, keyring, markdown, pubsub, util
 from . import adapt, basic, conv, flag
-from lib import data
+from rye_lib import data
 
 STATIC_MAX_AGE = 300
 

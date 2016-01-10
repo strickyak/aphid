@@ -6,7 +6,7 @@ from go import crypto/sha256, crypto/rand
 from go import github.com/strickyak/redhed
 from . import  A, pubsub, sym, table
 from . import  resize
-from lib import sema
+from rye_lib import sema
 
 DIR_PERM = 0755
 FILE_PERM = 0644

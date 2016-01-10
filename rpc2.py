@@ -3,7 +3,7 @@ from go import net, sync, time
 from go import crypto/rand
 
 from . import dh, sym, keyring
-from lib import sema, data
+from rye_lib import sema, data
 
 ProcessNonce = mkbyt(12)  # Per Process nonce.
 rand.Read(ProcessNonce)

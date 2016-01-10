@@ -1,5 +1,5 @@
 from . import markdown
-from lib import data
+from rye_lib import data
 
 File1 = `{
   "foo": "bar",

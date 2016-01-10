@@ -7,7 +7,7 @@ from go import golang.org/x/crypto/scrypt
 
 from . import A, atemplate, bundle, dh, markdown, pubsub, util
 from . import adapt, basic, conv, flag
-from lib import data
+from rye_lib import data
 
 ADMIN_INIT_PW = flag.String('admin_init_pw', '', 'initial admin password')
 

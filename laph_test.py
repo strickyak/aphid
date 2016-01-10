@@ -1,5 +1,5 @@
 from . import laph as L
-from lib import data
+from rye_lib import data
 
 #####################################
 #p1 = `{ a = { #comment

@@ -3,7 +3,7 @@ from go import html/template, net/http, io/ioutil
 from go import path as P
 from . import A, atemplate, bundle
 from . import adapt, basic, flag, util
-from lib import data
+from rye_lib import data
 
 F = fmt.Sprintf
 

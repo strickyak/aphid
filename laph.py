@@ -1,5 +1,5 @@
 from go import path as P, io/ioutil, os, regexp, strconv
-from lib import data
+from rye_lib import data
 
 
 

@@ -3,7 +3,7 @@ from . import among, aweber, awiki, awedit, azoner, formic, smilax4, stash
 from . import bundle, keyring, laph, pubsub, rbundle
 from go import bufio, fmt, html, io/ioutil, net/http, os, time
 from go import path as P, path/filepath as F
-from lib import data
+from rye_lib import data
 
 SEEDDIR = flag.String('seeddir', '', 'Directory containing bundle seed files')
 

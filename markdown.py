@@ -3,7 +3,7 @@ from go import html/template
 from go import github.com/BurntSushi/toml
 from go import github.com/microcosm-cc/bluemonday
 from go import github.com/russross/blackfriday
-from lib import data
+from rye_lib import data
 from . import util
 
 JS_FRONT_MATTER = regexp.MustCompile(`(?s)^({\s*\n.*?\n}\s*\n)(.*)$`)

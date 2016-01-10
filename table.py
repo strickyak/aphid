@@ -1,7 +1,7 @@
 from go import bufio, fmt, os, time
 from go import path/filepath as F
 from . import A, skiplist
-from lib import data
+from rye_lib import data
 
 class Table:
   # Construct with dpath where the t.* files are, and they will be loaded.

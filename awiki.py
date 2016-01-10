@@ -2,7 +2,7 @@ from go import bufio, bytes, fmt, regexp, time
 from go import html/template, net/http, io/ioutil
 from . import A, atemplate, bundle, conv, flag, util
 from . import basic, markdown
-from lib import data
+from rye_lib import data
 
 BASIC = flag.String('basic', '', 'Test Basic Auth users')
 
