@@ -1,0 +1,19 @@
+1.  Install go in /opt/go (or let that be a symlink to /opt/go1.6 etc.)  
+
+    setenv GOROOT /opt/go
+
+2.  Make a directory "gocode" in your $HOME.
+
+    setenv GOPATH $HOME/gocode
+
+3.  mkdir -p $HOME/gocode/src/github.com/strickyak
+    cd $HOME/gocode/src/github.com/strickyak
+    git clone "https://github.com/strickyak/rye.git"
+    cd rye
+
+4.  make
+
+5.  go get github.com/strickyak/aphid
+    cd $HOME/gocode/src/github.com/strickyak/aphid
+
+6.  make
