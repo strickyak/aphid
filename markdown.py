@@ -26,11 +26,11 @@ def EvalToml(s):
   return f
 
 def EncodeToml(x):
-  say x
+  #say x
   b = go_new(bytes.Buffer)
   toml.NewEncoder(b).Encode(x)
   z = str(b)
-  say z
+  #say z
   return z
 
 def TranslateMarkdown(s):
@@ -41,7 +41,7 @@ def TranslateMarkdown(s):
   return go_cast(template.HTML, html)
 
 def ProcessWithFrontMatter(text):
-  say text
+  #say text
   text = CR.ReplaceAllString(text, "")
   m1 = JS_FRONT_MATTER.FindStringSubmatch(text)
   m2 = TOML_FRONT_MATTER.FindStringSubmatch(text)
@@ -57,11 +57,11 @@ def ProcessWithFrontMatter(text):
     f = None
 
   h = TranslateMarkdown(md)
-  say f, md, h 
+  #say f, md, h 
   return f, md, h 
 
 def main(args):
   s = ioutil.ReadAll(os.Stdin)
   f, md, h = ProcessWithFrontMatter(s)
-  print >> os.Stderr, repr(f)
+  #print >> os.Stderr, repr(f)
   print h
