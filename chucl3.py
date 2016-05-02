@@ -63,7 +63,7 @@ class Chucl:
         if k == path:
           return v
 
-    if depth > 8:
+    if depth > 100:
       raise 'Eval: too deep in path %q' % path
     try:
       x = .Find(path)
@@ -148,9 +148,14 @@ class Chucl:
         return NumStr(sum([float(e) for e in t]))
       case '*':
         return NumStr(reduce(lambda a, b: float(a)*float(b), t, 1.0))
+      case '-':
+        must len(t) == 2
+        return NumStr(float(t[0]) - float(t[1]))
       case '==':
+        must len(t) == 2
         return BoolStr(t[0] == t[1])
       case '<':
+        must len(t) == 2
         return BoolStr(float(t[0]) < float(t[1]))
     raise 'bad command %q' % h
 
