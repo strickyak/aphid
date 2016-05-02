@@ -56,6 +56,29 @@ class Chucl:
       return dh
     return recurse(.tree, path)
 
+  def ResolveRel(path, rel):
+    hp = H(path)
+
+    if path.startswith('/'):
+      rel2 = '/'
+    else:
+      rel2 = rel
+
+    while True:
+      hpr = RelativeTo(hp, rel2)
+
+      dt = .tree
+      for e in S(hpr):
+        dt = dt.get(e)
+        if dt is None: break
+
+      if dt is not None:
+        return RelativeTo(path, rel2)
+
+      rel2 = D(rel2)
+      if rel2 == '.' or rel2 == '':
+        raise 'ResolveRel: failed to resolve %q starting at %q' % (hp, rel)
+
   def Eval(path, depth=0, env=None):
     if env:
       # First look in the env for the path.
@@ -85,15 +108,22 @@ class Chucl:
   def EvalTuple(x, path, depth, env):
     say (x, path, depth, env)
     dpath = D(path)
+    depth += 1
 
     def evalIt(e):
       switch type(e):
         case str:
-          z = .Eval(RelativeTo(e[1:], dpath), depth, env) if (type(e) is str and e.startswith('$')) else e
+          if e.startswith('$'):
+            varpath = e[1:]
+            resolved = .ResolveRel(varpath, dpath)
+            say varpath, dpath, resolved
+            z = .Eval(resolved, depth, env)
+          else:
+            return e
         case list:
           z = e
         case tuple:
-          z = .EvalTuple(e, path, depth+1, env)
+          z = .EvalTuple(e, path, depth, env)
         default:
           raise 'error', e, type(e)
       say e, z
@@ -116,8 +146,6 @@ class Chucl:
           return evalIt(t[1])
 
     # Eval each arg.
-    # TODO: evalIt
-    #subx = [(.Eval(RelativeTo(e[1:], dpath), depth, env) if (type(e) is str and e.startswith('$')) else e) for e in x]
     subx = [evalIt(e) for e in x]
 
     h, t = subx[0], subx[1:]
@@ -139,7 +167,7 @@ class Chucl:
       env2 = [] + env
       for var, val in zip(h2, t):
         env2 = [(var, val)] + env2
-        return .EvalTuple(h3, path, depth+1, env2)
+        return .EvalTuple(h3, path, depth, env2)
 
     switch h:
       case '++':

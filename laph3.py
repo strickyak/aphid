@@ -1,5 +1,6 @@
 from go import path as P, io/ioutil, os, regexp, strconv
 from rye_lib import data
+from . import chucl3
 
 
 ###############################
@@ -324,6 +325,7 @@ class Compile:
       print 'n ==', n
       if n == was: break
       was = n
+    .chucl = chucl3.Chucl(.expanded.dd.guts)
 
 def main(argv):
   s = ioutil.ReadFile('/dev/stdin')
@@ -333,4 +335,5 @@ def main(argv):
   for k, v in c.expanded.dd.items():
     i += 1
     print i, k, '=======', v
-
+    if type(v) is tuple:
+      print '>>>>>>', c.chucl.Eval(J(*k))
