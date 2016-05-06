@@ -327,6 +327,9 @@ class Compile:
       was = n
     .chucl = chucl3.Chucl(.expanded.dd.guts)
 
+  def Eval(path):
+    return .chucl.Eval(path)
+
 def main(argv):
   s = ioutil.ReadFile('/dev/stdin')
   c = Compile(s)

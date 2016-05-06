@@ -43,18 +43,21 @@ class Chucl:
     .tree = tree
 
   def Find(path):
-    def recurse(d, p):
+    def recurse(d, p, here):
       if not p: return d
       h, t = HT(p)
       dh = d.get(h, None)
       if dh is None:
         raise 'Find: cannot find key %q in path %q' % (h, path)
       if t and type(dh) is dict:
-        return recurse(dh, t)
+        return recurse(dh, t, J(here, h))
+      if t and type(dh) is str and dh.startswith('$'):
+        adh = .ResolveRel(dh[1:], here)
+        return .Find(J(adh, t))
       if t:
         raise 'Find: cannot use tail key %q in object %v in path %q' % (t, dh, path)
       return dh
-    return recurse(.tree, path)
+    return recurse(.tree, path, '/')
 
   def ResolveRel(path, rel):
     hp = H(path)
@@ -102,10 +105,10 @@ class Chucl:
       case list:
         return x
       case tuple:
-        return .EvalTuple(x, path, depth+1, env)
+        return .Apply(x, path, depth+1, env)
     raise 'Eval path %q: bad type %q in %v' % (path, type(x), x)
 
-  def EvalTuple(x, path, depth, env):
+  def Apply(x, path, depth, env):
     say (x, path, depth, env)
     dpath = D(path)
     depth += 1
@@ -115,6 +118,13 @@ class Chucl:
         case str:
           if e.startswith('$'):
             varpath = e[1:]
+
+            if env:
+              # First look in the env for the varpath.
+              for ek, ev in env:
+                if ek == varpath:
+                  return ev
+
             resolved = .ResolveRel(varpath, dpath)
             say varpath, dpath, resolved
             z = .Eval(resolved, depth, env)
@@ -123,7 +133,7 @@ class Chucl:
         case list:
           z = e
         case tuple:
-          z = .EvalTuple(e, path, depth, env)
+          z = .Apply(e, path, depth, env)
         default:
           raise 'error', e, type(e)
       say e, z
@@ -167,7 +177,7 @@ class Chucl:
       env2 = [] + env
       for var, val in zip(h2, t):
         env2 = [(var, val)] + env2
-        return .EvalTuple(h3, path, depth, env2)
+        return .Apply(h3, path, depth, env2)
 
     switch h:
       case '++':
@@ -177,14 +187,37 @@ class Chucl:
       case '*':
         return NumStr(reduce(lambda a, b: float(a)*float(b), t, 1.0))
       case '-':
-        must len(t) == 2
+        must len(t) == 2, t
         return NumStr(float(t[0]) - float(t[1]))
       case '==':
-        must len(t) == 2
+        must len(t) == 2, t
         return BoolStr(t[0] == t[1])
+      case '!=':
+        must len(t) == 2, t
+        return BoolStr(t[0] != t[1])
       case '<':
-        must len(t) == 2
+        must len(t) == 2, t
         return BoolStr(float(t[0]) < float(t[1]))
+      case '<=':
+        must len(t) == 2, t
+        return BoolStr(float(t[0]) <= float(t[1]))
+      case '>':
+        must len(t) == 2, t
+        return BoolStr(float(t[0]) > float(t[1]))
+      case '>=':
+        must len(t) == 2, t
+        return BoolStr(float(t[0]) >= float(t[1]))
+      case 'len':
+        must len(t) == 1, t
+        return str(len(t[0]))
+      case 'map':
+        must len(t) == 2, t
+        return [.Apply((t[0], e), path, depth, env) for e in t[1]]
+      case 'filter':
+        must len(t) == 2, t
+        return [e for e in t[1] if float(.Apply((t[0], e), path, depth, env))]
+      case 'list':
+        return [e for e in t]
     raise 'bad command %q' % h
 
 def NumStr(x):
