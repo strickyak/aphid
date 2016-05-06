@@ -96,6 +96,9 @@ class Chucl:
     except as ex:
       raise 'Eval: exception in path %q: %v' % (path, ex)
 
+    return .Reify(x, path, depth, env)
+
+  def Reify(x, path, depth, env):
     if x is None:
       raise 'Eval: got None for Eval path %q' % path
 
@@ -104,6 +107,10 @@ class Chucl:
         return x
       case list:
         return x
+      case dict:
+        # When it's a dict, we might need to Reify all its members.
+        z = dict([(k, .Reify(v, J(path, k), depth+1, env)) for k, v in x.items() if not k.startswith('_')])
+        return z
       case tuple:
         return .Apply(x, path, depth+1, env)
     raise 'Eval path %q: bad type %q in %v' % (path, type(x), x)
@@ -131,6 +138,8 @@ class Chucl:
           else:
             return e
         case list:
+          z = e
+        case dict:
           z = e
         case tuple:
           z = .Apply(e, path, depth, env)
@@ -218,6 +227,35 @@ class Chucl:
         return [e for e in t[1] if float(.Apply((t[0], e), path, depth, env))]
       case 'list':
         return [e for e in t]
+      case 'sorted':
+        must len(t) == 1, t
+        must type(t[0]) == list
+        return [e for e in sorted(t)]
+      case 'get':
+        must len(t) == 2, t
+        thing = t[0]
+        key = t[1]
+        switch type(thing):
+          case dict:
+            return .Reify(thing[key], J(path, key), depth, env)
+          case list:
+            return .Reify(thing[int(key)], J(path, key), depth, env)
+          case tuple:
+            return .Reify(thing[int(key)], J(path, key), depth, env)
+          case str:
+            return .Reify(thing[int(key)], J(path, key), depth, env)
+      case 'keys':
+        must len(t) == 1, t
+        must type(t[0]) == dict
+        return sorted(t[0].keys())
+      case 'values':
+        must len(t) == 1, t
+        must type(t[0]) == dict
+        return list(t[0].values())  # Values may not sort.
+      case 'items':
+        must len(t) == 1, t
+        must type(t[0]) == dict
+        return sorted(t[0].items())
     raise 'bad command %q' % h
 
 def NumStr(x):

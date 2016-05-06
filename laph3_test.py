@@ -48,26 +48,47 @@ def TestT1():
 T2 = `
   _host = {
      type = host
-     name = (++ h $num)
+     name = (++ h_ $num)
      ip = (++ 1.2.3. $num)
      _base = (+ 10000 (* 1000 $num))
      addy = (++ $ip : (+ $_base 80))
   }
   h1 = _host { num = 1 }
   h2 = _host { num = 2 }
-  h3 = _host { num = 3 }
+  h3 = h2 { num = 3 }
+  hosts = (list $h1 $h2 $h3)
+
+  hostnames = (map (lambda (x) (get $x name)) $hosts)
+  hosts_keys = (map keys $hosts)
+  hosts_values = (map values $hosts)
+  hosts_items = (map items $hosts)
+
   _server = {
     name = (++ server $host/num)
   }
   s1 = _server { host = $h1 }
+  s2 = s1 { host = $h2 }
+  s3 = s2 { host = $h3 }
+  servers = (list $s1 $s2 $s3)
+  servernames = (map (lambda (x) (get $x name)) $hosts)
+  #serverhostnames = (map (lambda (x) (get (get $x host) name)) $hosts)
 `
 def TestT2():
   t = L.Compile(T2)
-  must t.Eval('h1/name') == 'h1'
+  must t.Eval('h1/name') == 'h_1'
   must t.Eval('h2/ip') == '1.2.3.2'
   must t.Eval('h3/addy') == '1.2.3.3:13080'
   must t.Eval('h3/type') == 'host'
   must t.Eval('s1/name') == 'server1'
+  must t.Eval('s2/name') == 'server2'
+  must t.Eval('s3/name') == 'server3'
+  must t.Eval('hostnames') == ['h_1', 'h_2', 'h_3']
+  say t.Eval('hosts_keys')
+  say t.Eval('hosts_values')
+  say t.Eval('hosts_items')
+  say t.Eval('servers')
+  say t.Eval('servernames')
+  #say t.Eval('serverhostnames')
 
 def main(_):
   TestT1()
