@@ -55,7 +55,7 @@ class Chucl:
         adh = .ResolveRel(dh[1:], here)
         return .Find(J(adh, t))
       if t:
-        raise 'Find: cannot use tail key %q in object %v in path %q' % (t, dh, path)
+        raise 'Find: cannot use tail key %q in object %s in path %q' % (t, repr(dh), path)
       return dh
     return recurse(.tree, path, '/')
 
@@ -67,8 +67,10 @@ class Chucl:
     else:
       rel2 = rel
 
+    prev = None
     while True:
       hpr = RelativeTo(hp, rel2)
+      say hpr, hp, rel2, (path, rel)
 
       dt = .tree
       for e in S(hpr):
@@ -79,8 +81,11 @@ class Chucl:
         return RelativeTo(path, rel2)
 
       rel2 = D(rel2)
-      if rel2 == '.' or rel2 == '':
+      #if rel2 == '.' or rel2 == '':
+      #  raise 'ResolveRel: failed to resolve %q starting at %q' % (hp, rel)
+      if prev in ['/', '.', '']:
         raise 'ResolveRel: failed to resolve %q starting at %q' % (hp, rel)
+      prev = rel2
 
   def Eval(path, depth=0, env=None):
     if env:
@@ -96,20 +101,42 @@ class Chucl:
     except as ex:
       raise 'Eval: exception in path %q: %v' % (path, ex)
 
-    return .Reify(x, path, depth, env)
+    say path, depth, env, x
+    z = .Resolve(x, path, depth, env)
+    say path, depth, env, x, z
+    return z
 
-  def Reify(x, path, depth, env):
+  def Resolve(x, path, depth, env):
+    depth += 1
     if x is None:
       raise 'Eval: got None for Eval path %q' % path
+    if depth > 100:
+      raise 'Resolve: too deep in path %q' % path
 
     switch type(x):
       case str:
+        if x.startswith('$'):
+          varpath = x[1:]
+
+          if env:
+            # First look in the env for the varpath.
+            for ek, ev in env:
+              if ek == varpath:
+                return ev
+
+          dpath = D(path)
+          resolved = .ResolveRel(varpath, dpath)
+          say varpath, dpath, resolved
+          z = .Eval(resolved, depth, env)
+          say x, path, dpath, z
+          return z
+        say x, path
         return x
       case list:
         return x
       case dict:
-        # When it's a dict, we might need to Reify all its members.
-        z = dict([(k, .Reify(v, J(path, k), depth+1, env)) for k, v in x.items() if not k.startswith('_')])
+        # When it's a dict, we might need to Resolve all its members.
+        z = dict([(k, .Resolve(v, J(path, k), depth+1, env)) for k, v in x.items() if not k.startswith('_')])
         return z
       case tuple:
         return .Apply(x, path, depth+1, env)
@@ -120,33 +147,8 @@ class Chucl:
     dpath = D(path)
     depth += 1
 
-    def evalIt(e):
-      switch type(e):
-        case str:
-          if e.startswith('$'):
-            varpath = e[1:]
-
-            if env:
-              # First look in the env for the varpath.
-              for ek, ev in env:
-                if ek == varpath:
-                  return ev
-
-            resolved = .ResolveRel(varpath, dpath)
-            say varpath, dpath, resolved
-            z = .Eval(resolved, depth, env)
-          else:
-            return e
-        case list:
-          z = e
-        case dict:
-          z = e
-        case tuple:
-          z = .Apply(e, path, depth, env)
-        default:
-          raise 'error', e, type(e)
-      say e, z
-      return z
+    def resolve(e):
+      return .Resolve(e, path, depth+1, env)
 
     # Do Special Forms before evaling the args.
     h, t = x[0], x[1:]
@@ -156,16 +158,16 @@ class Chucl:
       case 'if': 
         if len(t) != 3:
           raise 'Bad if statement, got %d args, wanted 3' % len(t)
-        tcond = evalIt(t[0])
+        tcond = resolve(t[0])
         say t[0], tcond
         cond = float(tcond)
         if cond == 0.0:
-          return evalIt(t[2])
+          return resolve(t[2])
         else:
-          return evalIt(t[1])
+          return resolve(t[1])
 
     # Eval each arg.
-    subx = [evalIt(e) for e in x]
+    subx = [resolve(e) for e in x]
 
     h, t = subx[0], subx[1:]
 
@@ -237,13 +239,13 @@ class Chucl:
         key = t[1]
         switch type(thing):
           case dict:
-            return .Reify(thing[key], J(path, key), depth, env)
+            return .Resolve(thing[key], J(path, key), depth, env)
           case list:
-            return .Reify(thing[int(key)], J(path, key), depth, env)
+            return .Resolve(thing[int(key)], J(path, key), depth, env)
           case tuple:
-            return .Reify(thing[int(key)], J(path, key), depth, env)
+            return .Resolve(thing[int(key)], J(path, key), depth, env)
           case str:
-            return .Reify(thing[int(key)], J(path, key), depth, env)
+            return .Resolve(thing[int(key)], J(path, key), depth, env)
       case 'keys':
         must len(t) == 1, t
         must type(t[0]) == dict

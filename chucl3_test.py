@@ -31,3 +31,4 @@ def main(_):
   must c.Eval('one') == 'positive'
   must c.Eval('two') == 'negative'
   must c.Eval('ten') == '10'
+  print "OKAY chucl3_test.py"

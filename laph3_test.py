@@ -1,7 +1,6 @@
 from . import laph3 as L
 
 dd = L.DeepDict()
-dd.put(('abc', 'def', 'ghi'), 'yak')
 say dd.guts
 say dd.get(('abc', 'def', 'ghi'))
 
@@ -83,14 +82,14 @@ def TestT2():
   must t.Eval('s2/name') == 'server2'
   must t.Eval('s3/name') == 'server3'
   must t.Eval('hostnames') == ['h_1', 'h_2', 'h_3']
-  say t.Eval('hosts_keys')
+  must t.Eval('hosts_keys') == 3 * [['addy', 'ip', 'name', 'num', 'type']]
   say t.Eval('hosts_values')
   say t.Eval('hosts_items')
   say t.Eval('servers')
-  say t.Eval('servernames')
+  must t.Eval('servernames') == ['h_1', 'h_2', 'h_3']
   #say t.Eval('serverhostnames')
 
 def main(_):
   TestT1()
   TestT2()
-pass
+  print "OKAY laph3_test.py"

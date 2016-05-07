@@ -225,6 +225,7 @@ class ExpandingVisitor:
   def visitTuple(p, path='/'):
     if .get(path) is None: .put(path, {})
     for k, v in p.dic.items():
+      if k.startswith('__'): continue
       say v, J(path, k)
       v.visit(self, path=J(path, k))
 
@@ -233,11 +234,13 @@ class ExpandingVisitor:
     if .get(path) is None: .put(path, {})
     .copy(p.template, path)
     for k, v in p.diff.items():
+      if k.startswith('__'): continue
       v.visit(self, path=J(path, k))
 
   def visitEnhance(p, path):
     # dslot, diff
     for k, v in p.diff.items():
+      if k.startswith('__'): continue
       v.visit(self, path=J(path, p.dslot, k))
 
   def visitBare(p, path):
@@ -259,6 +262,7 @@ class ExpandingVisitor:
     def traverse(s, d):
       if d:
         for k, v in d.items():
+          if k.startswith('__'): continue
           s2 = J(s, k) if s else k
           if type(v) is dict:
             traverse(s2, v)
@@ -298,15 +302,15 @@ class DeepDict:
 
   def items(hidden=False):
     z = []
-    def traverse(steps, d, hidden):
+    def traverse(steps, d):
       for k, v in d.items():
         if k.startswith('_') and not hidden:
           continue
         if type(v) is dict:
-          traverse(steps + [k], v, hidden)
+          traverse(steps + [k], v)
         else:
           z.append((steps + [k], v))
-    traverse([], .guts, hidden)
+    traverse([], .guts)
     return sorted(z)
 
 class Compile:
@@ -319,13 +323,34 @@ class Compile:
 
     .expanded = ExpandingVisitor()
     was = 0
-    for i in range(10):
+    while True:
       .expanded.visitTuple(.tree)
-      n = len(.expanded.dd.items(True))
-      print 'n ==', n
+      items = .expanded.dd.items(True)
+      n = len(items)
+      say was, n
       if n == was: break
       was = n
     .chucl = chucl3.Chucl(.expanded.dd.guts)
+
+    for k, v in items:
+      say k, v, type(k), type(v)
+      if (type(v) is tuple and v[0] != 'error') or type(v) is str and v.startswith('$'):
+        try:
+          path = J('/', *k)
+          x = .Eval(path)
+        except as err:
+          x = ('error', str(err))
+        say k, v, path, x
+        .expanded.dd.put(k, x)
+
+
+    # Add __path__ to each dir.
+    #def recurse(d, path):
+    #  d['__path__'] = path
+    #  for k, v in d.items():
+    #    if type(v) is dict:
+    #      recurse(v, J(path, k))
+    #recurse(.expanded.dd.guts, '/')
 
   def Eval(path):
     return .chucl.Eval(path)
@@ -335,8 +360,13 @@ def main(argv):
   c = Compile(s)
   say c.expanded.dd.guts
   i = 0
-  for k, v in c.expanded.dd.items():
+  for k, v in c.expanded.dd.items(hidden=False):
     i += 1
     print i, k, '=======', v
     if type(v) is tuple:
-      print '>>>>>>', c.chucl.Eval(J(*k))
+      try:
+        #print '>>>>>>', c.chucl.Eval(J(*k))
+        print '>>>>>>', c.Eval(J(*k))
+      except as ex:
+        print '>>>>>>!!!!!!', ex
+
