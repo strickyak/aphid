@@ -62,6 +62,7 @@ T2 = `
   hosts_values = (map values $hosts)
   hosts_items = (map items $hosts)
 
+  # Using reference to host.
   _server = {
     name = (++ server $host/num)
   }
@@ -71,6 +72,19 @@ T2 = `
   servers = (list $s1 $s2 $s3)
   servernames = (map (lambda (x) (get $x name)) $servers)
   serverhostnames = (map (lambda (x) (get (get $x host) name)) $servers)
+
+  # Using derivation of host.
+  _Server = {
+    name = (++ Server $host/num)
+  }
+  S1 = _Server { host = h1 { } }
+  S2 = S1 { host = h2 { } }
+  S3 = S2 { host = h3 { } }
+  Servers = (list $S1 $S2 $S3)
+  Servernames = (map (lambda (x) (get $x name)) $Servers)
+  Serverhostnames = (map (lambda (x) (get (get $x host) name)) $Servers)
+
+
 `
 def TestT2():
   t = L.Compile(T2)
@@ -85,9 +99,14 @@ def TestT2():
   must t.Eval('hosts_keys') == 3 * [['addy', 'ip', 'name', 'num', 'type']]
   say t.Eval('hosts_values')
   say t.Eval('hosts_items')
+
   say t.Eval('servers')
   must t.Eval('servernames') == ['server1', 'server2', 'server3']
   must t.Eval('serverhostnames') == ['h_1', 'h_2', 'h_3']
+
+  say t.Eval('Servers')
+  must t.Eval('Servernames') == ['Server1', 'Server2', 'Server3']
+  must t.Eval('Serverhostnames') == ['h_1', 'h_2', 'h_3']
 
 def main(_):
   TestT1()
