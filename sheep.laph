@@ -1,6 +1,7 @@
 hosts = {
   node1 = { ip = 198.199.119.196 }
   jig1 =  { ip = 162.243.222.110 }
+  lid1 =  { ip = 1.2.3.4 }
 }
 
 _job_template = {
