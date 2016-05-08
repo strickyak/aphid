@@ -1,6 +1,6 @@
 from . import A, flag
 from . import among, aweber, awiki, awedit, azoner, formic, smilax4, stash
-from . import bundle, keyring, laph, pubsub, rbundle
+from . import bundle, keyring, laph3, pubsub, rbundle, util
 from go import bufio, fmt, html, io/ioutil, net/http, os, time
 from go import path as P, path/filepath as F
 from rye_lib import data
@@ -53,11 +53,17 @@ class Aphid:
 
     laphfile, part = filename.split(':', 1)
     laphexpr = ioutil.ReadFile(laphfile)
-    .laph = laph.Compile(laphexpr)
-    js = .laph.ToJson(part)
-    .x = data.Eval(js)
+
+    .laph = laph3.Compile(laphexpr)
+    .x = .laph.Eval(part)
+
+    # .laph = laph.Compile(laphexpr)
+    # js = .laph.ToJson(part)
+    # .x = data.Eval(js)
 
     say .x
+    util.PrettyPrint(.x)
+
     .x_me = .x['me']
     .f_ip = .x['flags']['ip']
     .f_topdir = .x['flags']['topdir']
