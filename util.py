@@ -1,4 +1,16 @@
-from go import regexp, reflect, sort, html/template
+from go import os, regexp, reflect, sort, html/template
+
+def PrettyPrint(x, w=os.Stdout, pre=''):
+  switch type(x):
+    case dict:
+      for k, v in sorted(x.items()):
+        print >>w, pre + '. [', repr(k), ']'
+        PrettyPrint(v, w, pre+'.   ')
+    case list:
+      for e in x:
+        PrettyPrint(e, w, pre+'- ')
+    default:
+      print >>w, pre + '@ ', repr(x)
 
 def Nav(top, *keys):
   """Navigate cascaded dicts from top dictionary through keys, making dicts as needed."""
