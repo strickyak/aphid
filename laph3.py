@@ -1,6 +1,6 @@
 from go import path as P, io/ioutil, os, regexp, strconv
 from rye_lib import data
-from . import chucl3
+from . import chucl3, util
 
 
 ###############################
@@ -225,6 +225,7 @@ class ExpandingVisitor:
   def visitTuple(p, path='/'):
     if .get(path) is None: .put(path, {})
     for k, v in p.dic.items():
+      if k.startswith('__'): raise 'Cannot handle __ names', k
       if k.startswith('__'): continue
       say v, J(path, k)
       v.visit(self, path=J(path, k))
@@ -232,7 +233,22 @@ class ExpandingVisitor:
   def visitDerive(p, path):
     # template, diff
     if .get(path) is None: .put(path, {})
-    .copy(p.template, path)
+    .put(path, {})
+    h, t = HT(p.template)
+    d = D(path)
+    while True:
+      if .exists(J(d, h)):
+        break
+      d = D(path)
+      if d in ('', '/', '.'):
+        break
+
+    src = J(d, p.template)
+    if not .exists(src):
+      say 'NOT YET', path, p.template, d, src
+      return
+
+    .copy(src, path)
     for k, v in p.diff.items():
       if k.startswith('__'): continue
       v.visit(self, path=J(path, k))
@@ -241,7 +257,7 @@ class ExpandingVisitor:
     # dslot, diff
     for k, v in p.diff.items():
       if k.startswith('__'): continue
-      v.visit(self, path=J(path, p.dslot, k))
+      v.visit(self, path=J(path, k))
 
   def visitBare(p, path):
     .put(path, str(p.a))
@@ -257,6 +273,10 @@ class ExpandingVisitor:
   def get(path):
     steps = [e for e in path.split('/') if e]
     return .dd.get(steps)
+
+  def exists(path):
+    x = .get(path)
+    return x is not None
 
   def copy(path_from, dest):
     def traverse(s, d):
@@ -331,6 +351,9 @@ class Compile:
       if n == was: break
       was = n
     .chucl = chucl3.Chucl(.expanded.dd.guts)
+
+    say .expanded.dd.guts
+    util.PrettyPrint(.expanded.dd.guts)
 
     for k, v in items:
       say k, v, type(k), type(v)

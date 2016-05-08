@@ -46,6 +46,8 @@ class Chucl:
     def recurse(d, p, here):
       if not p: return d
       h, t = HT(p)
+      if not h:
+        return d
       dh = d.get(h, None)
       if dh is None:
         raise 'Find: cannot find key %q in path %q' % (h, path)
@@ -67,6 +69,7 @@ class Chucl:
     else:
       rel2 = rel
 
+    say path, rel, rel2, hp
     prev = None
     while True:
       hpr = RelativeTo(hp, rel2)
@@ -78,11 +81,11 @@ class Chucl:
         if dt is None: break
 
       if dt is not None:
-        return RelativeTo(path, rel2)
+        z = RelativeTo(path, rel2)
+        say path, rel, rel2, hp, hpr, z
+        return z
 
       rel2 = D(rel2)
-      #if rel2 == '.' or rel2 == '':
-      #  raise 'ResolveRel: failed to resolve %q starting at %q' % (hp, rel)
       if prev in ['/', '.', '']:
         raise 'ResolveRel: failed to resolve %q starting at %q' % (hp, rel)
       prev = rel2
@@ -107,6 +110,9 @@ class Chucl:
     return z
 
   def Resolve(x, path, depth, env):
+    say x, path, depth, env
+    if path.find('flags/flags') >= 0:
+      raise 'OHNOOOOOOO', path
     depth += 1
     if x is None:
       raise 'Eval: got None for Eval path %q' % path
@@ -136,7 +142,19 @@ class Chucl:
         return x
       case dict:
         # When it's a dict, we might need to Resolve all its members.
-        z = dict([(k, .Resolve(v, J(path, k), depth+1, env)) for k, v in x.items() if not k.startswith('_')])
+        z = {}
+        for k, v in x.items():
+          if not k.startswith('_'):
+            try:
+              say path, k, v, J(path, k)
+              r = .Resolve(v, J(path, k), depth+1, env)
+              say path, k, v, r
+              z[k] = r
+            except as ex:  # TODO
+              # GIVE UP and leave the original there.
+              say ex, k, v, x  # TODO
+              z[k] = v
+        say x, path, depth, env, z
         return z
       case tuple:
         return .Apply(x, path, depth+1, env)
@@ -191,6 +209,10 @@ class Chucl:
         return .Apply(h3, path, depth, env2)
 
     switch h:
+      case 'bad':
+        raise x
+      case 'error':
+        raise tuple(['bad'] + t)
       case '++':
         return ''.join(list(t))
       case '+':
