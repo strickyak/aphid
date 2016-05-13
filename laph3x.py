@@ -83,7 +83,7 @@ def Resolve(root, path):
       followBases(d)
         
     envs.append(env)
-    print 'BEFORE LEVEL %q OF %q' % (str(w), path)
+    say 'BEFORE LEVEL %q OF %q' % (str(w), path)
     #util.PrettyPrint(env)
 
     # Return for tuple results.

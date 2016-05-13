@@ -399,6 +399,7 @@ class CompileX:
       .r[up][B(path)] = i
     for k, v in p.diff.items():
       v.visit(self, path=J(path, k), up=i)
+    .r[i]['__base'] = p.template
 
   def visitEnhance(p, path, up):
     i = .i
@@ -408,12 +409,16 @@ class CompileX:
       .r[up][B(path)] = i
     for k, v in p.diff.items():
       v.visit(self, path=J(path, k), up=i)
+    .r[i]['__enhance'] = p.dslot
 
   def visitBare(p, path, up):
     .r[up][B(path)] = p.a
 
   def visitCommand(p, path, up):
     .r[up][B(path)] = p.cmdvec
+
+  def Resolve(path):
+    return X.Resolve(.r, path)
 
   def PrintAll():
     def walk(i, path):
@@ -423,8 +428,18 @@ class CompileX:
           walk(v, path_)
         else:
           print path_, v
-
+          print path_, v
     walk(1, '/')
+
+  def PrintAllResolved():
+    def walk(path):
+      stuff = X.Resolve(.r, path)
+      if type(stuff) is set:
+        for e in sorted(stuff):
+          walk(J(path, e))
+      else:
+        print path, stuff
+    walk('/')
 
 def Old_main(argv):
   s = ioutil.ReadFile('/dev/stdin')
@@ -447,3 +462,5 @@ def main(argv):
   util.PrettyPrint(c.r)
   print '#################################'
   c.PrintAll()
+  print '#################################'
+  c.PrintAllResolved()
