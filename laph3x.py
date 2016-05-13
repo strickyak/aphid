@@ -1,20 +1,8 @@
-from . import laph3 as L
-from . import util
+#from . import util
 
-root = {
-    2: dict(OLD=3, NEW=7),
-    3: dict(info=4, P=5, Q=6),
-    4: dict(age="old"),
-    5: dict(__base="info", size="small"),
-    6: dict(__base="P", size="medium"),
-    7: dict(__base="OLD", info=8),
-    8: dict(__enhance=True, age="new"),
-    }
-START = 2
-
-def Resolve(path):
+def Resolve(root, path):
   words = [e for e in path.split('/') if e]
-  context = [ START ]
+  context = [ 1 ]
   envs = []
   say 'RESOLVE', path, words
 
@@ -96,7 +84,7 @@ def Resolve(path):
         
     envs.append(env)
     print 'BEFORE LEVEL %q OF %q' % (str(w), path)
-    util.PrettyPrint(env)
+    #util.PrettyPrint(env)
 
     # Return for tuple results.
     if w is None:
@@ -126,7 +114,7 @@ def Resolve(path):
     context = nextContext
     say context
 
-    sofar = L.J(sofar, w)
+    sofar = '%s/%s' % (sofar, w)
 
   raise 'NOTREACHED'
 
@@ -135,39 +123,50 @@ def Reversed(vec):
   z.reverse()
   return z
 
-print
-print
-must Resolve('/') == set(["NEW", "OLD"])
-print
-print
-must Resolve('/OLD') == set(["P", "Q", "info"])
-print
-print
-must Resolve('/NEW') == set(["P", "Q", "info"])
-print
+def main(_):
+  root = {
+      1: dict(OLD=3, NEW=7),
+      3: dict(info=4, P=5, Q=6),
+      4: dict(age="old"),
+      5: dict(__base="info", size="small"),
+      6: dict(__base="P", size="medium"),
+      7: dict(__base="OLD", info=8),
+      8: dict(__enhance=True, age="new"),
+      }
 
-print
-must Resolve('/OLD/P/size') == 'small'
-print
-print
-must Resolve('/OLD/Q/size') == 'medium'
-print
-print
-must Resolve('/OLD/P/age') == 'old'
-print
-print
-must Resolve('/OLD/Q/age') == 'old'
-print
+  print
+  print
+  must Resolve(root, '/') == set(["NEW", "OLD"])
+  print
+  print
+  must Resolve(root, '/OLD') == set(["P", "Q", "info"])
+  print
+  print
+  must Resolve(root, '/NEW') == set(["P", "Q", "info"])
+  print
 
-print
-must Resolve('/NEW/P/size') == 'small'
-print
-print
-must Resolve('/NEW/Q/size') == 'medium'
-print
-print
-must Resolve('/NEW/P/age') == 'new'
-print
-print
-must Resolve('/NEW/Q/age') == 'new'
-print
+  print
+  must Resolve(root, '/OLD/P/size') == 'small'
+  print
+  print
+  must Resolve(root, '/OLD/Q/size') == 'medium'
+  print
+  print
+  must Resolve(root, '/OLD/P/age') == 'old'
+  print
+  print
+  must Resolve(root, '/OLD/Q/age') == 'old'
+  print
+
+  print
+  must Resolve(root, '/NEW/P/size') == 'small'
+  print
+  print
+  must Resolve(root, '/NEW/Q/size') == 'medium'
+  print
+  print
+  must Resolve(root, '/NEW/P/age') == 'new'
+  print
+  print
+  must Resolve(root, '/NEW/Q/age') == 'new'
+  print
