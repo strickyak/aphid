@@ -21,7 +21,7 @@ def Resolve(root, path):
 
     # Build the env for this level.
     env = dict()
-    env['__path'] = sofar
+    env['____path'] = sofar
 
     # For each input context, we append 5tuples for all vars to the env. 
     for c in context:
@@ -30,23 +30,17 @@ def Resolve(root, path):
 
       def appendNormalKeyValuesToEnv(d_):
         for k, v in d_.items():
-          if k.startswith('__'): continue
+          if k.startswith('____'): continue
           if k not in env: env[k] = []
           say (context, c, d_, k, v)
           env[k].append( (context, c, d_, k, v) )
         pass
 
       appendNormalKeyValuesToEnv(d)
-      #for k, v in d.items():
-      #  if k.startswith('__'): continue
-      #  if k not in env: env[k] = []
-      #  say (context, c, d, k, v)
-      #  env[k].append( (context, c, d, k, v) )
-
       baseContexts = []
       def followBases(child):
-        # We may have a chain of __base to merge in.
-        base = child.get('__base')
+        # We may have a chain of ____base to merge in.
+        base = child.get('____base')
         if not base:
           return
 
@@ -88,7 +82,7 @@ def Resolve(root, path):
 
     # Return for tuple results.
     if w is None:
-      z = set([e for e in env.keys() if not e.startswith('__')])
+      z = set([e for e in env.keys() if not e.startswith('____')])
       say path, z
       return z
 
@@ -128,10 +122,10 @@ def main(_):
       1: dict(OLD=3, NEW=7),
       3: dict(info=4, P=5, Q=6),
       4: dict(age="old"),
-      5: dict(__base="info", size="small"),
-      6: dict(__base="P", size="medium"),
-      7: dict(__base="OLD", info=8),
-      8: dict(__enhance=True, age="new"),
+      5: dict(____base="info", size="small"),
+      6: dict(____base="P", size="medium"),
+      7: dict(____base="OLD", info=8),
+      8: dict(____enhance=True, age="new"),
       }
 
   print

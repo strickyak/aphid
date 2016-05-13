@@ -1,4 +1,4 @@
-from go import path as P, io/ioutil, os, regexp, strconv
+from go import bytes, path as P, io/ioutil, os, regexp, strconv
 from rye_lib import data
 from . import chucl3, util
 from . import laph3x as X
@@ -399,7 +399,7 @@ class CompileX:
       .r[up][B(path)] = i
     for k, v in p.diff.items():
       v.visit(self, path=J(path, k), up=i)
-    .r[i]['__base'] = p.template
+    .r[i]['____base'] = p.template
 
   def visitEnhance(p, path, up):
     i = .i
@@ -409,7 +409,7 @@ class CompileX:
       .r[up][B(path)] = i
     for k, v in p.diff.items():
       v.visit(self, path=J(path, k), up=i)
-    .r[i]['__enhance'] = p.dslot
+    .r[i]['____enhance'] = p.dslot
 
   def visitBare(p, path, up):
     .r[up][B(path)] = p.a
@@ -441,6 +441,25 @@ class CompileX:
         print path, stuff
     walk('/')
 
+  def ToJson(path='/', hidden=False):
+    w = go_new(bytes.Buffer)
+    def walk(path, pre):
+      stuff = X.Resolve(.r, path)
+      if type(stuff) is set:
+        if pre: print >>w, '%s%q  :  {' % (pre, B(path))
+        for e in sorted(stuff):
+          if hidden or not e.startswith('_'):
+            walk(J(path, e), pre+'    ')
+        if pre: print >>w, '%s},' % pre
+      else:
+        print >>w, '%s%q  :  %q,' % (pre, B(path), str(stuff))
+    while path.startswith('/'):
+      path = path[1:]
+    print >>w, '{'
+    walk(path, '')
+    print >>w, '}'
+    return str(w)
+
 def Old_main(argv):
   s = ioutil.ReadFile('/dev/stdin')
   c = Compile(s)
@@ -459,8 +478,10 @@ def Old_main(argv):
 def main(argv):
   s = ioutil.ReadFile('/dev/stdin')
   c = CompileX(s)
-  util.PrettyPrint(c.r)
-  print '#################################'
-  c.PrintAll()
-  print '#################################'
-  c.PrintAllResolved()
+  #util.PrettyPrint(c.r)
+  #print '#################################'
+  #c.PrintAll()
+  #print '#################################'
+  #c.PrintAllResolved()
+  #print '#################################'
+  print c.ToJson()
