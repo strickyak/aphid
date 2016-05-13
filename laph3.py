@@ -1,10 +1,12 @@
 from go import path as P, io/ioutil, os, regexp, strconv
 from rye_lib import data
 from . import chucl3, util
+from . import laph3x as X
 
 
 ###############################
 # Path Manipulation
+B = P.Base
 C = P.Clean
 D = P.Dir
 def J(*args): # Join
@@ -55,8 +57,8 @@ class Lex:
 #  -- Bare:  a bare word, like x
 #  -- Command: a parenthesized nonempty list of words, like (+ $x 1)
 #  -- Tuple: a Named Tuple, like { a = foo ; b = 99 }
-#  -- Derive:  a Derived Tuple, like tmpl... in { ... ; x = tmpl { p = 80 } ; ... } 
-#  -- Enhance  an Enhanced Derived Tuple, like stuff... in { ... ; x = tmpl { stuff { another = 443 }  } ; ... } 
+#  -- Derive:  a Derived Tuple, like tmpl... in { ... ; x = tmpl { p = 80 } ; ... }
+#  -- Enhance  an Enhanced Derived Tuple, like stuff... in { ... ; x = tmpl { stuff { another = 443 }  } ; ... }
 
 class AST:
   def __repr__():
@@ -333,9 +335,9 @@ class DeepDict:
     traverse([], .guts)
     return sorted(z)
 
+
 class Compile:
   def __init__(program):
-    .memo = {}
     .program = program
     parsed = Parse(program)  # Creates the parser.
     .tree = parsed.ParseTupleGuts()  # Actually parses, as if the guts of a tuple.
@@ -366,19 +368,65 @@ class Compile:
         say k, v, path, x
         .expanded.dd.put(k, x)
 
-
-    # Add __path__ to each dir.
-    #def recurse(d, path):
-    #  d['__path__'] = path
-    #  for k, v in d.items():
-    #    if type(v) is dict:
-    #      recurse(v, J(path, k))
-    #recurse(.expanded.dd.guts, '/')
-
   def Eval(path):
     return .chucl.Eval(path)
 
-def main(argv):
+class CompileX:
+  def __init__(program):
+    .program = program
+    parsed = Parse(program)  # Creates the parser.
+    .tree = parsed.ParseTupleGuts()  # Actually parses, as if the guts of a tuple.
+    must type(.tree) == Tuple, 'Expected program to be a Tuple, but got %q' % type(.tree)
+
+    .r = {}
+    .i = 1
+    .tree.visit(self, path='/', up=0)
+
+  def visitTuple(p, path, up):
+    i = .i
+    .i += 1
+    .r[i] = {}
+    if up:
+      .r[up][B(path)] = i
+    for k, v in p.dic.items():
+      v.visit(self, path=J(path, k), up=i)
+
+  def visitDerive(p, path, up):
+    i = .i
+    .i += 1
+    .r[i] = {}
+    if up:
+      .r[up][B(path)] = i
+    for k, v in p.diff.items():
+      v.visit(self, path=J(path, k), up=i)
+
+  def visitEnhance(p, path, up):
+    i = .i
+    .i += 1
+    .r[i] = {}
+    if up:
+      .r[up][B(path)] = i
+    for k, v in p.diff.items():
+      v.visit(self, path=J(path, k), up=i)
+
+  def visitBare(p, path, up):
+    .r[up][B(path)] = p.a
+
+  def visitCommand(p, path, up):
+    .r[up][B(path)] = p.cmdvec
+
+  def PrintAll():
+    def walk(i, path):
+      for k, v in sorted(.r[i].items()):
+        path_ = J(path, k)
+        if type(v) is int:
+          walk(v, path_)
+        else:
+          print path_, v
+
+    walk(1, '/')
+
+def Old_main(argv):
   s = ioutil.ReadFile('/dev/stdin')
   c = Compile(s)
   say c.expanded.dd.guts
@@ -393,3 +441,9 @@ def main(argv):
       except as ex:
         print '>>>>>>!!!!!!', ex
 
+def main(argv):
+  s = ioutil.ReadFile('/dev/stdin')
+  c = CompileX(s)
+  util.PrettyPrint(c.r)
+  print '#################################'
+  c.PrintAll()
