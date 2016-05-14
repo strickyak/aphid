@@ -54,13 +54,8 @@ class Aphid:
     laphfile, part = filename.split(':', 1)
     laphexpr = ioutil.ReadFile(laphfile)
 
-    .laph = laph3.Compile(laphexpr)
-    .x = .laph.Eval(part)
-
-    # .laph = laph.Compile(laphexpr)
-    # js = .laph.ToJson(part)
-    # .x = data.Eval(js)
-
+    .laph = laph3.CompileX(laphexpr)
+    .x = .laph.ToData(part)
     say .x
     util.PrettyPrint(.x)
 
@@ -203,7 +198,9 @@ class Aphid:
       .mux.HandleFunc('%s/@%s*/' % (.f_domain, wname), awedit.Master(self, bname, bund=bund).Handle2)
 
     # Add formic.
+    say .filename, .x_formics.items()
     for wname, config in .x_formics.items():
+      say wname, config
       bname = config['bundle']
       bund = .bundles[bname]
       obj = formic.FormicMaster(self, bname, bund=bund, config=config)

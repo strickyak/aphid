@@ -1,8 +1,6 @@
 from go import bytes, path as P, io/ioutil, os, regexp, strconv
 from rye_lib import data
-from . import chucl3, util
-from . import laph3x as X
-
+from . import chucl3x, util
 
 ###############################
 # Path Manipulation
@@ -11,6 +9,8 @@ C = P.Clean
 D = P.Dir
 def J(*args): # Join
   return C(P.Join(*args))
+def S(path):  # Split
+  return [e for e in path.split('/') if e]
 def H(path): # Head
   """Head of path (the first name) or Empty."""
   vec = [e for e in path.split('/') if e]
@@ -20,9 +20,10 @@ def T(path): # Tail
   vec = [e for e in path.split('/') if e]
   return J(*vec[1:]) if len(vec) > 1 else ''
 def HT(path): # Head & Tail
-  return H(path), T(path)
-def S(path):  # Split
-  return [e for e in path.split('/') if e]
+  vec = [e for e in path.split('/') if e]
+  h = vec[0] if vec else ''
+  t = J(*vec[1:]) if len(vec) > 1 else ''
+  return h, t
 
 ###############################
 # Lexical Analysis:
@@ -146,6 +147,8 @@ class Parse:
         zzz = .ParseCommand()
         z.append( zzz )
         continue  # Do not throw away the next token.
+      elif word.startswith('$') and len(word) > 1:
+        z.append( Command([ Bare('get'), Bare(word[1:]) ]) )
       else:
         must not Special(word), word
         z.append( Bare(word) )
@@ -210,7 +213,10 @@ class Parse:
     else: # if not Special
       peek, peekl = .p[.i]
       if peek == ';' or peek == '}':
-        return Bare(x)
+        if x.startswith('$') and len(x) > 1:
+          return Command([ Bare('get'), Bare(x[1:]) ])
+        else:
+          return Bare(x)
       elif peek == '{':
         tup = .ParseExpr()
         must type(tup) is Tuple
@@ -220,157 +226,6 @@ class Parse:
 
     raise 'Unhandled', .i, .p[.i]
 
-class ExpandingVisitor:
-  def __init__():
-    .dd = DeepDict()
-
-  def visitTuple(p, path='/'):
-    if .get(path) is None: .put(path, {})
-    for k, v in p.dic.items():
-      if k.startswith('__'): raise 'Cannot handle __ names', k
-      if k.startswith('__'): continue
-      say v, J(path, k)
-      v.visit(self, path=J(path, k))
-
-  def visitDerive(p, path):
-    # template, diff
-    if .get(path) is None: .put(path, {})
-    .put(path, {})
-    h, t = HT(p.template)
-    d = D(path)
-    while True:
-      if .exists(J(d, h)):
-        break
-      d = D(path)
-      if d in ('', '/', '.'):
-        break
-
-    src = J(d, p.template)
-    if not .exists(src):
-      say 'NOT YET', path, p.template, d, src
-      return
-
-    .copy(src, path)
-    for k, v in p.diff.items():
-      if k.startswith('__'): continue
-      v.visit(self, path=J(path, k))
-
-  def visitEnhance(p, path):
-    # dslot, diff
-    for k, v in p.diff.items():
-      if k.startswith('__'): continue
-      v.visit(self, path=J(path, k))
-
-  def visitBare(p, path):
-    .put(path, str(p.a))
-    return p.a
-
-  def visitCommand(p, path):
-    .put(path, p.simplify())
-
-  def put(path, value):
-    steps = [e for e in path.split('/') if e]
-    .dd.put(steps, value)
-
-  def get(path):
-    steps = [e for e in path.split('/') if e]
-    return .dd.get(steps)
-
-  def exists(path):
-    x = .get(path)
-    return x is not None
-
-  def copy(path_from, dest):
-    def traverse(s, d):
-      if d:
-        for k, v in d.items():
-          if k.startswith('__'): continue
-          s2 = J(s, k) if s else k
-          if type(v) is dict:
-            traverse(s2, v)
-          else:
-            .put(J(dest, s2), v)
-    if .get(dest) is None: .put(dest, {})
-    traverse('', .get(path_from))
-
-class DeepDict:
-  def __init__():
-    .guts = {}
-
-  """Get the value stored down sequence of keys.  If any subkey does not exist, return None."""
-  def get(keys):
-    if not keys: return .guts
-    steps, last = keys[:-1], keys[-1]
-    d = .guts
-    for e in steps:
-      d = d.get(e)
-      if d is None:
-        return None
-    return d.get(last)
-
-  """Put the value sequence of keys.  If any subkey does not exist, create subdictionaries."""
-  def put(keys, value):
-    if not keys: return
-    steps, last = keys[:-1], keys[-1]
-    d = .guts
-    for e in steps:
-      if e in d:
-        d = d[e]
-      else:
-        t = {}
-        d[e] = t
-        d = t
-    d[last] = value
-
-  def items(hidden=False):
-    z = []
-    def traverse(steps, d):
-      for k, v in d.items():
-        if k.startswith('_') and not hidden:
-          continue
-        if type(v) is dict:
-          traverse(steps + [k], v)
-        else:
-          z.append((steps + [k], v))
-    traverse([], .guts)
-    return sorted(z)
-
-
-class Compile:
-  def __init__(program):
-    .program = program
-    parsed = Parse(program)  # Creates the parser.
-    .tree = parsed.ParseTupleGuts()  # Actually parses, as if the guts of a tuple.
-    must type(.tree) == Tuple, 'Expected program to be a Tuple, but got %q' % type(.tree)
-
-    .expanded = ExpandingVisitor()
-    was = 0
-    while True:
-      .expanded.visitTuple(.tree)
-      items = .expanded.dd.items(True)
-      n = len(items)
-      say was, n
-      if n == was: break
-      was = n
-    .chucl = chucl3.Chucl(.expanded.dd.guts)
-
-    say .expanded.dd.guts
-    util.PrettyPrint(.expanded.dd.guts)
-
-    for k, v in items:
-      say k, v, type(k), type(v)
-      if (type(v) is tuple and v[0] != 'error') or type(v) is str and v.startswith('$'):
-        try:
-          path = J('/', *k)
-          x = .Eval(path)
-        except as err:
-          x = ('error', str(err))
-        say k, v, path, x
-        .expanded.dd.put(k, x)
-
-  def Eval(path):
-    return .chucl.Eval(path)
-
 class CompileX:
   def __init__(program):
     .program = program
@@ -378,51 +233,49 @@ class CompileX:
     .tree = parsed.ParseTupleGuts()  # Actually parses, as if the guts of a tuple.
     must type(.tree) == Tuple, 'Expected program to be a Tuple, but got %q' % type(.tree)
 
-    .r = {}
+    .root = {}
     .i = 1
     .tree.visit(self, path='/', up=0)
+    .chucl = chucl3x.Chucl(self)
 
   def visitTuple(p, path, up):
     i = .i
     .i += 1
-    .r[i] = {}
+    .root[i] = {}
     if up:
-      .r[up][B(path)] = i
+      .root[up][B(path)] = i
     for k, v in p.dic.items():
       v.visit(self, path=J(path, k), up=i)
 
   def visitDerive(p, path, up):
     i = .i
     .i += 1
-    .r[i] = {}
+    .root[i] = {}
     if up:
-      .r[up][B(path)] = i
+      .root[up][B(path)] = i
     for k, v in p.diff.items():
       v.visit(self, path=J(path, k), up=i)
-    .r[i]['____base'] = p.template
+    .root[i]['____base'] = p.template
 
   def visitEnhance(p, path, up):
     i = .i
     .i += 1
-    .r[i] = {}
+    .root[i] = {}
     if up:
-      .r[up][B(path)] = i
+      .root[up][B(path)] = i
     for k, v in p.diff.items():
       v.visit(self, path=J(path, k), up=i)
-    .r[i]['____enhance'] = p.dslot
+    .root[i]['____enhance'] = p.dslot
 
   def visitBare(p, path, up):
-    .r[up][B(path)] = p.a
+    .root[up][B(path)] = p.a  # sets a str.
 
   def visitCommand(p, path, up):
-    .r[up][B(path)] = p.cmdvec
-
-  def Resolve(path):
-    return X.Resolve(.r, path)
+    .root[up][B(path)] = p.cmdvec  # sets a list.
 
   def PrintAll():
     def walk(i, path):
-      for k, v in sorted(.r[i].items()):
+      for k, v in sorted(.root[i].items()):
         path_ = J(path, k)
         if type(v) is int:
           walk(v, path_)
@@ -433,7 +286,17 @@ class CompileX:
 
   def PrintAllResolved():
     def walk(path):
-      stuff = X.Resolve(.r, path)
+      stuff = .Resolve(path)
+      if type(stuff) is set:
+        for e in sorted(stuff):
+          walk(J(path, e))
+      else:
+        print path, stuff
+    walk('/')
+
+  def PrintAllEvaluated():
+    def walk(path):
+      stuff = .chucl.EvalPath(path)
       if type(stuff) is set:
         for e in sorted(stuff):
           walk(J(path, e))
@@ -443,45 +306,232 @@ class CompileX:
 
   def ToJson(path='/', hidden=False):
     w = go_new(bytes.Buffer)
-    def walk(path, pre):
-      stuff = X.Resolve(.r, path)
-      if type(stuff) is set:
-        if pre: print >>w, '%s%q  :  {' % (pre, B(path))
-        for e in sorted(stuff):
-          if hidden or not e.startswith('_'):
-            walk(J(path, e), pre+'    ')
-        if pre: print >>w, '%s},' % pre
+    def traverse(a, pre):
+      if type(a) is dict:
+        print >>w, '%s{' % pre
+        for k, v in sorted(a.items()):
+          if hidden or not k.startswith('_'):
+            print >>w, '%s  %q :' % (pre, k)
+            traverse(a, pre+'    ')
+        print >>w, '%s},' % pre
       else:
-        print >>w, '%s%q  :  %q,' % (pre, B(path), str(stuff))
-    while path.startswith('/'):
-      path = path[1:]
-    print >>w, '{'
-    walk(path, '')
-    print >>w, '}'
+        print >>w, '%s%s,' % (pre, repr(a))
+
+    x = .chucl.EvalPath(path)
+    traverse(x, '  ')
     return str(w)
 
-def Old_main(argv):
-  s = ioutil.ReadFile('/dev/stdin')
-  c = Compile(s)
-  say c.expanded.dd.guts
-  i = 0
-  for k, v in c.expanded.dd.items(hidden=False):
-    i += 1
-    print i, k, '=======', v
-    if type(v) is tuple:
-      try:
-        #print '>>>>>>', c.chucl.Eval(J(*k))
-        print '>>>>>>', c.Eval(J(*k))
-      except as ex:
-        print '>>>>>>!!!!!!', ex
+  def ToData(path='/', hidden=False):
+    w = go_new(bytes.Buffer)
+    def walk(path):
+      stuff = .chucl.EvalPath(path)
+      say path, hidden, stuff
+      if type(stuff) is set:
+        d = {}
+        for e in sorted(stuff):
+          if hidden or not e.startswith('_'):
+            d[e] = walk(J(path, e))
+        return d
+      else:
+        return stuff
 
-def main(argv):
+    z = walk(path)
+    say path, hidden, z
+    return z
+
+  def AbsolutePathRelativeTo(path, dir):
+    # Handle case of absoulte path.
+    if path.startswith('/'):
+      return path
+
+    # Search dir and its superdirs for the head of the relative path.
+    hd, tl = HT(path)
+    if not hd:
+      return dir
+
+    dir = '/%s' % dir
+    while True:
+      try:
+        x = .Resolve(J(dir, hd))
+        # If that does not throw an exception or return None
+        if x is not None:
+          return J(dir, path)
+      except:
+        pass  # Continue to try with superdir.
+      if dir=='/':
+        raise 'Cannot find path %q relative to directory %q' % (path, dir)
+      dir = D(dir)
+    raise 'NOTREACHED'
+
+  def XXXResolveRelativeTo(path, dir):
+    # Handle case of absoulte path.
+    if path.startswith('/'):
+      return .Resolve(path)
+
+    # Search dir and its superdirs for the head of the relative path.
+    hd, tl = HT(path)
+    if not hd:
+      return .Resolve(dir)
+
+    dir = dir.lstrip('/')
+    while True:
+      try:
+        x = .Resolve(J(dir, hd))
+        if tl:
+          return .Resolve(J(dir, path))
+        else:
+          return x
+      except:
+        pass  # Continue to try with superdir.
+      if not dir or dir=='.' or dir=='/':
+        raise 'Cannot resolve path %q relative to directory %q' % (path, dir)
+      dir = D(dir)
+    raise 'NOTREACHED'
+
+  def Resolve(path):
+    if path=='0': raise path
+
+    words = [e for e in path.split('/') if e and e != '.']
+    context = [ 1 ]
+    envs = []
+    say 'RESOLVE', path, words
+
+    z = None
+    sofar = '/'
+    for w in words + [None]:
+      say 'RESOLVE WORD', w, context
+
+      # Return for terminals.
+      if w is None and z is not None:
+        say path, z
+        return z
+
+      if z is not None:
+        raise 'Got result %q before path %q is finished, at level %q' % (z, path, w)
+
+      # Build the env for this level.
+      env = dict()
+      env['____path'] = sofar
+
+      # For each input context, we append 5tuples for all vars to the env.
+      for c in context:
+        d = .root[c]
+        say c, d
+
+        def appendNormalKeyValuesToEnv(d_):
+          for k, v in d_.items():
+            if k.startswith('____'): continue
+            if k not in env: env[k] = []
+            say (context, c, d_, k, v)
+            env[k].append( (context, c, d_, k, v) )
+          pass
+
+        appendNormalKeyValuesToEnv(d)
+        baseContexts = []
+        def followBases(child):
+          # We may have a chain of ____base to merge in.
+          base = child.get('____base')
+          if not base:
+            return
+
+          say child, base
+          must type(base) is str
+          must base
+          bb = [e for e in base.split('/') if e]
+          must bb
+          must len(bb) == 1  # We don't handle long bases yet.
+          b0 = bb[0]
+
+          # b0 is the name we are looking for, and found_b0 is a list of those we found.
+          # Once we find at least one b0 at a level, we don't go up farther.
+          found_b0 = []
+          for up in Reversed(envs):
+            say b0, up
+            for got_b0 in up.get(b0):
+              say b0, up, got_b0
+              cx_, c_, d_, k_, v_ = got_b0
+              say cx_, c_, d_, k_, v_
+              if type(v_) is int:  # Int is a link to another Tuple.
+                found_b0.append(v_)
+            say b0, got_b0, found_b0
+            if found_b0:
+              break
+          say b0, found_b0
+          if not found_b0:
+            raise 'Cannot find base key %q in context %s' % (base, str(c))
+          for child_num_ in found_b0:
+            child_ = .root[child_num_]
+            appendNormalKeyValuesToEnv(child_)
+            followBases(child_)
+          baseContexts += found_b0
+        followBases(d)
+
+      envs.append(env)
+      say 'BEFORE LEVEL %q OF %q' % (str(w), path)
+      #util.PrettyPrint(env)
+
+      # Return for tuple results.
+      if w is None:
+        z = set([e for e in env.keys() if not e.startswith('____')])
+        say path, z
+        return z
+
+      # Build the context for the next level.
+      nextContext = []
+      answers = env.get(w)  # Get answer from env we built above.
+      say w, answers, z
+      if not answers:
+        raise 'Key %q not found in context %s' % (w, repr(context))
+
+      keys = []
+      for (cx, c, d, k, v) in answers:
+        say (cx, c, d, k, v)
+        keys.append(k)
+        say keys, type(v), v, z
+        if type(v) is int:
+          say v
+          nextContext.append(v)
+          say nextContext
+        elif z is None:
+          switch type(v):
+            case str:
+              z = v
+            case list:
+              def simplifyTerminalThing(thing):
+                """Strip off the Bare and Command wrappers."""
+                switch type(thing):
+                  case Bare:
+                    return thing.a
+                  case Command:
+                    return [simplifyTerminalThing(e) for e in thing.cmdvec]
+                  case list:
+                    return [simplifyTerminalThing(e) for e in thing]
+                  default:
+                    raise type(thing), repr(thing)
+              z = simplifyTerminalThing(v)
+            default:
+              raise 'Weird type', type(v), v, (cx, c, d, k, v)
+        else:
+          pass # Because first terminal z sets z, and later ones are ignored.
+
+      context = nextContext
+      say context
+
+      sofar = '%s/%s' % (sofar, w)
+
+    raise 'NOTREACHED'
+
+def Reversed(vec):
+  z = [e for e in vec]
+  z.reverse()
+  return z
+
+def main(args):
   s = ioutil.ReadFile('/dev/stdin')
   c = CompileX(s)
-  #util.PrettyPrint(c.r)
-  #print '#################################'
+  #util.PrettyPrint(c.root)
   #c.PrintAll()
-  #print '#################################'
   #c.PrintAllResolved()
-  #print '#################################'
-  print c.ToJson()
+  #print c.ToJson()
+  for a in args:
+    print '>>>', a, '>>>', repr( c.chucl.EvalPath(a) )
