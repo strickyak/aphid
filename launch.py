@@ -54,8 +54,8 @@ class Aphid:
     laphfile, part = filename.split(':', 1)
     laphexpr = ioutil.ReadFile(laphfile)
 
-    .laph = laph3.CompileX(laphexpr)
-    .x = .laph.ToData(part)
+    .laph = laph3.Compile(laphexpr)
+    .x = .laph.EvalPath(part)
     say .x
     util.PrettyPrint(.x)
 

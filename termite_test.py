@@ -114,9 +114,9 @@ def main(args):
   t3 = launch.Aphid(quit=quit, filename='termite.laph:job:termite13')
   t3.StartAll()
 
-  t1_http = t1.laph.Eval('/job:termite11/ports/http')
+  t1_http = t1.laph.EvalPath('/job:termite11/ports/http')
   say t1_http
-  t3_rpc = t3.laph.Eval('/job:termite13/ports/rpc')
+  t3_rpc = t3.laph.EvalPath('/job:termite13/ports/rpc')
   say t3_rpc
   Ring = t3.ring
 

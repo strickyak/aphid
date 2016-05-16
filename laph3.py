@@ -2,6 +2,8 @@ from go import bytes, path as P, io/ioutil, os, regexp, strconv
 from rye_lib import data
 from . import chucl3x, util
 
+NONE = ()
+
 ###############################
 # Path Manipulation
 B = P.Base
@@ -226,7 +228,7 @@ class Parse:
 
     raise 'Unhandled', .i, .p[.i]
 
-class CompileX:
+class Compile:
   def __init__(program):
     .program = program
     parsed = Parse(program)  # Creates the parser.
@@ -237,6 +239,8 @@ class CompileX:
     .i = 1
     .tree.visit(self, path='/', up=0)
     .chucl = chucl3x.Chucl(self)
+
+    .resolve_cache = {}
 
   def visitTuple(p, path, up):
     i = .i
@@ -312,32 +316,23 @@ class CompileX:
         for k, v in sorted(a.items()):
           if hidden or not k.startswith('_'):
             print >>w, '%s  %q :' % (pre, k)
-            traverse(a, pre+'    ')
-        print >>w, '%s},' % pre
+            traverse(v, pre+'    ')
+        print >>w, '%s}%s' % (pre, ',' if pre else '')
       else:
         print >>w, '%s%s,' % (pre, repr(a))
 
     x = .chucl.EvalPath(path)
-    traverse(x, '  ')
+    traverse(x, '')
     return str(w)
 
-  def ToData(path='/', hidden=False):
-    w = go_new(bytes.Buffer)
-    def walk(path):
-      stuff = .chucl.EvalPath(path)
-      say path, hidden, stuff
-      if type(stuff) is set:
-        d = {}
-        for e in sorted(stuff):
-          if hidden or not e.startswith('_'):
-            d[e] = walk(J(path, e))
-        return d
-      else:
-        return stuff
+  def EvalPath(path):
+    say '<<<', path
+    stuff = .chucl.EvalPath(path)
+    say '>>>', path, stuff
+    return stuff
 
-    z = walk(path)
-    say path, hidden, z
-    return z
+  def ToData(path='/'):
+    return .EvalPath(path)
 
   def AbsolutePathRelativeTo(path, dir):
     # Handle case of absoulte path.
@@ -363,34 +358,21 @@ class CompileX:
       dir = D(dir)
     raise 'NOTREACHED'
 
-  def XXXResolveRelativeTo(path, dir):
-    # Handle case of absoulte path.
-    if path.startswith('/'):
-      return .Resolve(path)
-
-    # Search dir and its superdirs for the head of the relative path.
-    hd, tl = HT(path)
-    if not hd:
-      return .Resolve(dir)
-
-    dir = dir.lstrip('/')
-    while True:
-      try:
-        x = .Resolve(J(dir, hd))
-        if tl:
-          return .Resolve(J(dir, path))
-        else:
-          return x
-      except:
-        pass  # Continue to try with superdir.
-      if not dir or dir=='.' or dir=='/':
-        raise 'Cannot resolve path %q relative to directory %q' % (path, dir)
-      dir = D(dir)
-    raise 'NOTREACHED'
+  def Keys(path : str) -> set:
+    r = .Resolve(path)
+    must type(r) is set
+    return r
 
   def Resolve(path):
-    if path=='0': raise path
+    z = .resolve_cache.get(path, NONE)
+    if z is not NONE: return z
 
+    z = .Resolve9(path)
+    say 'RESOLVED', path, z
+    .resolve_cache[path] = z
+    return z
+
+  def Resolve9(path):
     words = [e for e in path.split('/') if e and e != '.']
     context = [ 1 ]
     envs = []
@@ -427,7 +409,7 @@ class CompileX:
           pass
 
         appendNormalKeyValuesToEnv(d)
-        baseContexts = []
+        #?baseContexts = []
         def followBases(child):
           # We may have a chain of ____base to merge in.
           base = child.get('____base')
@@ -436,7 +418,6 @@ class CompileX:
 
           say child, base
           must type(base) is str
-          must base
           bb = [e for e in base.split('/') if e]
           must bb
           must len(bb) == 1  # We don't handle long bases yet.
@@ -463,7 +444,7 @@ class CompileX:
             child_ = .root[child_num_]
             appendNormalKeyValuesToEnv(child_)
             followBases(child_)
-          baseContexts += found_b0
+          #?baseContexts += found_b0
         followBases(d)
 
       envs.append(env)
@@ -528,10 +509,12 @@ def Reversed(vec):
 
 def main(args):
   s = ioutil.ReadFile('/dev/stdin')
-  c = CompileX(s)
+  c = Compile(s)
   #util.PrettyPrint(c.root)
   #c.PrintAll()
   #c.PrintAllResolved()
   #print c.ToJson()
   for a in args:
-    print '>>>', a, '>>>', repr( c.chucl.EvalPath(a) )
+    print '#>>>', a
+    x = c.chucl.EvalPath(a)
+    print data.PrettyPrint(x)

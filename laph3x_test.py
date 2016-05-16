@@ -1,7 +1,7 @@
 from . import laph3 as L
 
 
-t1 = L.CompileX(`
+t1 = L.Compile(`
   a = bilbo
   b = {
     c = {
@@ -21,7 +21,7 @@ must t1.Resolve('/b/c/d') == 'frodo'
 
 ################################
 
-t2 = L.CompileX(`
+t2 = L.Compile(`
   Q = { a = 111 ; b = 222 }
   R = Q { a = 777 ; c = 888}
 `)
@@ -37,7 +37,7 @@ must t2.Resolve('/R/c') == '888'
 
 ################################
 
-t3 = L.CompileX(`
+t3 = L.Compile(`
   X = {
     M = { a = 111 ; b = 222 }
     N = { c = 333 ; d = 444 }
@@ -65,7 +65,7 @@ must t3.Resolve('/Y/P/z') == '888'
 
 ################################
 
-t4 = L.CompileX(`
+t4 = L.Compile(`
   OLD = {
     info = { age = old }
     P = info { size = small }
