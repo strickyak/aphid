@@ -1,7 +1,7 @@
 # Chucl lisp-like interpreter for laph3
 #
 # t = Chucl(engine)
-#   where engine is Laph3 CompileX().
+#   where engine is Laph3 Compile().
 #
 #   str: A final str value.
 #   set: A directory node, listing its keys.
@@ -9,6 +9,8 @@
 
 from go import path as P
 from rye_lib import data
+
+NONE = ()
 
 ###############################
 # Path Manipulation
@@ -39,6 +41,7 @@ def S(path):
 class Chucl:
   def __init__(engine):
     .engine = engine
+    .eval_cache = {}
 
   def EvalPath(path, depth=0, env=None):
     if env:
@@ -54,9 +57,13 @@ class Chucl:
     except as ex:
       raise 'EvalPath: exception in resolving path %q: %s' % (path, str(ex))
 
+    z = .eval_cache.get(path, NONE)
+    if z is not NONE: return z
+
     say path, depth, env, x
     z = .Evaluate(x, path, depth, env)
     say path, depth, env, x, z
+    .eval_cache[path] = z
     return z
 
   def Evaluate(x, path, depth, env):
