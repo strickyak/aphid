@@ -141,7 +141,12 @@ def CopyRemoteFileHere(from_there, to_here, mtime):
   w.Flush()
   fd.Close()
   if mtime:
-    t = time.Unix(mtime, 0)
+    say mtime
+    if mtime > 1000000000009:
+      t = time.Unix(0, mtime * 1000000)
+    else:
+      t = time.Unix(mtime, 0)
+    say t, to_here
     os.Chtimes(to_here, t, t)
 
 # TODO: CopyRemoteFileHere & pullFile are almost the same.
