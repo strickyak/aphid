@@ -235,9 +235,6 @@ class Aphid:
         .mux.HandleFunc(v, obj.Handle2)
         say 'stash alias %q' % k
 
-    ## Misc
-    .mux.HandleFunc('/@quitquitquit', lambda w, r: .quit.Put(1))
-
     # Go Serve.
     say 'SERVING', .server
     .server = setattrs(go_new(http.Server),
