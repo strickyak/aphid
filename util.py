@@ -82,12 +82,6 @@ native: `
         i_sort.Strings(z)
         return z
     }
-    func Func_Show(a interface{}) string {
-        if s, ok := a.(fmt.Stringer); ok {
-          return s.String()
-        }
-        return fmt.Sprintf("%v", a)
-    }
     func Func_Repr(a interface{}) string {
         if s, ok := a.(P); ok {
           return s.Repr()
@@ -116,7 +110,6 @@ def TemplateFuncs():
       m := make(i_template.FuncMap)
       m["KV"] = Func_KV
       m["Keys"] = Func_Keys
-      m["Show"] = Func_Show
       m["Repr"] = Func_Repr
       m["String"] = Func_String
       m["JoinPaths"] = Func_JoinPaths
