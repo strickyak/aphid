@@ -282,34 +282,36 @@ class FormicMaster:
       varients = .bund.ListImageVarients(staticPath, None)
       say 'VARIENTS', varients
 
-      # And do we have maximum sizes?
-      maxw = int(query.get('maxw', 0))
-      maxh = int(query.get('maxh', 0))
-      zvar, zbig, zw, zh = None, 0, 0, 0
-      minvar, minbig, minw, minh = None, 999999999999, 0, 0
-      if not maxh and not maxw:
-        for _sz, _thumb in zip(['s', 'm', 'l', 'xl'], resize.THUMBS):
-          if _sz in query:
-            maxw, maxh = _thumb
-            break
+      zvar = None
+      if varients:
+        # And do we have maximum sizes?
+        maxw = int(query.get('maxw', 0))
+        maxh = int(query.get('maxh', 0))
+        zbig, zw, zh = 0, 0, 0
+        minvar, minbig, minw, minh = None, 999999999999, 0, 0
+        if not maxh and not maxw:
+          for _sz, _thumb in zip(['s', 'm', 'l', 'xl'], resize.THUMBS):
+            if _sz in query:
+              maxw, maxh = _thumb
+              break
 
-      if varients and (maxh or maxw):
-        for vname, vw, vh in varients:
-          big = vh + vw
-          say big, vh, vw, vname
-          if big < minbig:
-              minvar, minbig, minw, minh = vname, big, vw, vh
-              say minvar, minbig, minw, minh
-          if (not maxh or vh <= maxh) and (not maxw or vw <= maxw):
-            if big > zbig:
-              zvar, zbig, zw, zh = vname, big, vw, vh
-              say zvar, zbig, zw, zh
-      say 'VARIENT', zvar, zbig, zw, zh
+        if varients and (maxh or maxw):
+          for vname, vw, vh in varients:
+            big = vh + vw
+            say big, vh, vw, vname
+            if big < minbig:
+                minvar, minbig, minw, minh = vname, big, vw, vh
+                say minvar, minbig, minw, minh
+            if (not maxh or vh <= maxh) and (not maxw or vw <= maxw):
+              if big > zbig:
+                zvar, zbig, zw, zh = vname, big, vw, vh
+                say zvar, zbig, zw, zh
+        say 'VARIENT', zvar, zbig, zw, zh
 
-      # If all are too big, use the smallest.
-      if not zvar:
-        if (maxh or maxw) and minvar:
-          zvar = minvar
+        # If all are too big, use the smallest.
+        if not zvar:
+          if (maxh or maxw) and minvar:
+            zvar = minvar
 
       # ServeContent on the static file.
       w.Header().Set('Cache-Control', 'max-age=%s, s-maxage=%s' % (STATIC_MAX_AGE, STATIC_MAX_AGE))
