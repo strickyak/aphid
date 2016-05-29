@@ -1,13 +1,15 @@
 from . import A, flag
 from . import among, aweber, awiki, awedit, azoner, formic, smilax4, stash
 from . import bundle, keyring, laph3, pubsub, rbundle, util
-from go import bufio, fmt, html, io/ioutil, net/http, os, time
+from go import bufio, fmt, html, io/ioutil, net/http, os, regexp, time
 from go import path as P, path/filepath as F
 from rye_lib import data
 
 SEEDDIR = flag.String('seeddir', '', 'Directory containing bundle seed files')
 
 Esc = html.EscapeString
+
+MATCH_REFERER = regexp.MustCompile('^[^?]+(/@[-A-Za-z0-9_]+/)').FindStringSubmatch
 
 def FJ(*vec):
   return F.Clean(F.Join(*vec))
@@ -25,6 +27,30 @@ class Mux:
     .paths[path] = func
 
   def Otherwise(w, r):
+    referer = r.Header.Get('Referer')
+    say referer
+    if referer:
+      say referer, True
+      m = MATCH_REFERER(referer)
+      say referer, m
+      if m:
+        _, prefix = m
+      say referer, prefix, m
+      if prefix:
+        # For GET, issue a Redirect.
+        if r.Method == 'GET' and r.URL.Path.startswith('/'):
+          say referer, prefix, r.Method
+          # Leave off initial '/' from r.URL.Path.
+          return http.Redirect(w, r, "%s%s?%s" % (prefix, r.URL.Path[1:], r.URL.RawQuery), http.StatusTemporaryRedirect)
+
+        # For other methods, execute the HandleFunc function.
+        say sorted(.paths.keys())
+        f = .paths.get(prefix)
+        say referer, prefix, f
+        if f:
+          return f(w, r)
+    say referer, None
+
     w.Header().Set('Content-Type', 'text/html; charset=UTF-8')
     w.WriteHeader(http.StatusNotFound)
     try:
