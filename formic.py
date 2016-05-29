@@ -512,7 +512,7 @@ class Curator:
 
     cmd = P.Base(path)
     query = util.ParseQuery(r)
-    fname = query.get('f', '/')
+    fname = J('/', query.get('f', '.'))
 
     switch cmd:
       case '*':
@@ -739,12 +739,19 @@ class Curator:
           http.Redirect(w, r, "%s**view?f=%s" % (root, P.Dir(fname)), http.StatusTemporaryRedirect)
 
         case '**edit_text':
-          edittext = bundle.ReadFile(.bund, fname, pw=None)
+          try:
+            edittext = bundle.ReadFile(.bund, fname, pw=None)
+            warning = ''
+          except as ex:
+            edittext = ''
+            warning = 'Warning: could not read file: %s' % str(ex)
+
           d = dict(Title='VIEW TEXT: %q' % fname,
                    Submit='**edit_text_submit?f=%s' % fname,
                    Filepath=fname,
                    EditText=edittext,
                    Root=root,
+                   Warning=warning,
                    )
           .t.ExecuteTemplate(w, 'EDIT_TEXT', util.NativeMap(d))
 
@@ -762,6 +769,7 @@ class Curator:
                      )
 
             say d
+            say util.NativeMap(d)
             .t.ExecuteTemplate(w, 'DIR', util.NativeMap(d))
           elif fSize:
             ct = query.get('ct')
@@ -811,7 +819,7 @@ CURATOR_TEMPLATES = `
           <ttx>
             <dl><dt>DEBUG:</dt>
             <dd><dl>
-            {{ range (keys $) }}
+            {{ range (Keys $) }}
               <dt> <b>{{ printf "%s:" . }}</b>
               <dd> {{ printf "%#v" (index $ .) }}
             {{ end }}
@@ -828,22 +836,22 @@ CURATOR_TEMPLATES = `
         {{ if $.up }}
           <li> <a href="{{$.Root}}**view?f={{ $.up }}">[up]</a>
         {{ end }}
-        {{ range $.dd | keys }}
-          <li> <a href="{{$.Root}}**view?f={{ index $.dd . }}">{{ . }}</a>
+        {{ range $.dd | Keys }}
+          <li> <a href="{{$.Root}}**view?f={{ JoinPaths $.dir . }}">{{ . }}</a>
         {{ end }}
         </ul>
 
         <h3>Files</h3>
         [<a href="{{$.Root}}**attach_file?dir={{.dir}}">Upload File</a>]
         <ul>
-        {{ range $.ff | keys }}
-          <li> <a href="{{$.Root}}**view?f={{ index $.ff . }}">{{ . }}</a>
+        {{ range $.ff | Keys }}
+          <li> <a href="{{$.Root}}**view?f={{ JoinPaths $.dir . }}">{{ . }}</a>
                &nbsp; &nbsp;
-               [<a href="{{$.Root}}**view?f={{ index $.ff . }}&ct=text/plain">text/plain</a>]
+               [<a href="{{$.Root}}**view?f={{ JoinPaths $.dir . }}&ct=text/plain">text/plain</a>]
                &nbsp; &nbsp;
-               [<a href="{{$.Root}}**edit_text?f={{ index $.ff . }}">edit</a>]
+               [<a href="{{$.Root}}**edit_text?f={{ JoinPaths $.dir . }}">edit</a>]
                &nbsp; &nbsp;
-               [<a href="{{$.Root}}**delete_file?f={{ index $.ff . }}">delete</a>]
+               [<a href="{{$.Root}}**delete_file?f={{ JoinPaths $.dir . }}">delete</a>]
         {{ end }}
         </ul>
 
@@ -897,6 +905,9 @@ CURATOR_TEMPLATES = `
           <input type=reset> &nbsp; &nbsp;
           <input type=submit name=submit value=Cancel> &nbsp; &nbsp;
         </form>
+        <p>
+        <tt>{{$.Warning}}</tt>
+        <p>
         {{ template "TAIL" $ }}
 {{end}}
 

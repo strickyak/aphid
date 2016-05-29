@@ -116,7 +116,7 @@ TAIL = `
     <hr>
     <tt><h4>DEBUG:</h4>
     <dl>
-    {{ range (keys $) }}
+    {{ range (Keys $) }}
       <dt> <b>{{ printf "%s:" . }}</b>
       <dd> {{ printf "%#v" (index $ .) }}
     {{ end }}
@@ -134,14 +134,14 @@ DIR = `
   {{ if $.up }}
     <li> <a href="{{ $.up }}">[up]</a>
   {{ end }}
-  {{ range $.dd | keys }}
+  {{ range $.dd | Keys }}
     <li> <a href="{{ index $.dd . }}">{{ . }}</a>
   {{ end }}
   </ul></tt>
 
   <h3>Files</h3>
   <tt><ul>
-  {{ range $.ff | keys }}
+  {{ range $.ff | Keys }}
     <li> <a href="{{ index $.ff . }}">{{ . }}</a>
          &nbsp; &nbsp;
          [<a href="{{ index $.ff . }}?c=edit">edit</a>]

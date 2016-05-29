@@ -1,4 +1,5 @@
 from go import os, regexp, reflect, sort, html/template
+from go import path as PATH
 
 def PrettyPrint(x, w=os.Stdout, pre=''):
   switch type(x):
@@ -73,13 +74,39 @@ native: `
         }
         return zz
     }
-    func Func_keys(a interface{}) []string {
+    func Func_Keys(a interface{}) []string {
         var z []string
         for _, k := range reflect.ValueOf(a).MapKeys() {
           z = append(z, k.Interface().(string))
         }
         i_sort.Strings(z)
         return z
+    }
+    func Func_Show(a interface{}) string {
+        if s, ok := a.(fmt.Stringer); ok {
+          return s.String()
+        }
+        return fmt.Sprintf("%v", a)
+    }
+    func Func_Repr(a interface{}) string {
+        if s, ok := a.(P); ok {
+          return s.Repr()
+        }
+        return fmt.Sprintf("%#v", a)
+    }
+    func Func_String(a interface{}) string {
+      switch t := a.(type) {
+        case string:
+          return t
+        case fmt.Stringer:
+          return t.String()
+      }
+      return fmt.Sprintf("%v", a)
+    }
+    func Func_JoinPaths(a interface{}, b interface{}) string {
+        s1 := Func_String(a)
+        s2 := Func_String(b)
+        return i_PATH.Join(s1, s2)
     }
 `
 
@@ -88,7 +115,11 @@ def TemplateFuncs():
     `
       m := make(i_template.FuncMap)
       m["KV"] = Func_KV
-      m["keys"] = Func_keys
+      m["Keys"] = Func_Keys
+      m["Show"] = Func_Show
+      m["Repr"] = Func_Repr
+      m["String"] = Func_String
+      m["JoinPaths"] = Func_JoinPaths
       return MkGo(m)
     `
 
