@@ -2,7 +2,7 @@ from go import bufio, bytes, fmt, log, reflect, regexp, sort, sync, time
 from go import html/template, net/http, io, io/ioutil
 from go import path as P
 from . import A, atemplate, bundle, keyring, markdown, pubsub, util
-from . import adapt, basic, conv, flag
+from . import adapt, basic, conv, flag, resize
 from rye_lib import data
 
 STATIC_MAX_AGE = 300
@@ -283,10 +283,16 @@ class FormicMaster:
       say 'VARIENTS', varients
 
       # And do we have maximum sizes?
-      maxh = int(query.get('maxh', 0))
       maxw = int(query.get('maxw', 0))
+      maxh = int(query.get('maxh', 0))
       zvar, zbig, zw, zh = None, 0, 0, 0
       minvar, minbig, minw, minh = None, 999999999999, 0, 0
+      if not maxh and not maxw:
+        for _sz, _thumb in zip(['s', 'm', 'l', 'xl'], resize.THUMBS):
+          if _sz in query:
+            maxw, maxh = _thumb
+            break
+
       if varients and (maxh or maxw):
         for vname, vw, vh in varients:
           big = vh + vw
