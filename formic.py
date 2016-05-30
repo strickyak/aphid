@@ -406,7 +406,6 @@ type MediaFile struct {
 type Page struct {
         Params          i_util.NativeMap
         Content         i_template.HTML
-        Aliases         i_util.NativeSlice // []string
         // Summary         i_template.HTML
         // Status          string
         // Images          []Image
@@ -673,12 +672,8 @@ class Curator:
 
             edit_type = query['EditType'].strip()
 
-            edit_aliases = util.NativeSlice(
-                [s.strip() for s in query['EditAliases'].strip().split(',')]
-                )
             toml = markdown.EncodeToml(util.NativeMap(dict(
                 title=edit_title,
-                aliases=edit_aliases,
                 type=edit_type,
                 menu=edit_menu,
                 )))
@@ -700,7 +695,6 @@ class Curator:
                    Filepath='',
                    EditMd='[Enter the page content here.]',
                    EditTitle='Untitled',
-                   EditAliases='',
                    EditType='',
                    EditMainName='',
                    EditMainWeight=0,
@@ -729,7 +723,6 @@ class Curator:
                    EditMd=md,
                    EditTitle=meta.get('title', 'Untitled'),
                    EditType=meta.get('type', ''),
-                   EditAliases=','.join(meta.get('aliases', [])),
                    EditMainName=EditMainName,
                    EditMainWeight=EditMainWeight,
                    DebugMeta=meta,
@@ -959,13 +952,6 @@ CURATOR_TEMPLATES = `
             Type of Page (leave it blank if you do not know):
             <input name=EditType size=20 value="{{.EditType}}">
             <br> <br>
-
-            <!--
-            Aliases:
-            <input name=EditAliases size=80 value="{{.EditAliases}}">
-            <br> <br>
-            -->
-            <input name=EditAliases type=hidden value="{{.EditAliases}}">
 
           </dd></dl>
         </form>
