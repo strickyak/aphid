@@ -1,5 +1,5 @@
 from . import A, flag
-from . import among, aweber, awiki, awedit, azoner, formic, smilax4, stash
+from . import among, amux, aweber, awiki, awedit, azoner, formic, smilax4, stash
 from . import bundle, keyring, laph3, pubsub, rbundle, util
 from go import bufio, fmt, html, io/ioutil, net/http, os, regexp, time
 from go import path as P, path/filepath as F
@@ -7,70 +7,8 @@ from rye_lib import data
 
 SEEDDIR = flag.String('seeddir', '', 'Directory containing bundle seed files')
 
-Esc = html.EscapeString
-
-MATCH_REFERER = regexp.MustCompile('^[^?]+(/@[-A-Za-z0-9_]+/)').FindStringSubmatch
-
 def FJ(*vec):
   return F.Clean(F.Join(*vec))
-
-class Mux:
-  def __init__():
-    .mux = http.NewServeMux()
-    .mux.HandleFunc('/', .Otherwise)
-    .paths = {}
-
-  def HandleFunc(path, func):
-    if '/' not in path:
-      path += '/'
-    .mux.HandleFunc(path, func)
-    .paths[path] = func
-
-  def Otherwise(w, r):
-    referer = r.Header.Get('Referer')
-    say referer
-    if referer:
-      say referer, True
-      m = MATCH_REFERER(referer)
-      say referer, m
-      if m:
-        _, prefix = m
-      say referer, prefix, m
-      if prefix:
-        # For GET, issue a Redirect.
-        if r.Method == 'GET' and r.URL.Path.startswith('/'):
-          say referer, prefix, r.Method
-          # Leave off initial '/' from r.URL.Path.
-          return http.Redirect(w, r, "%s%s?%s" % (prefix, r.URL.Path[1:], r.URL.RawQuery), http.StatusTemporaryRedirect)
-
-        # For other methods, execute the HandleFunc function.
-        say sorted(.paths.keys())
-        f = .paths.get(prefix)
-        say referer, prefix, f
-        if f:
-          return f(w, r)
-    say referer, None
-
-    w.Header().Set('Content-Type', 'text/html; charset=UTF-8')
-    w.WriteHeader(http.StatusNotFound)
-    try:
-      fmt.Fprintf(w, Esc("404 NOT FOUND (Path prefix not registered)\n\n") + '<br><p>')
-      fmt.Fprintf(w, Esc("[aphid] Proto: %q Method: %q\n" % ( r.Proto, r.Method)) + '<br><p>')
-      fmt.Fprintf(w, Esc("[aphid] Host: %q Path: %q\n" % (r.Host, r.URL.Path)) + '<br><p>')
-      for k, v in sorted(r.Header.items()):
-        for e in v:
-          fmt.Fprintf(w, Esc("[aphid] Header: %q : %q\n" % (k, e)) + '<br>')
-      fmt.Fprintf(w, '<br><p>')
-
-      fmt.Fprintf(w, 'Are you looking for one of these?<ul>')
-      for k in sorted(.paths.keys()):
-        if k.startswith('/'):
-          fmt.Fprintf(w, '<li> <a href="%s">%s</a>', k, Esc(k))
-        else:
-          fmt.Fprintf(w, '<li> <a href="http://%s">%s</a>', k, Esc(k))
-      fmt.Fprintf(w, '</ul>')
-    except as ex:
-      fmt.Fprintf(w, '<br><br><tt>******* EXCEPTION ******* %s' % Esc(str(ex)))
 
 class Aphid:
   def __init__(quit, filename, snippet=None):
@@ -198,9 +136,8 @@ class Aphid:
       go azoner.Serve(.zones, '%s:%d' % (.f_ip, .p_dns))
 
   def StartWebHandlers():
-    # Mux and Server.
-    #// .mux = http.NewServeMux()
-    .mux = Mux()
+    # AMux and Server.
+    .amux = amux.AMux()
 
     # Add webs.
     for wname, config in .x_webs.items():
@@ -208,20 +145,20 @@ class Aphid:
       bund = .bundles[bname]
       obj = aweber.BundDir(self, bname, bund=bund)
       if config.get('domainly'):
-        .mux.HandleFunc('%s/' % wname, obj.Handle2)
-        .mux.HandleFunc('%s:%d/' % (wname, .p_http), obj.Handle2)
-      .mux.HandleFunc('%s/@%s/' % (.f_domain, wname), obj.Handle2)
-      .mux.HandleFunc('%s/@%s*/' % (.f_domain, wname), awedit.Master(self, bname, bund=bund).Handle2)
+        .amux.HandleFunc('%s/' % wname, obj.Handle2)
+        .amux.HandleFunc('%s:%d/' % (wname, .p_http), obj.Handle2)
+      .amux.HandleFunc('%s/@%s/' % (.f_domain, wname), obj.Handle2)
+      .amux.HandleFunc('%s/@%s*/' % (.f_domain, wname), awedit.Master(self, bname, bund=bund).Handle2)
     # Add wikis.
     for wname, config in .x_wikis.items():
       bname = config['bundle']
       bund = .bundles[bname]
       obj = awiki.AWikiMaster(self, bname, bund=bund)
       if config.get('domainly'):
-        .mux.HandleFunc('%s/' % wname, obj.Handle2)
-        .mux.HandleFunc('%s:%d/' % (wname, .p_http), obj.Handle2)
-      .mux.HandleFunc('%s/@%s/' % (.f_domain, wname), obj.Handle2)
-      .mux.HandleFunc('%s/@%s*/' % (.f_domain, wname), awedit.Master(self, bname, bund=bund).Handle2)
+        .amux.HandleFunc('%s/' % wname, obj.Handle2)
+        .amux.HandleFunc('%s:%d/' % (wname, .p_http), obj.Handle2)
+      .amux.HandleFunc('%s/@%s/' % (.f_domain, wname), obj.Handle2)
+      .amux.HandleFunc('%s/@%s*/' % (.f_domain, wname), awedit.Master(self, bname, bund=bund).Handle2)
 
     # Add formic.
     say .filename, .x_formics.items()
@@ -230,42 +167,42 @@ class Aphid:
       bname = config['bundle']
       bund = .bundles[bname]
       obj = formic.FormicMaster(self, bname, bund=bund, config=config)
-      .mux.HandleFunc(wname, obj.Handle2)
-      say 'formic .mux.HandleFunc %q' % wname
+      .amux.HandleFunc(wname, obj.Handle2)
+      say 'formic .amux.HandleFunc %q' % wname
       for k in config.get('paths'):
         v = config['paths'][k]
-        .mux.HandleFunc(v, obj.Handle2)
-        say 'formic .mux.HandleFunc %q' % k
+        .amux.HandleFunc(v, obj.Handle2)
+        say 'formic .amux.HandleFunc %q' % k
 
     # Add smilax4.
     for wname, config in .x_smilax4.items():
       bname = config['bundle']
       bund = .bundles[bname]
       obj = smilax4.Smilax4Master(self, bname, bund=bund, config=config)
-      .mux.HandleFunc(wname, obj.Handle2)
-      say 'smilax4 .mux.HandleFunc %q' % wname
+      .amux.HandleFunc(wname, obj.Handle2)
+      say 'smilax4 .amux.HandleFunc %q' % wname
       for k in config.get('paths'):
         v = config['paths'][k]
-        .mux.HandleFunc(v, obj.Handle2)
-        say 'smilax4 .mux.HandleFunc %q' % k
+        .amux.HandleFunc(v, obj.Handle2)
+        say 'smilax4 .amux.HandleFunc %q' % k
 
     # Add stash.
     for wname, config in .x_stash.items():
       bname = config['bundle']
       bund = .bundles[bname]
       obj = stash.StashMaster(self, bname, bund=bund, config=config)
-      .mux.HandleFunc(wname, obj.Handle2)
+      .amux.HandleFunc(wname, obj.Handle2)
       say 'stash name %q' % wname
       for k in config.get('paths'):
         v = config['paths'][k]
-        .mux.HandleFunc(v, obj.Handle2)
+        .amux.HandleFunc(v, obj.Handle2)
         say 'stash alias %q' % k
 
     # Go Serve.
     say 'SERVING', .server
     .server = setattrs(go_new(http.Server),
       Addr= '%s:%d' % (.f_ip, .p_http),
-      Handler= .mux.mux,
+      Handler= .amux.mux,
       ReadTimeout=    10 * time.Second,
       WriteTimeout=   10 * time.Second,
     )
@@ -273,7 +210,7 @@ class Aphid:
     if .p_https:
       .tlsserver = setattrs(go_new(http.Server),
         Addr= '%s:%d' % (.f_ip, .p_https),
-        Handler= .mux.mux,
+        Handler= .amux.mux,
         ReadTimeout=    10 * time.Second,
         WriteTimeout=   10 * time.Second,
       )
