@@ -223,7 +223,7 @@ class PosixBundle(Base):
       raise 'Bad Path: %q' % path
     return P.Clean(path)
 
-  def List4(path, pw=None, varient='r'):
+  def List4(path:str, pw:str? =None, varient:str ='r'):
     """Yield tuples of (name, isDir, mtime, size)."""
     must not pw
     path = .CheckPath(path)
@@ -305,7 +305,7 @@ class PlainBundle(Base):
     .table = table.Table(F.Join(.bundir, 'd.table'))
     os.MkdirAll(bundir, 0777)
 
-  def List4(path, pw=None, varient='r'):
+  def List4(path:str, pw:str? =None, varient:str ='r'):
     say 'List4', path
     dp = .dpath(path)
     vec = .TryOsReadDir(dp)

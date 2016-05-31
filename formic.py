@@ -468,6 +468,7 @@ type Site struct {
 class Curator:
   def __init__(master, bname, bund, config):
     .master = master
+    .aphid = master.aphid
     .bname = bname
     must bund
     .bund = bund
@@ -589,7 +590,9 @@ class Curator:
             fd.Close()
             .master.Reload()
 
-            if editdir == 'formic/static/media':
+            if redirect = query.get('Redirect'):
+              .aphid.amux.SmartRedirect(w, r, redirect)
+            elif editdir == 'formic/static/media':
               .aphid.amux.SmartRedirect(w, r, '%s*' % root)
             else:
               .aphid.amux.SmartRedirect(w, r, '%s**view?f=%s' % (root, editdir))
@@ -717,6 +720,33 @@ class Curator:
                    Root=root,
                    )
           .t.ExecuteTemplate(w, 'EDIT_PAGE', util.NativeMap(d))
+
+        case '*attachments_for_page':
+          dirname = J('/formic/content', fname)
+
+          listing = .bund.List4(dirname, pw=None)
+          say listing
+          def gen():
+            for name, isDir, mtime, size in listing:
+              say name, size, mtime, isDir
+              if not isDir and size and not name.endswith('.md'):
+                say name, size, mtime
+                yield name, size, mtime
+          attachments = sorted(gen())
+          say attachments
+          native_attachments = util.NativeSlice(
+              [util.NativeSlice(stuff) for stuff in attachments])
+          say native_attachments
+
+          d = dict(Title='Attachments for Page %q' % fname,
+                   Dirpath=dirname,
+                   Attachments=native_attachments,
+                   Action='%s*attach_media_submit' % root,
+                   Redirect='%s*attachments_for_page?f=%s' % (root, fname),
+                   DebugListing=listing,
+                   Root=root,
+                   )
+          .t.ExecuteTemplate(w, 'ATTACHMENTS_FOR_PAGE', util.NativeMap(d))
 
         case '**edit_text_submit':
           if query['submit'] == 'Save':
@@ -955,6 +985,38 @@ CURATOR_TEMPLATES = `
           <input type="checkbox" name=DeleteFile value="1"> &nbsp; Check to Confirm.
           <br> <br>
           <input type=submit value=Delete> &nbsp; &nbsp;
+        </form>
+        {{ template "TAIL" $ }}
+{{end}}
+
+{{define "ATTACHMENTS_FOR_PAGE"}}
+        {{ template "HEAD" $ }}
+
+        <table border=1 cellpadding=8>
+          <tr>
+            <th> Name
+            <th> Size
+            <th> Mod Time
+        {{ range $.Attachments }}
+          <tr>
+            <td> {{index . 0}}
+            <td> {{index . 1}}
+            <td> {{index . 2}}
+        {{ end }}
+        </table>
+        <br>
+
+        <br>
+        <form method="POST" action="{{.Action}}" enctype="multipart/form-data">
+          <input type=hidden name=EditDir value={{$.Dirpath}}>
+          <input type=hidden name=Redirect value={{$.Redirect}}>
+          <p>
+          Upload a new attachment:
+          <input type="file" name="file">
+          <br> <br>
+          <input type=submit value=Save> &nbsp; &nbsp;
+          <input type=reset> &nbsp; &nbsp;
+          <big>[<a href={{$.Redirect}}>Cancel</a>]</big>
         </form>
         {{ template "TAIL" $ }}
 {{end}}
