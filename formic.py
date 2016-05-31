@@ -1,5 +1,5 @@
 from go import bufio, bytes, fmt, log, reflect, regexp, sort, sync, time
-from go import html/template, net/http, io, io/ioutil
+from go import html/template, net/http, io, io/ioutil, strings
 from go import path as P
 from . import A, atemplate, bundle, keyring, markdown, pubsub, util
 from . import adapt, basic, conv, flag, resize
@@ -12,6 +12,7 @@ Nav = util.Nav
 HUGO_TIME_FORMAT = '2006-01-02T15:04:05-07:00'
 
 FORBIDDEN_SLUGS = set('css,img,js,media,tags'.split(','))
+PHOTO_EXTENSIONS = set('jpg,jpeg,png,gif'.split(','))
 
 def J(*vec):
   return P.Clean(P.Join(*vec))
@@ -729,9 +730,23 @@ class Curator:
           def gen():
             for name, isDir, mtime, size in listing:
               say name, size, mtime, isDir
-              if not isDir and size and not name.endswith('.md'):
-                say name, size, mtime
-                yield name, size, mtime
+              if isDir or not size: continue  # No dirs or deleted files.
+
+              i = strings.LastIndex(name, '.')
+              if i < 1: continue  # No dotfiles or dotless files.
+
+              ext = name[i+1:].lower() if i>0 else ''
+              if ext == '.md': continue  # No markdown subpages.
+
+              vv = None
+              if ext in PHOTO_EXTENSIONS:
+                vv = .bund.ListImageVarients(J(dirname, name))
+                vv = [(v[0], str(v[1]), str(v[2])) for v in sorted(vv, cmp=lambda a, b: cmp(a[1], b[1]))]
+                say vv
+
+              say name, size, mtime, vv
+              yield name, size, mtime, util.NativeSlice(vv)
+
           attachments = sorted(gen())
           say attachments
           native_attachments = util.NativeSlice(
@@ -1002,6 +1017,9 @@ CURATOR_TEMPLATES = `
             <td> {{index . 0}}
             <td> {{index . 1}}
             <td> {{index . 2}}
+            {{ range (index . 3) }}
+              <td> {{index . 1}}x{{index . 2}}
+            {{ end }}
         {{ end }}
         </table>
         <br>
