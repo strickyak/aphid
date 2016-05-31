@@ -6,7 +6,7 @@ from go import path as P, path/filepath as F
 
 Esc = html.EscapeString
 
-MATCH_REFERER = regexp.MustCompile('^[^?]+(/@[-A-Za-z0-9_]+)(/.*)$').FindStringSubmatch
+MATCH_PREFI = regexp.MustCompile('^[^?;]*(/@[-A-Za-z0-9_]+)(/.*)$').FindStringSubmatch
 
 class AMux:
   def __init__():
@@ -23,41 +23,48 @@ class AMux:
   def PrefiRestF(w, r, target):
     """Returns "/@prefi" (if needed), rest of path,  and HandlerFunc."""
     # We say Prefi instead of Prefix because the final '/' is removed.
-    m = MATCH_REFERER(target)
-    # If the target already has /@prefix/ in it, we don't need this.
-    if not m:
-      referer = r.Header.Get('Referer')
-      say referer
-      if referer:
-        say referer, True
-        m = MATCH_REFERER(referer)
-        say referer, m
-        if m:
-          _, r_prefi, r_rest = m
+    say target
+    if MATCH_PREFI(target):
+      # Target already has a prefix.
+      say '', target, None
+      return '', target, None
+
+    say r.URL.Path
+    if _, p_prefi, _ = MATCH_PREFI(r.URL.Path):
+      # Take prefix from the r.URL.Path.
+      say p_prefi, target, None
+      return p_prefi, target, None
+
+    if referer = r.Header.Get('Referer'):
+      say referer, True
+      if _, r_prefi, r_rest = MATCH_PREFI(referer):
         say referer, r_prefi, r_rest
-        if r_prefi:
-          say sorted(.paths.keys())
-          f = .paths.get(r_prefi + '/')
+        say sorted(.paths.keys())
+        r_prefix = '%s/' % r_prefi
+        if f = .paths.get(r_prefix):
           say referer, r_prefi, target, f
-          if f:
-            return r_prefi, target, f
+          return r_prefi, target, f
+
     say referer, None
     return '', target, None
 
   def SmartRedirect(w, r, dest):
-    raise 'zork'
     prefi, rest, f = .PrefiRestF(w, r, dest)
+    say prefi, rest, f
     if prefi:
       # Add the prefix.
       dest2 = '%s%s' % (prefi, rest)
+      say dest2
       return http.Redirect(w, r, dest2, http.StatusTemporaryRedirect)
     else:
       # Prefixing not required.
+      say dest
       return http.Redirect(w, r, dest, http.StatusTemporaryRedirect)
 
   def Otherwise(w, r):
     must r.URL.Path.startswith('/'), 'Weird URL.Path: %q' % r.URL.Path
     say r.URL.Scheme, r.URL.Host, r.URL.Path, r.URL.RawQuery
+
     prefi, rest, f = .PrefiRestF(w, r, r.URL.Path)
     say prefi, rest, f
     if prefi:

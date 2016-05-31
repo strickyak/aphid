@@ -11,13 +11,22 @@ F = fmt.Sprintf
 Nav = util.Nav
 HUGO_TIME_FORMAT = '2006-01-02T15:04:05-07:00'
 
+FORBIDDEN_SLUGS = set('css,img,js,media,tags'.split(','))
+
 def J(*vec):
   return P.Clean(P.Join(*vec))
 
-MatchContent = regexp.MustCompile('^/+(([-A-Za-z0-9_]+)/)?([-A-Za-z0-9_]+)/*$').FindStringSubmatch
-MatchHome = regexp.MustCompile('^/+(@[^/]*/+)?(index[.]html)?$').FindStringSubmatch
+# slashes, (ident, slash)? , ident, maybe-slashes.
+MatchContent = regexp.MustCompile('^/+(?:([-A-Za-z0-9_]+)/+)?([-A-Za-z0-9_]+)/*$').FindStringSubmatch
+# slashes, (ident, slash)? , ident, slashes, filename[ident,dot,idents-or-dots].
+MatchAttachment = regexp.MustCompile('^/+(?:([-A-Za-z0-9_]+)/+)?([-A-Za-z0-9_]+)/+([-A-Za-z0-9_]+[.][-A-Za-z0-9_.]*)$').FindStringSubmatch
+# static can only be in one of these directories: css, img, js, media.
+MatchStatic = regexp.MustCompile('^/+(css|img|js|media)/+([-A-Za-z0-9_.]+)$').FindStringSubmatch
+MatchTags = regexp.MustCompile('^/+tags/+([-A-Za-z0-9_.]+)$').FindStringSubmatch
+# slashes.
+MatchHome = regexp.MustCompile('^/+$').FindStringSubmatch
+# One or more stars, maybe-ident.
 MatchCurator = regexp.MustCompile('^/+([*]+\\w*)').FindStringSubmatch
-MatchTaxonomy = regexp.MustCompile('^/+(tags)(?:/(\\w*)/?)?').FindStringSubmatch
 
 MatchMdDirName = regexp.MustCompile('^[a-z][-a-z0-9_]*$').FindString
 MatchMdFileName = regexp.MustCompile('^[a-z][-a-z0-9_]*[.]md$').FindString
@@ -266,20 +275,32 @@ class FormicMaster:
     if DOTFILE(path):
       raise 'Dotfile in path not allowed: %q' % path
 
-    isStatic = False
-    staticPath = J('/formic/static', path)
-    try:
-      isDir, modTime, fSize = .bund.Stat3(staticPath, pw=None)
-      say 'IS_STATIC', staticPath
-      say isDir, modTime, fSize, path
-      isStatic = fSize and not isDir
-    except:
-      say 'IS_STATIC_FAIL'
-      pass
+    # We hardwire the taxonomy "tags".
+    if _, value = MatchTags(path):
+      if value:
+        raise 'TODO value %q' % value
+        if by = .tags_pages_by.get('value'):
+          d = util.NativeMap(dict(
+            Data=util.NativeMap(dict(
+              Pages=by,
+              )),
+            Title='Pages with tag %q' % value,
+            ))
+          .tpl.ExecuteTemplate(w, J('theme', '_default', 'list.html'), d)
+        else:
+          print >>w, 'There are no pages with tag %q.' % value
+      else:
+        # Generate list.
+        print >>w, '<ul>'
+        for tag in .tags:
+          print >>w, '<li><a href="%stags/%s">%s</a>' % (root, tag, tag)
+        print >>w, '</ul>'
+      return
 
-    if isStatic:
+    if _, static_dir, static_file = MatchStatic(path):
       # Does it have varients?
-      varients = .bund.ListImageVarients(staticPath, None)
+      static_path = J('/formic/static', static_dir, static_file)
+      varients = .bund.ListImageVarients(static_path, None)
       say 'VARIENTS', varients
 
       zvar = None
@@ -315,48 +336,20 @@ class FormicMaster:
 
       # ServeContent on the static file.
       w.Header().Set('Cache-Control', 'max-age=%s, s-maxage=%s' % (STATIC_MAX_AGE, STATIC_MAX_AGE))
-      rs, someModTime, _size = .bund.NewReadSeekerTimeSize(staticPath, rev=zvar)
+      rs, someModTime, _size = .bund.NewReadSeekerTimeSize(static_path, rev=zvar)
       correctModTime = time.Unix(0, util.ConvertToNanos(someModTime))
       http.ServeContent(w, r, r.URL.Path, correctModTime, rs)
       return
 
-    # We hardwire the taxonomy "tags".
-    m = MatchTaxonomy(path)
-    if m:
-      _, tax, value = m
-      assert tax == 'tags', tax
-      if value:
-        raise 'TODO value %q' % value
-        by = .tags_pages_by.get('value')
-        if by:
-          d = util.NativeMap(dict(
-            Data=util.NativeMap(dict(
-              Pages=by,
-              )),
-            Title='Pages with tag %q' % value,
-            ))
-          .tpl.ExecuteTemplate(w, J('theme', '_default', 'list.html'), d)
-        else:
-          print >>w, 'There are no pages with tag %q.' % value
-      else:
-        # Generate list.
-        print >>w, '<ul>'
-        for tag in .tags:
-          print >>w, '<li><a href="%stags/%s">%s</a>' % (root, tag, tag)
-        print >>w, '</ul>'
-      return
-
-
-
-
     # If it is not a curator command and not a static file and not a Taxonomy, it must be a page.
-    m = MatchContent(path)
     if MatchHome(path):
-      say 'MatchHome'
-      m = '/home', (), '', 'home'
-      # TODO -- try to serve .../formic/layouts/index.html for HOME
-    if m:
-      _, _, section, base = m
+      say 'MatchHome', path
+      return .aphid.amux.SmartRedirect(w, r, '/home/')
+
+    if  _, section, base = MatchContent(path):
+      if not path.endswith('/'):
+        .aphid.amux.SmartRedirect(w, r, '%s/' % path)
+
       pname = J(section, base).strip('/')
       p = .page_d.get(pname)
       say 'MatchContent', path, section, base, pname, p
@@ -552,7 +545,7 @@ class Curator:
             toml = markdown.EncodeToml(util.NativeMap(d))
             bundle.WriteFile(.bund, '/formic/config.toml', toml, pw=None)
             .master.Reload()
-          http.Redirect(w, r, "%s**site" % root, http.StatusTemporaryRedirect)
+          .aphid.amux.SmartRedirect(w, r, "%s**site" % root)
 
         case '**edit_site':
           d = dict(
@@ -566,7 +559,7 @@ class Curator:
           if query.get('DeleteFile'):
             bundle.WriteFile(.bund, delfile, '', pw=None)
           say P.Dir(delfile)
-          http.Redirect(w, r, '%s**view?f=%s' % (root, P.Dir(delfile)), http.StatusTemporaryRedirect)
+          .aphid.amux.SmartRedirect(w, r, '%s**view?f=%s' % (root, P.Dir(delfile)))
 
         case '**delete_file':
           d = dict(
@@ -578,16 +571,10 @@ class Curator:
           .t.ExecuteTemplate(w, 'DELETE', util.NativeMap(d))
 
         case '*attach_media_submit':
-          #say query
-
           r.ParseMultipartForm(1024*1024)
-          #say r.MultipartForm.File['file'][0].Header
           cd = r.MultipartForm.File['file'][0].Header.Get('Content-Disposition')
-          say cd
           match = MATCH_FILENAME(cd)
-          say match
-          f = match[1] if match else ''
-          if f:
+          if f = match[1] if match else '':
             fname = r.MultipartForm.File['file'][0].Filename
             editdir = r.MultipartForm.Value['EditDir'][0]
             fpath = J(editdir, conv.EncodeCurlyStrong(fname))
@@ -603,9 +590,9 @@ class Curator:
             .master.Reload()
 
             if editdir == 'formic/static/media':
-              http.Redirect(w, r, '%s*' % root, http.StatusTemporaryRedirect)
+              .aphid.amux.SmartRedirect(w, r, '%s*' % root)
             else:
-              http.Redirect(w, r, '%s**view?f=%s' % (root, editdir), http.StatusTemporaryRedirect)
+              .aphid.amux.SmartRedirect(w, r, '%s**view?f=%s' % (root, editdir))
           else:
             print >>w, 'No file was uploaded.  Go back and try again.'
 
@@ -631,7 +618,7 @@ class Curator:
           say query
           if query.get('submit') != 'Save':
             # Cancel; don't save.
-            http.Redirect(w, r, "%s%s" % (root, fname), http.StatusTemporaryRedirect)
+            .aphid.amux.SmartRedirect(w, r, "%s%s" % (root, fname))
             return
 
           edit_path = query.get('EditPath', '')
@@ -684,9 +671,9 @@ class Curator:
           bundle.WriteFile(.bund, J('/formic/content', fname + '.md'), text, pw=None)
           .master.Reload()
           if text:
-            http.Redirect(w, r, "%s%s" % (root, fname), http.StatusTemporaryRedirect)
+            .aphid.amux.SmartRedirect(w, r, "%s%s" % (root, fname))
           else:
-            http.Redirect(w, r, "%s*" % root, http.StatusTemporaryRedirect)
+            .aphid.amux.SmartRedirect(w, r, "%s*" % root)
           return
 
         case '*new_page':
@@ -737,7 +724,7 @@ class Curator:
             say 'bundle.WriteFile', fname, text
             bundle.WriteFile(.bund, fname, text, pw=None)
             .master.Reload()
-          http.Redirect(w, r, "%s**view?f=%s" % (root, P.Dir(fname)), http.StatusTemporaryRedirect)
+          .aphid.amux.SmartRedirect(w, r, "%s**view?f=%s" % (root, P.Dir(fname)))
 
         case '**edit_text':
           try:
