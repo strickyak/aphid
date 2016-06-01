@@ -20,7 +20,7 @@ def J(*vec):
 # slashes, (ident, slash)? , ident, maybe-slashes.
 MatchContent = regexp.MustCompile('^/+(?:([-A-Za-z0-9_]+)/+)?([-A-Za-z0-9_]+)/*$').FindStringSubmatch
 # slashes, (ident, slash)? , ident, slashes, filename[ident,dot,idents-or-dots].
-MatchAttachment = regexp.MustCompile('^/+(?:([-A-Za-z0-9_]+)/+)?([-A-Za-z0-9_]+)/+([-A-Za-z0-9_]+[.][-A-Za-z0-9_.]*)$').FindStringSubmatch
+MatchAttachment = regexp.MustCompile('^/+(?:([-A-Za-z0-9_]+)/+)?([-A-Za-z0-9_]+)/+([-A-Za-z0-9_]+[.][-A-Za-z0-9_.{}]*)$').FindStringSubmatch
 # static can only be in one of these directories: css, img, js, media.
 MatchStatic = regexp.MustCompile('^/+(css|img|js|media)/+([-A-Za-z0-9_.]+)$').FindStringSubmatch
 MatchTags = regexp.MustCompile('^/+tags/+([-A-Za-z0-9_.]+)$').FindStringSubmatch
@@ -70,7 +70,7 @@ class FormicMaster:
       .ReloadTemplates()
       .ReloadPageMeta()
 
-  def MakePage(pname, modTime, fileSize):
+  def MakePage(pname, modTime, fileSize, numAttachments=0):
     say pname
     slug = P.Base(pname)
     section = P.Dir(pname)
@@ -93,6 +93,7 @@ class FormicMaster:
         Section= section,
         Slug= slug,
         Identifier= pname,
+        NumAttachments= numAttachments,
         )
     p.Age = (time.Now().Unix() - p.Date.Unix()) / 86400.0
     say p.Age, time.Now().Unix(), p.Date.Unix(), p.Date
@@ -108,9 +109,19 @@ class FormicMaster:
           say pair
           yield pair
       else:
-        if sz > 0 and MatchMdFileName(name):
+        if not isDir and sz > 0 and MatchMdFileName(name):
+          # Count attachments.
+          attDir = J('/formic/content', dirname, name[:-3])
+          say attDir
+          attCount = 0
+          for att_name, att_isdir, att_mtime, att_size in .bund.List4(attDir, pw=None):
+            say att_name, att_isdir, att_mtime, att_size, attDir
+            if ('.' in att_name) and not att_isdir and not MatchMdFileName(att_name) and att_size > 0:
+              attCount += 1
+
+          say name, attDir, attCount
           pname = J(dirname, name[:-3]).strip('/')
-          p = .MakePage(pname, time.Unix(0, modTime*1000000000), sz)
+          p = .MakePage(pname, time.Unix(0, modTime*1000000000), sz, numAttachments=attCount)
           yield pname, p
 
   def WalkMediaTree(dirname):
@@ -298,12 +309,21 @@ class FormicMaster:
         print >>w, '</ul>'
       return
 
+    static_path = None
+
     if _, static_dir, static_file = MatchStatic(path):
       # Does it have varients?
       static_path = J('/formic/static', static_dir, static_file)
       varients = .bund.ListImageVarients(static_path, None)
-      say 'VARIENTS', varients
+      say 'VARIENTS', static_path, varients
 
+    elif _, static_section, static_dir, static_file = MatchAttachment(path):
+      # Does it have varients?
+      static_path = J('/formic/content', static_section, static_dir, static_file)
+      varients = .bund.ListImageVarients(static_path, None)
+      say 'VARIENTS', static_path, varients
+
+    if static_path:
       zvar = None
       if varients:
         # And do we have maximum sizes?
@@ -336,6 +356,7 @@ class FormicMaster:
             zvar = minvar
 
       # ServeContent on the static file.
+      say static_path, zvar
       w.Header().Set('Cache-Control', 'max-age=%s, s-maxage=%s' % (STATIC_MAX_AGE, STATIC_MAX_AGE))
       rs, someModTime, _size = .bund.NewReadSeekerTimeSize(static_path, rev=zvar)
       correctModTime = time.Unix(0, util.ConvertToNanos(someModTime))
@@ -420,6 +441,7 @@ type Page struct {
         Section         string
         Slug            string
         Identifier      string
+        NumAttachments  int
 
         Root      string
 }
@@ -591,8 +613,8 @@ class Curator:
             fd.Close()
             .master.Reload()
 
-            if redirect = query.get('Redirect'):
-              .aphid.amux.SmartRedirect(w, r, redirect)
+            if redirect = r.MultipartForm.Value.get('Redirect'):
+              .aphid.amux.SmartRedirect(w, r, redirect[0])
             elif editdir == 'formic/static/media':
               .aphid.amux.SmartRedirect(w, r, '%s*' % root)
             else:
@@ -725,7 +747,7 @@ class Curator:
         case '*attachments_for_page':
           dirname = J('/formic/content', fname)
 
-          listing = .bund.List4(dirname, pw=None)
+          listing = list(.bund.List4(dirname, pw=None))
           say listing
           def gen():
             for name, isDir, mtime, size in listing:
@@ -741,27 +763,26 @@ class Curator:
               vv = None
               if ext in PHOTO_EXTENSIONS:
                 vv = .bund.ListImageVarients(J(dirname, name))
-                vv = [(v[0], str(v[1]), str(v[2])) for v in sorted(vv, cmp=lambda a, b: cmp(a[1], b[1]))]
                 say vv
+                vvv = sorted(vv, cmp=lambda a, b: cmp(a[1], b[1]))
+                say vvv
 
-              say name, size, mtime, vv
-              yield name, size, mtime, util.NativeSlice(vv)
+              say name, size, mtime, vvv
+              yield name, size, time.Unix(0, 1000000*mtime), vvv
 
           attachments = sorted(gen())
           say attachments
-          native_attachments = util.NativeSlice(
-              [util.NativeSlice(stuff) for stuff in attachments])
-          say native_attachments
 
           d = dict(Title='Attachments for Page %q' % fname,
+                   Identifier=fname,
                    Dirpath=dirname,
-                   Attachments=native_attachments,
+                   Attachments=attachments,
                    Action='%s*attach_media_submit' % root,
                    Redirect='%s*attachments_for_page?f=%s' % (root, fname),
                    DebugListing=listing,
                    Root=root,
                    )
-          .t.ExecuteTemplate(w, 'ATTACHMENTS_FOR_PAGE', util.NativeMap(d))
+          .t.ExecuteTemplate(w, 'ATTACHMENTS_FOR_PAGE', util.NativeDeeply(d))
 
         case '**edit_text_submit':
           if query['submit'] == 'Save':
@@ -1007,6 +1028,20 @@ CURATOR_TEMPLATES = `
 {{define "ATTACHMENTS_FOR_PAGE"}}
         {{ template "HEAD" $ }}
 
+        <form method="POST" action="{{.Action}}" enctype="multipart/form-data">
+          <input type=hidden name=EditDir value="{{$.Dirpath}}">
+          <input type=hidden name=Redirect value="{{$.Redirect}}">
+          <p>
+          Upload a new attachment:
+          <input type="file" name="file">
+          <br> <br>
+          <input type=submit value=Save> &nbsp; &nbsp;
+          <input type=reset> &nbsp; &nbsp;
+          <big>[<a href="{{$.Redirect}}">Cancel</a>]</big>
+        </form>
+        <br>
+
+        <br>
         <table border=1 cellpadding=8>
           <tr>
             <th> Name
@@ -1016,26 +1051,17 @@ CURATOR_TEMPLATES = `
           <tr>
             <td> {{index . 0}}
             <td> {{index . 1}}
-            <td> {{index . 2}}
-            {{ range (index . 3) }}
-              <td> {{index . 1}}x{{index . 2}}
+            <td> {{(index . 2).Format "2006-02-01"}}
+            {{ if (index . 3) }}
+              <td> <img src="{{$.Root}}{{$.Identifier}}/{{index . 0}}?s">
+              <td>
+              {{ range (index . 3) }}
+                <p> {{index . 1}}x{{index . 2}}
+              {{ end }}
             {{ end }}
         {{ end }}
         </table>
-        <br>
 
-        <br>
-        <form method="POST" action="{{.Action}}" enctype="multipart/form-data">
-          <input type=hidden name=EditDir value={{$.Dirpath}}>
-          <input type=hidden name=Redirect value={{$.Redirect}}>
-          <p>
-          Upload a new attachment:
-          <input type="file" name="file">
-          <br> <br>
-          <input type=submit value=Save> &nbsp; &nbsp;
-          <input type=reset> &nbsp; &nbsp;
-          <big>[<a href={{$.Redirect}}>Cancel</a>]</big>
-        </form>
         {{ template "TAIL" $ }}
 {{end}}
 
@@ -1071,9 +1097,10 @@ CURATOR_TEMPLATES = `
         <h3>Pages:</h3>
         [<a href="{{$.Root}}*new_page">Create New Page</a>]
         <table border=1 cellpadding=4>
-          <tr><th>Path &amp; Edit Link<th>Title &amp; View Link<th>Days Old<th>Date
+          <tr><th>(Attach)<th>section/slug &nbsp; (Edit)<th>Title &nbsp; (View)<th>Days Old<th>Date
           {{ range .Site.Pages.ByDate }}
             <tr>
+              <td align=right><a href="{{$.Root}}*attachments_for_page?f={{.Identifier}}">{{.NumAttachments}}</a>
               <td><a href="{{$.Root}}*edit_page?f={{.Identifier}}">{{.Identifier}}
               <td><a href="{{$.Root}}{{.Identifier}}">{{.Title}}</a>
               <td align=right>{{printf "%.0f" .Age}}
