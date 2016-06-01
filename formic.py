@@ -175,23 +175,25 @@ class FormicMaster:
     menud = {} ## which_menu -> pagename -> MenuEntry
     tags = {}  ## tagname -> pagename -> p
     for pname, p in page_d.items():
-      if p.Params:
+      if params = p.Params:
         # Collect tags.
-        say '@tags', p.Params.get('tags', [])
-        for t in p.Params.get('tags', []):
+        say '@tags', params.get('tags', [])
+        for t in params.get('tags', []):
           say '@tags', t
           d = Nav(tags, t)
           d[pname] = p
 
         # Collect menus.
-        j_menus = p.Params.get('menu')
+        j_menus = params.get('menu')
         for which_menu in j_menus:
           j_menu = j_menus[which_menu]
 
           # Fetch or create the menu from menus.
           menu = Nav(menud, which_menu)
+          say which_menu, menu
 
           # Make new entry, and add to that menu.
+          pwords = pname.split('/')
           entry = setattrs(go_new(MenuEntry),
               Identifier= pname,
               Menu= which_menu,
@@ -199,6 +201,8 @@ class FormicMaster:
               URL= '%s' % pname,
               Weight= j_menu.get('weight', 0),
               Pre= '', Post= '',
+              Level=len(pwords),
+              Parent=pwords[0],
               )
           entry.DebugName = entry.Name + "/" + WeightedKey(entry)
           menu[pname] = entry
@@ -208,6 +212,15 @@ class FormicMaster:
       menu2 = sorted(menu.values(), key=WeightedKey)
       say 'sorted', menu2
       menud[which_menu] = util.NativeSlice(menu2)
+
+      # Find its children.
+      for topE in menu2:
+        say menu2
+        sub_menu_list = [e for e in menu.values() if e.Identifier.startswith(topE.Identifier + '/')]
+        say sub_menu_list
+        say menu
+        say util.NativeSlice(sub_menu_list)
+        topE.Children = util.NativeSlice(sub_menu_list)
 
     # Sort pages for tags.
     tags_pages_by = {}
@@ -404,8 +417,9 @@ type MenuEntry struct {
         Post       i_template.HTML
         Weight     int
         Parent     string
-        // Children   Menu
         Root      string
+        Level      int
+        Children   i_util.NativeSlice
 }
 
 type MediaFile struct {
