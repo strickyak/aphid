@@ -139,4 +139,18 @@ def NativeMap(d):
       }
       return MkGo(z)
     `
+
+def NativeDeeply(a):
+  switch type(a):
+    case dict:
+      return NativeMap(dict([(k, NativeDeeply(v)) for k, v in a.items()]))
+    case set:
+      return NativeMap(dict([(k, True) for k in a]))
+    case list:
+      return NativeSlice([NativeDeeply(e) for e in a])
+    case tuple:
+      return NativeSlice([NativeDeeply(e) for e in a])
+  native:
+    ` return MkGo(a_a.Self.Contents()) `
+
 pass
