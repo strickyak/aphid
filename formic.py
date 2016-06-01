@@ -20,7 +20,7 @@ def J(*vec):
 # slashes, (ident, slash)? , ident, maybe-slashes.
 MatchContent = regexp.MustCompile('^/+(?:([-A-Za-z0-9_]+)/+)?([-A-Za-z0-9_]+)/*$').FindStringSubmatch
 # slashes, (ident, slash)? , ident, slashes, filename[ident,dot,idents-or-dots].
-MatchAttachment = regexp.MustCompile('^/+(?:([-A-Za-z0-9_]+)/+)?([-A-Za-z0-9_]+)/+([-A-Za-z0-9_]+[.][-A-Za-z0-9_.{}]*)$').FindStringSubmatch
+MatchAttachment = regexp.MustCompile('^/+(?:([-A-Za-z0-9_]+)/+)?([-A-Za-z0-9_]+)/+([-A-Za-z0-9_{}]+[.][-A-Za-z0-9_.{}]*)$').FindStringSubmatch
 # static can only be in one of these directories: css, img, js, media.
 MatchStatic = regexp.MustCompile('^/+(css|img|js|media)/+([-A-Za-z0-9_.]+)$').FindStringSubmatch
 MatchTags = regexp.MustCompile('^/+tags/+([-A-Za-z0-9_.]+)$').FindStringSubmatch
@@ -600,6 +600,9 @@ class Curator:
           match = MATCH_FILENAME(cd)
           if f = match[1] if match else '':
             fname = r.MultipartForm.File['file'][0].Filename
+            if '.' not in fname:
+              print >>w, 'The filename did not contain a dot (".") which is required for media & attachments.  Go back and try again.'
+              return
             editdir = r.MultipartForm.Value['EditDir'][0]
             fpath = J(editdir, conv.EncodeCurlyStrong(fname))
             say editdir, fname, fpath
@@ -1056,8 +1059,11 @@ CURATOR_TEMPLATES = `
               <td> <img src="{{$.Root}}{{$.Identifier}}/{{index . 0}}?s">
               <td>
               {{ range (index . 3) }}
-                <p> {{index . 1}}x{{index . 2}}
+                <p> {{index . 1}}x{{index . 2}} &nbsp;
               {{ end }}
+              <td> ![]({{index . 0}}?s)
+            {{ else }}
+              <td> []({{index . 0}})
             {{ end }}
         {{ end }}
         </table>
