@@ -69,11 +69,11 @@ class Chucl:
     else:
       rel2 = rel
 
-    say path, rel, rel2, hp
+    #say path, rel, rel2, hp
     prev = None
     while True:
       hpr = RelativeTo(hp, rel2)
-      say hpr, hp, rel2, (path, rel)
+      #say hpr, hp, rel2, (path, rel)
 
       dt = .tree
       for e in S(hpr):
@@ -82,7 +82,7 @@ class Chucl:
 
       if dt is not None:
         z = RelativeTo(path, rel2)
-        say path, rel, rel2, hp, hpr, z
+        #say path, rel, rel2, hp, hpr, z
         return z
 
       rel2 = D(rel2)
@@ -104,13 +104,13 @@ class Chucl:
     except as ex:
       raise 'Eval: exception in path %q: %v' % (path, ex)
 
-    say path, depth, env, x
+    #say path, depth, env, x
     z = .Resolve(x, path, depth, env)
-    say path, depth, env, x, z
+    #say path, depth, env, x, z
     return z
 
   def Resolve(x, path, depth, env):
-    say x, path, depth, env
+    #say x, path, depth, env
     if path.find('flags/flags') >= 0:
       raise 'OHNOOOOOOO', path
     depth += 1
@@ -132,11 +132,11 @@ class Chucl:
 
           dpath = D(path)
           resolved = .ResolveRel(varpath, dpath)
-          say varpath, dpath, resolved
+          #say varpath, dpath, resolved
           z = .Eval(resolved, depth, env)
-          say x, path, dpath, z
+          #say x, path, dpath, z
           return z
-        say x, path
+        #say x, path
         return x
       case list:
         return x
@@ -146,22 +146,22 @@ class Chucl:
         for k, v in x.items():
           if not k.startswith('_'):
             try:
-              say path, k, v, J(path, k)
+              #say path, k, v, J(path, k)
               r = .Resolve(v, J(path, k), depth+1, env)
-              say path, k, v, r
+              #say path, k, v, r
               z[k] = r
             except as ex:  # TODO
               # GIVE UP and leave the original there.
-              say ex, k, v, x  # TODO
+              #say ex, k, v, x  # TODO
               z[k] = v
-        say x, path, depth, env, z
+        #say x, path, depth, env, z
         return z
       case tuple:
         return .Apply(x, path, depth+1, env)
     raise 'Eval path %q: bad type %q in %v' % (path, type(x), x)
 
   def Apply(x, path, depth, env):
-    say (x, path, depth, env)
+    #say (x, path, depth, env)
     dpath = D(path)
     depth += 1
 
@@ -177,7 +177,7 @@ class Chucl:
         if len(t) != 3:
           raise 'Bad if statement, got %d args, wanted 3' % len(t)
         tcond = resolve(t[0])
-        say t[0], tcond
+        #say t[0], tcond
         cond = float(tcond)
         if cond == 0.0:
           return resolve(t[2])
