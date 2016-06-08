@@ -306,14 +306,14 @@ class PlainBundle(Base):
     os.MkdirAll(bundir, 0777)
 
   def List4(path:str, pw:str? =None, varient:str ='r'):
-    say 'List4', path
+    #say 'List4', path
     dp = .dpath(path)
     vec = .TryOsReadDir(dp)
     for info in vec:
-      say info
+      #say info
       s = info.Name()
       if s.startswith('d.'):
-        say s[2:], True, -1, -1
+        #say s[2:], True, -1, -1
         yield s[2:], True, -1, -1
       elif s.startswith('f.'):
         fd2 = os.Open(.bpath(F.Join(dp, s)))
@@ -325,7 +325,7 @@ class PlainBundle(Base):
           continue
         rev_name = sorted(revs)[-1] # latest.
         _, varient3, name3, suffix3, mtime3, size3, more = PARSE_REV_FILENAME(rev_name)
-        say s[2:], False, int(mtime3), int(size3)
+        #say s[2:], False, int(mtime3), int(size3)
         yield s[2:], False, int(mtime3), int(size3)
       else:
         log.Printf('Ignoring strange file: %q %q', path, s)
@@ -334,66 +334,68 @@ class PlainBundle(Base):
     z = []
     fp = .fpath(path)
     try:
-      say 'ListRevs Open', path, fp, varient
+      #say 'ListRevs Open', path, fp, varient
       fd = os.Open(.bpath(fp))
     except as ex:
-      say 'ListRevs except', path, fp, ex
+      #say 'ListRevs except', path, fp, ex
       return z
     vec = fd.Readdir(-1)
-    say 'ListRevs vec', path, fp, vec, varient
+    #say 'ListRevs vec', path, fp, vec, varient
     for info in vec:
       s = info.Name()
-      say 'ListRevs info', path, fp, s
+      #say 'ListRevs info', path, fp, s
       if varient=='r':
         if s.startswith('r.'):
           z.append(s)
         elif s.startswith('r^'):
           z.append(redhed.DecryptFilename(s[2:], .rhkey))
         else:
-          say 'Ignore', s
+          #say 'Ignore', s
+          pass
       else:
         raise varient  # TODO -- varient obsolete here.
-      say 'ListRevs append', path, len(z), z[-1] if z else None
-    say 'ListRevs return', z
+      #say 'ListRevs append', path, len(z), z[-1] if z else None
+    #say 'ListRevs return', z
     return z
 
 
   def ListImageVarients(path, rev=None):
     fp = .fpath(path)
     try:
-      say 'ListImageVarients Open', path, fp
+      #say 'ListImageVarients Open', path, fp
       fd = os.Open(.bpath(fp))
     except as ex:
-      say 'ListImageVarients except', path, fp, ex
+      #say 'ListImageVarients except', path, fp, ex
       return None
     vec = fd.Readdir(-1)
-    say 'ListImageVarients vec', path, fp, vec
+    #say 'ListImageVarients vec', path, fp, vec
 
     if not rev:
       z = []
       for info in vec:
         s = info.Name()
-        say 'ListImageVarients info', path, fp, s
+        #say 'ListImageVarients info', path, fp, s
         if s.startswith('r.'):
           z.append(s)
         elif s.startswith('r^'):
           z.append(redhed.DecryptFilename(s[2:], .rhkey))
         else:
-          say 'Ignore', s
+          #say 'Ignore', s
+          pass
       rev = sorted(z)[-1]
 
     z = []
     for info in vec:
       s = info.Name()
-      say 'ListImageVarients CONSIDER', s
+      #say 'ListImageVarients CONSIDER', s
       m = V_DOT(s)
       if m:
         _, wid, hei, kind, tail = m
         if tail != rev[2:]:
-          say 'ListImageVarients CONTINUE', s, tail, rev
+          #say 'ListImageVarients CONTINUE', s, tail, rev
           continue
         z.append((s, int(wid), int(hei)))
-        say 'ListImageVarients APPEND', s, int(wid), int(hei)
+        #say 'ListImageVarients APPEND', s, int(wid), int(hei)
       elif V_HAT(s):
         x = redhed.DecryptFilename(s[2:], .rhkey)
         m = V_DOT(x)
@@ -405,9 +407,10 @@ class PlainBundle(Base):
         else:
           raise x
       else:
-        say 'Ignore', s
-      say 'ListImageVarients append', path, len(z), z[-1] if z else None
-    say 'ListImageVarients return', z
+        #say 'Ignore', s
+        pass
+      #say 'ListImageVarients append', path, len(z), z[-1] if z else None
+    #say 'ListImageVarients return', z
     return z
 
   def Stat3(path, pw=None, rev=None, varient='r', nodir=False):
@@ -422,7 +425,7 @@ class PlainBundle(Base):
     fpath = .fpath(path)
     fd = os.Open(.bpath(fpath))
     rev2, filename = .nameOfFileToOpen(path, rev=rev, varient=varient)
-    say rev2, filename
+    #say rev2, filename
 
     m = PARSE_REV_FILENAME(F.Base(filename))
     must m, (m, rev, rev2, filename)
@@ -433,36 +436,36 @@ class PlainBundle(Base):
     return F.Join(.bundir, path)
 
   def dpath(path):
-    say path
+    #say path
     vec = [str(s) for s in path.split('/') if s]
-    say vec
+    #say vec
     return F.Join('.', *['d.%s' % s for s in vec])
 
   def fpath(path):
-    say path
+    #say path
     vec = [str(s) for s in path.split('/') if s]
 
     fname = vec.pop()
     dp = .dpath('/'.join(vec))
-    say path, dp
+    #say path, dp
     z = F.Join(dp, 'f.%s' % fname)
-    say path, z
+    #say path, z
     return z
 
   def NewReadSeekerTimeSize(path, rev=None, varient='r'):
-    say path, rev
+    #say path, rev
     rev, name = .nameOfFileToOpen(path, rev=rev, varient=varient)
-    say name
+    #say name
     words = name.split('/')[-1].split('.')
     mtime, size = int(words[3]), int(words[4])
-    say mtime, size, words, name
+    #say mtime, size, words, name
     return os.Open(name), mtime, size
 
   def nameOfFileToOpen(path, rev=None, varient='r'):
     """Returns rev, raw"""
-    say .bundir, .bname, path
+    #say .bundir, .bname, path
     fp = .fpath(path)
-    say .bundir, .bname, fp
+    #say .bundir, .bname, fp
     if rev:
       # TODO -- we need plain vs. z, in case of .rhkey.
       return F.Join(fp, rev), .bpath(F.Join(fp, rev))
@@ -474,24 +477,24 @@ class PlainBundle(Base):
 
     rev = tails[-1]
     raw = raws[-1]  # The latest one is last, in sorted order.
-    say path, rev, raw
+    #say path, rev, raw
     return rev, raw
 
   def MakeReaderAndRev(path, pw, raw, rev=None, varient='r'):
     # Raw doesn't matter, on a Plain Bundle file.
     must not pw
-    say path, raw, rev
+    #say path, raw, rev
     if raw:
-      say (.bundir, path)
+      #say (.bundir, path)
       return os.Open(F.Join(.bundir, path)), None
     else:
       rev, filename = .nameOfFileToOpen(path=path, rev=rev, varient=varient)
-      say rev, filename, (path, rev)
+      #say rev, filename, (path, rev)
       return os.Open(filename), rev
 
   def MakeChunkReader(path, pw, raw=False, rev=None, varient='r'):
     r, rev_out = .MakeReaderAndRev(path=path, pw=pw, raw=raw, rev=rev, varient=varient)
-    say path, rev, rev_out, varient
+    #say path, rev, rev_out, varient
     return ChunkReaderAdapter(r)
 
   def MakeChunkWriter(path, pw, mtime, raw, varient='r', suffix=''):
