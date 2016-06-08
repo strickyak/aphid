@@ -30,6 +30,10 @@ class RemoteFile(FileBase):
   def Open():
     return .remote.RemoteOpen(.bname, .path, pw=None, raw=False)
 
+  def Create():
+    now = time.Now().UnixNano() / 1000000  # ms
+    return .remote.RemoteCreate(.bname, .path, pw=None, raw=False, mtime=now)
+
   def Close():
     .remote.Close()
 
@@ -113,7 +117,7 @@ def RunCommand(args):
 
     case 'create':
       must len(args) == 1, args
-      f = FileFactory(a)
+      f = FileFactory(args[0])
       w = f.Create()
       io.Copy(w, os.Stdin)
       w.Close()
