@@ -6,6 +6,9 @@ from . import A, bundle, flag, keyring, rbundle, sym
 FPERM = 0644
 DPERM = 0755
 
+client = flag.String('c', 'client', 'name of client in keyring')
+server = flag.String('s', 'server', 'name of server in keyring')
+
 class FileBase:
   pass
 
@@ -13,23 +16,38 @@ class BundleFile(FileBase):
   pass
 
 class RemoteFile(FileBase):
-  pass
+  def __init__(hostport, bname, path):
+    .hostport = hostport
+    .bname = bname
+    .path = path
+    say keyring.Ring.keys()
+    say .hostport, client.X, server.X
+    .remote = rbundle.RBundleClient(.hostport, keyring.Ring, client.X, server.X)
+
+  def List4():
+    return .remote.RList4(.bname, .path, pw=None)
+
+  def Open():
+    return .remote.RemoteOpen(.bname, .path, pw=None, raw=False)
+
+  def Close():
+    .remote.Close()
 
 class LocalFile(FileBase):
   def __init__(path):
     .path = path
 
-  def Dir():
+  def List4():
     fd = os.Open(.path)
     infos = fd.Readdir(-1)
     def results():
       for info in infos:
-        name, sz, mt, dr = info.Name(), info.Size(), info.ModTime(), info.IsDir()
-        def check(name:str, sz:int, mt, dr:bool):
+        name, dr, mt, sz = info.Name(), info.IsDir(), info.ModTime(), info.Size()
+        def check(name:str, dr:bool, mt, sz:int):
           pass
-        check(name, sz, mt, dr)
+        check(name, dr, mt, sz)
         if sz:
-          yield name + ('/' if dr else ''), sz, mt, dr
+          yield name + ('/' if dr else ''), dr, mt, sz
     return sorted(results())
 
   def Open():
@@ -38,23 +56,26 @@ class LocalFile(FileBase):
   def Create():
     return os.Create(.path)
 
-MATCH_BUNDLE = regexp.MustCompile('^/+bundle/').FindString
-PARSE_BUNDLE = regexp.MustCompile('^/+bundle/([^@]+)/@/([a-z0-9_]+)(/.*)?$').FindStringSubmatch
+  def Close():
+    pass
 
-MATCH_REMOTE = regexp.MustCompile('^/+remote/').FindString
-PARSE_REMOTE = regexp.MustCompile('^/+remote/([-A-Za-z0-9.]+)(:([0-9]+))?/([a-z0-9_]+)(/.*)?$').FindStringSubmatch
+MATCH_BUNDLE = regexp.MustCompile(`^/+bundle\b`).FindString
+PARSE_BUNDLE = regexp.MustCompile(`^/+bundle/([^@]+)/@/([-a-z0-9_]+)(/.*)?$`).FindStringSubmatch
+
+MATCH_REMOTE = regexp.MustCompile(`^/+remote\b`).FindString
+PARSE_REMOTE = regexp.MustCompile(`^/+remote/([-A-Za-z0-9.]+(?:[:][0-9]+)?)/([-a-z0-9_]+)(/.*)?$`).FindStringSubmatch
 
 def FileFactory(path: str) -> FileBase:
   ww = P.Split(path)
   must ww, 'Empty filepath not allowed'
   switch:
     case MATCH_BUNDLE(path):
-      top, bname, within = PARSE_BUNDLE(path)
+      _, top, bname, within = PARSE_BUNDLE(path)
       return BundleFile(top, bname, within)
     case MATCH_REMOTE(path):
-      host, _, port, bname, within = PARSE_BUNDLE(path)
-      port = port if port else '81'
-      return RemoteFile(host, int(port), bname, within)
+      _, hostport, bname, within = PARSE_REMOTE(path)
+      hostport = hostport if (':' in hostport) else '%s:81' % hostport
+      return RemoteFile(hostport, bname, within)
     default:
       return LocalFile(path)
 
@@ -79,8 +100,9 @@ def RunCommand(args):
       for a in args:
         print "%s :" % a
         f = FileFactory(a)
-        for name, sz, mt, dr in f.Dir():
+        for name, dr, mt, sz in f.List4():
           print "\t%s" % name
+        f.Close()
 
     case 'cat':
       for a in args:
@@ -95,14 +117,20 @@ def RunCommand(args):
       w = f.Create()
       io.Copy(w, os.Stdin)
       w.Close()
+      f.Close()
 
     default:
       print >> os.Stderr, USAGE
       os.Exit(2)
 
 def main(args):
-  try:
-    RunCommand(args)
-  except as ex:
-    print >> os.Stderr, "ERROR: %s" % ex
-    os.Exit(2)
+  args = flag.Munch(args)
+  if keyring.RingFilename:
+    keyring.Load(keyring.RingFilename.X)
+  RunCommand(args)
+
+  #try:
+  #  RunCommand(args)
+  #except as ex:
+  #  print >> os.Stderr, "ERROR: %s" % ex
+  #  os.Exit(2)
