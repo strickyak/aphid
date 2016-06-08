@@ -47,6 +47,9 @@ native:
           return
         }()
         x = self.M_1_ReadChunk(Mkint(plen))
+        if x.Self.Len() == 0 {
+          err = io.EOF
+        }
       }()
 
       if err == nil {
