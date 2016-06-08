@@ -26,10 +26,10 @@ class idRemoteReader(idRemoteBase):
     #say len(bb), n
     return bb
   def Close():
-    say 'Close'
+    #say 'Close'
     with defer .Advance():
       .cli.RInvoke(.id, .seq, 'Close').Wait()
-    say 'Closed'
+    #say 'Closed'
 native:
   `
     func (self *C_idRemoteReader) Read(p []byte) (n int, err error) {
@@ -192,23 +192,23 @@ class RBundleServer(rpc2.Server):
     return id_w
 
   def SStat3(bund, path, pw=None):
-    say bund, path
+    #say bund, path
     return .bundles[bund].Stat3(path=path, pw=pw)
 
   def SList4(bund, path, pw=None):
-    say bund, path
+    #say bund, path
     return list(.bundles[bund].List4(path=path, pw=pw))
 
   def SReadRawFile(bund, rawpath):
-    say bund, rawpath
+    #say bund, rawpath
     return .bundles[bund].ReadRawFile(rawpath=rawpath)
 
   def SWriteRawFile(bund, rawpath, data):
-    say bund, rawpath, len(data)
+    #say bund, rawpath, len(data)
     return .bundles[bund].WriteRawFile(rawpath=rawpath, data=data)
 
   def SPublish(origin, key1, key2, props):
-    say origin, key1, key2, props
+    #say origin, key1, key2, props
     must origin
     must key1
     thing = pubsub.Thing(origin=origin, key1=key1, key2=key2, props=props)

@@ -23,13 +23,13 @@ def main(argv):
 THUMBS = [(320, 240), (640, 480), (1024, 768), (1600, 1200)]
 
 def MakeThumbnailsNoBody(bund, path, pw, rev, suffix, writeFileFn, readFileFn):
-  say 'FRODO MakeThumbnailsNoBody', bund.bname, path, pw, rev, suffix
+  #say 'FRODO MakeThumbnailsNoBody', bund.bname, path, pw, rev, suffix
   revs = sorted(bund.ListRevs(path, varient='r'))
-  say 'FRODO MakeThumbnailsNoBody/ListRevs', path, revs
+  #say 'FRODO MakeThumbnailsNoBody/ListRevs', path, revs
   rev = revs[-1]
 
   is_dir, ts, sz = bund.Stat3(path, pw, rev=rev, varient='r', nodir=True)
-  say 'FRODO MakeThumbnailsNoBody/Stat3', is_dir, ts, sz
+  #say 'FRODO MakeThumbnailsNoBody/Stat3', is_dir, ts, sz
   if sz < 16 or sz > MAX_IMG_SIZE:
     raise 'bad size for an image: %d' % sz
 
@@ -37,7 +37,7 @@ def MakeThumbnailsNoBody(bund, path, pw, rev, suffix, writeFileFn, readFileFn):
   MakeThumbnails(bund, path, body, pw, suffix, writeFileFn)
 
 def MakeThumbnails(bund, path, body, pw, suffix, writeFileFn):
-  say 'FRODO MakeThumbnails', bund.bname, path, len(body), pw, suffix
+  #say 'FRODO MakeThumbnails', bund.bname, path, len(body), pw, suffix
   assert suffix
   sz = len(body)
   if sz < 16 or sz > MAX_IMG_SIZE:
@@ -49,10 +49,10 @@ def MakeThumbnails(bund, path, body, pw, suffix, writeFileFn):
   height = b.Max.Y - b.Min.Y
 
   for targ_w, targ_h in THUMBS:
-    say 'FRODO Thumbnails', targ_w, targ_h
+    #say 'FRODO Thumbnails', targ_w, targ_h
     i = resize.Thumbnail(targ_w, targ_h, img, resize.Bilinear)
     if i == img:
-      say 'FRODO BREAK', targ_w, targ_h
+      #say 'FRODO BREAK', targ_w, targ_h
       break  # Original image suffices for remaining sizes.
     else:
       b = i.Bounds()
@@ -69,5 +69,5 @@ def MakeThumbnails(bund, path, body, pw, suffix, writeFileFn):
           gif.Encode(bb, i, None)
         default:
           raise 'Unknown format: %q' % what_format
-      say 'FRODO writeFileFn', bund.bname, path, len(bb.Bytes()), pw, 0, False, varient, suffix, targ_w, targ_h
+      #say 'FRODO writeFileFn', bund.bname, path, len(bb.Bytes()), pw, 0, False, varient, suffix, targ_w, targ_h
       writeFileFn(bund, path, bb.Bytes(), pw=pw, mtime=0, raw=False, varient=varient, suffix=suffix)

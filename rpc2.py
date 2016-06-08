@@ -100,8 +100,8 @@ class ServerConn:
       if tup is None:
         break
       serial, result, err = tup
-      say serial, result, err
-      say type(serial), type(result), type(err)
+      #say serial, result, err
+      #say type(serial), type(result), type(err)
 
       p = .sealer.Seal(rye_pickle( (serial, result, err) ), serial)
       WriteChunk(.conn, p)
@@ -125,7 +125,7 @@ class ServerConn:
         go .Execute(serial, proc, args, kw)
 
   def Execute(serial, proc, args, kw):
-    say 'EXECUTE', proc, ArgsSummary(args, kw)
+    #say 'EXECUTE', proc, ArgsSummary(args, kw)
     result, err = None, None
     try:
       fn = .server.procs.get(proc)
@@ -133,13 +133,13 @@ class ServerConn:
         raise 'rpc function not registered in Server', proc
       result = fn(*args, **kw)
     except as ex:
-      say ex
+      #say ex
       err = ex
     .resultQ.Send( (serial, result, err) )
 
 
 def MutualKey(ring, clientId, serverId):
-  say 'MutualKey', clientId, serverId
+  #say 'MutualKey', clientId, serverId
   cli = ring[clientId]
   svr = ring[serverId]
   must type(cli) is keyring.DhKey, type(cli)
@@ -214,7 +214,8 @@ class Client:
     try:
       .conn.Close()
     except as ex:
-      say 'EXCEPTION', ex
+      #say 'EXCEPTION', ex
+      pass
 
 
 class Promise:

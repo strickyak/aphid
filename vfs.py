@@ -20,8 +20,8 @@ class RemoteFile(FileBase):
     .hostport = hostport
     .bname = bname
     .path = path
-    say keyring.Ring.keys()
-    say .hostport, client.X, server.X
+    #say keyring.Ring.keys()
+    #say .hostport, client.X, server.X
     .remote = rbundle.RBundleClient(.hostport, keyring.Ring, client.X, server.X)
 
   def List4():

@@ -29,7 +29,7 @@ def OpenWithSecret(encrypted):
 
 class DhKey:
   def __init__(d):
-    say d
+    #say d
     .id = d['id']
     .pub = d['pub']
     .sec = d.get('sec') if d.get('sec') else OpenWithSecret(d['Xsec']) if d.get('Xsec') else None
@@ -54,7 +54,7 @@ class WebKey:
     .num = d['num']
     .xor = d['xor'] if d.get('xor') else OpenWithSecret(d['Xxor'])
     .base = d['base']
-    say .id, .xor, .base, d
+    #say .id, .xor, .base, d
     must RE_HEX(.xor)
     must len(.xor)== sym.KEY_HEX_LEN
     .b_xor = sym.DecodeHex(.xor)
@@ -68,9 +68,9 @@ class HashedPw:
 def CompileDicts(d):
   """CompileDicts the dict of dicts into the dict of objects."""
   ring = {}
-  say d
+  #say d
   for k, v in d.items():
-    say k, v
+    #say k, v
     switch v['TYPE']:
       case 'pw/doubleHash':
         ring[k] = HashedPw(v)
@@ -88,7 +88,7 @@ def Load(filename=None):
   """Load the ring dict from the file."""
   global RingDict, Ring
   filename = filename if filename else RingFilename.X
-  say 'Loading Keyring', filename
+  #say 'Loading Keyring', filename
   s = str(ioutil.ReadFile(filename)).strip()
   if s:
     RingDict = data.Eval(s)
