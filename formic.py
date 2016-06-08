@@ -61,7 +61,7 @@ class FormicMaster:
 
   def ReloadBecauseOfThing(thing):
     # TODO: use a channel for driving reload.
-    say thing
+    #say thing
     .Reload()
 
   def Reload():
@@ -71,7 +71,7 @@ class FormicMaster:
       .ReloadPageMeta()
 
   def MakePage(pname, modTime, fileSize, numAttachments=0):
-    say pname
+    #say pname
     slug = P.Base(pname)
     section = P.Dir(pname)
     section = '' if section == '.' else section
@@ -96,44 +96,44 @@ class FormicMaster:
         NumAttachments= numAttachments,
         )
     p.Age = (time.Now().Unix() - p.Date.Unix()) / 86400.0
-    say p.Age, time.Now().Unix(), p.Date.Unix(), p.Date
+    #say p.Age, time.Now().Unix(), p.Date.Unix(), p.Date
     return p
 
   def WalkMdTreeMakingPages(dirname):
-    say dirname
+    #say dirname
     for name, isDir, modTime, sz in sorted(.bund.List4(J('/formic/content', dirname), pw=None)):
       if modTime > 9999999999:
         modTime = modTime // 1000
       if isDir and MatchMdDirName(name):
         for pair in .WalkMdTreeMakingPages(J(dirname, name)):
-          say pair
+          #say pair
           yield pair
       else:
         if not isDir and sz > 0 and MatchMdFileName(name):
           # Count attachments.
           attDir = J('/formic/content', dirname, name[:-3])
-          say attDir
+          #say attDir
           attCount = 0
           for att_name, att_isdir, att_mtime, att_size in .bund.List4(attDir, pw=None):
-            say att_name, att_isdir, att_mtime, att_size, attDir
+            #say att_name, att_isdir, att_mtime, att_size, attDir
             if ('.' in att_name) and not att_isdir and not MatchMdFileName(att_name) and att_size > 0:
               attCount += 1
 
-          say name, attDir, attCount
+          #say name, attDir, attCount
           pname = J(dirname, name[:-3]).strip('/')
           p = .MakePage(pname, time.Unix(0, modTime*1000000000), sz, numAttachments=attCount)
           yield pname, p
 
   def WalkMediaTree(dirname):
-    say dirname
+    #say dirname
     for name, isDir, modTime, sz in sorted(.bund.List4(J('/formic/static/media', dirname), pw=None)):
       if modTime > 9999999999:
         modTime = modTime // 1000
-      say name, isDir, modTime, sz
+      #say name, isDir, modTime, sz
       # Actually we don't upload into subdirs yet.
       if isDir and MatchMediaDirName(name):
         for pair in .WalkMediaTree(J(dirname, name)):
-          say pair
+          #say pair
           yield pair
       else:
         if sz > 0 and MatchMediaFileName(name):
@@ -146,7 +146,7 @@ class FormicMaster:
               Directory= dirname,
               )
           p.Age = (time.Now().Unix() - p.Date.Unix()) / 86400.0
-          say pname, p.Age, time.Now().Unix(), p.Date.Unix(), p.Date, modTime
+          #say pname, p.Age, time.Now().Unix(), p.Date.Unix(), p.Date, modTime
           yield pname, p
 
   def ReloadPageMeta():
@@ -177,9 +177,9 @@ class FormicMaster:
     for pname, p in page_d.items():
       if params = p.Params:
         # Collect tags.
-        say '@tags', params.get('tags', [])
+        #say '@tags', params.get('tags', [])
         for t in params.get('tags', []):
-          say '@tags', t
+          #say '@tags', t
           d = Nav(tags, t)
           d[pname] = p
 
@@ -190,7 +190,7 @@ class FormicMaster:
 
           # Fetch or create the menu from menus.
           menu = Nav(menud, which_menu)
-          say which_menu, menu
+          #say which_menu, menu
 
           # Make new entry, and add to that menu.
           pwords = pname.split('/')
@@ -210,16 +210,16 @@ class FormicMaster:
     # Sort the menus.
     for which_menu, menu in menud.items():
       menu2 = sorted(menu.values(), key=WeightedKey)
-      say 'sorted', menu2
+      #say 'sorted', menu2
       menud[which_menu] = util.NativeSlice(menu2)
 
       # Find its children.
       for topE in menu2:
-        say menu2
+        #say menu2
         sub_menu_list = [e for e in menu.values() if e.Identifier.startswith(topE.Identifier + '/')]
-        say sub_menu_list
-        say menu
-        say util.NativeSlice(sub_menu_list)
+        #say sub_menu_list
+        #say menu
+        #say util.NativeSlice(sub_menu_list)
         topE.Children = util.NativeSlice(sub_menu_list)
 
     # Sort pages for tags.
@@ -282,7 +282,7 @@ class FormicMaster:
       host, extra, path, root = util.HostExtraPathRoot(r)
       return .Handle5(w, r, host, path, root)
     except as ex:
-      say ex
+      #say ex
       print >>w, '<br><br>\n\n*** ERROR *** <br><br>\n\n*** %s ***\n\n***' % ex
       raise ex
       return # raise ex
@@ -328,13 +328,13 @@ class FormicMaster:
       # Does it have varients?
       static_path = J('/formic/static', static_dir, static_file)
       varients = .bund.ListImageVarients(static_path, None)
-      say 'VARIENTS', static_path, varients
+      #say 'VARIENTS', static_path, varients
 
     elif _, static_section, static_dir, static_file = MatchAttachment(path):
       # Does it have varients?
       static_path = J('/formic/content', static_section, static_dir, static_file)
       varients = .bund.ListImageVarients(static_path, None)
-      say 'VARIENTS', static_path, varients
+      #say 'VARIENTS', static_path, varients
 
     if static_path:
       zvar = None
@@ -353,15 +353,15 @@ class FormicMaster:
         if varients and (maxh or maxw):
           for vname, vw, vh in varients:
             big = vh + vw
-            say big, vh, vw, vname
+            #say big, vh, vw, vname
             if big < minbig:
                 minvar, minbig, minw, minh = vname, big, vw, vh
-                say minvar, minbig, minw, minh
+                #say minvar, minbig, minw, minh
             if (not maxh or vh <= maxh) and (not maxw or vw <= maxw):
               if big > zbig:
                 zvar, zbig, zw, zh = vname, big, vw, vh
-                say zvar, zbig, zw, zh
-        say 'VARIENT', zvar, zbig, zw, zh
+                #say zvar, zbig, zw, zh
+        #say 'VARIENT', zvar, zbig, zw, zh
 
         # If all are too big, use the smallest.
         if not zvar:
@@ -369,7 +369,7 @@ class FormicMaster:
             zvar = minvar
 
       # ServeContent on the static file.
-      say static_path, zvar
+      #say static_path, zvar
       w.Header().Set('Cache-Control', 'max-age=%s, s-maxage=%s' % (STATIC_MAX_AGE, STATIC_MAX_AGE))
       rs, someModTime, _size = .bund.NewReadSeekerTimeSize(static_path, rev=zvar)
       correctModTime = time.Unix(0, util.ConvertToNanos(someModTime))
@@ -378,7 +378,7 @@ class FormicMaster:
 
     # If it is not a curator command and not a static file and not a Taxonomy, it must be a page.
     if MatchHome(path):
-      say 'MatchHome', path
+      #say 'MatchHome', path
       return .aphid.amux.SmartRedirect(w, r, '/home/')
 
     if  _, section, base = MatchContent(path):
@@ -387,7 +387,7 @@ class FormicMaster:
 
       pname = J(section, base).strip('/')
       p = .page_d.get(pname)
-      say 'MatchContent', path, section, base, pname, p
+      #say 'MatchContent', path, section, base, pname, p
 
       w.Header().Set('Content-Type', 'text/html; charset=UTF-8')
       if not p:
@@ -511,9 +511,9 @@ class Curator:
     .bund = bund
     .config = config
     .pwName = config['pw']
-    say keyring.Ring[.pwName]
-    say keyring.Ring[.pwName].doubleHash
-    say keyring.Ring[.pwName].salt
+    #say keyring.Ring[.pwName]
+    #say keyring.Ring[.pwName].doubleHash
+    #say keyring.Ring[.pwName].salt
     .wantHash = keyring.Ring[.pwName].doubleHash
     .wantSalt = keyring.Ring[.pwName].salt
     #say keyring.Ring[.pwName]
@@ -596,7 +596,7 @@ class Curator:
           delfile = query['delfile']
           if query.get('DeleteFile'):
             bundle.WriteFile(.bund, delfile, '', pw=None)
-          say P.Dir(delfile)
+          #say P.Dir(delfile)
           .aphid.amux.SmartRedirect(w, r, '%s**view?f=%s' % (root, P.Dir(delfile)))
 
         case '**delete_file':
@@ -619,7 +619,7 @@ class Curator:
               return
             editdir = r.MultipartForm.Value['EditDir'][0]
             fpath = J(editdir, conv.EncodeCurlyStrong(fname))
-            say editdir, fname, fpath
+            #say editdir, fname, fpath
 
             fd = r.MultipartForm.File['file'][0].Open()
             br = bufio.NewReader(fd)
@@ -658,7 +658,7 @@ class Curator:
           .t.ExecuteTemplate(w, 'ATTACH', util.NativeMap(d))
 
         case '*edit_page_submit':
-          say query
+          #say query
           if query.get('submit') != 'Save':
             # Cancel; don't save.
             .aphid.amux.SmartRedirect(w, r, "%s%s" % (root, fname))
@@ -680,7 +680,7 @@ class Curator:
             raise 'Error: No fname given'
 
           edit_md = query['EditMd']
-          say query.get('DeletePage')
+          #say query.get('DeletePage')
           if query.get('DeletePage'):
             # "Delete" the file, but writing empty file.
             text = ''
@@ -708,9 +708,9 @@ class Curator:
                 menu=edit_menu,
                 )))
             text = '+++\n' + toml + '\n+++\n' + edit_md
-            say text
+            #say text
 
-            say 'bundle.WriteFile', fname, edit_title, edit_md, toml, text
+            #say 'bundle.WriteFile', fname, edit_title, edit_md, toml, text
           bundle.WriteFile(.bund, J('/formic/content', fname + '.md'), text, pw=None)
           .master.Reload()
           if text:
@@ -740,12 +740,12 @@ class Curator:
 
           text = bundle.ReadFile(.bund, filename, pw=None)
           meta, md, html = markdown.ProcessWithFrontMatter(text)
-          say meta, md, html
+          #say meta, md, html
 
           main_d = meta.get('menu', {}).get('main')
           EditMainName = main_d.get('name', '') if main_d else ''
           EditMainWeight = main_d.get('weight', 0) if main_d else 0
-          say EditMainName, EditMainWeight
+          #say EditMainName, EditMainWeight
 
           d = dict(Title='Edit Page %q' % fname,
                    Submit='%s*edit_page_submit?f=%s' % (root, fname),
@@ -765,10 +765,10 @@ class Curator:
           dirname = J('/formic/content', fname)
 
           listing = list(.bund.List4(dirname, pw=None))
-          say listing
+          #say listing
           def gen():
             for name, isDir, mtime, size in listing:
-              say name, size, mtime, isDir
+              #say name, size, mtime, isDir
               if isDir or not size: continue  # No dirs or deleted files.
 
               i = strings.LastIndex(name, '.')
@@ -780,15 +780,15 @@ class Curator:
               vv = None
               if ext in PHOTO_EXTENSIONS:
                 vv = .bund.ListImageVarients(J(dirname, name))
-                say vv
+                #say vv
                 vvv = sorted(vv, cmp=lambda a, b: cmp(a[1], b[1]))
-                say vvv
+                #say vvv
 
-              say name, size, mtime, vvv
+              #say name, size, mtime, vvv
               yield name, size, time.Unix(0, 1000000*mtime), vvv
 
           attachments = sorted(gen())
-          say attachments
+          #say attachments
 
           d = dict(Title='Attachments for Page %q' % fname,
                    Identifier=fname,
@@ -804,7 +804,7 @@ class Curator:
         case '**edit_text_submit':
           if query['submit'] == 'Save':
             text = query['EditText']
-            say 'bundle.WriteFile', fname, text
+            #say 'bundle.WriteFile', fname, text
             bundle.WriteFile(.bund, fname, text, pw=None)
             .master.Reload()
           .aphid.amux.SmartRedirect(w, r, "%s**view?f=%s" % (root, P.Dir(fname)))
@@ -839,8 +839,8 @@ class Curator:
                      Root=root,
                      )
 
-            say d
-            say util.NativeMap(d)
+            #say d
+            #say util.NativeMap(d)
             .t.ExecuteTemplate(w, 'DIR', util.NativeMap(d))
           elif fSize:
             ct = query.get('ct')

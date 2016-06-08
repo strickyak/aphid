@@ -20,14 +20,14 @@ class Aphid:
 
     .laph = laph3.Compile(laphexpr)
     .x = .laph.EvalPath(part)
-    say .x
+    #say .x
     util.PrettyPrint(.x)
 
     .x_me = .x['me']
     .f_ip = .x['flags']['ip']
     .f_topdir = .x['flags']['topdir']
     .f_domain = .x['flags'].get('domain', '')
-    say .x['ports']
+    #say .x['ports']
     .p_dns = int(.x['ports'].get('dns', 0))
     .p_http = int(.x['ports']['http'])
     .p_https = int(.x['ports']['https'])
@@ -71,27 +71,27 @@ class Aphid:
         case 'sym':
           keyid = bx['key']
           key = keyring.Ring[keyid]
-          say keyid, key.b_sym, key, bx
+          #say keyid, key.b_sym, key, bx
           .bundles[bname] = bundle.RedhedBundle(self, bname=bname, bundir=bundir, suffix='0', keyid=keyid, key=key.b_sym)
         case 'websym':
           keyid = bx['key']
           key = keyring.Ring[keyid]
-          say keyid, bx, key
+          #say keyid, bx, key
           .bundles[bname] = bundle.WebkeyBundle(
               self, bname, topdir=.f_topdir, suffix='0',
               webkeyid=keyid, xorkey=key.b_xor, basekey=key.base)
       if SEEDDIR.X:
-        say SEEDDIR.X, bname, '.LoadBundleSeedFiles ('
+        #say SEEDDIR.X, bname, '.LoadBundleSeedFiles ('
         .LoadBundleSeedFiles(bname, .bundles[bname], SEEDDIR.X)
-        say SEEDDIR.X, bname, '.LoadBundleSeedFiles )'
+        #say SEEDDIR.X, bname, '.LoadBundleSeedFiles )'
 
     go rbundle.RBundleServer(self, '%s:%d' % (.f_ip, .p_rpc), keyring.Ring).ListenAndServe()
 
   def LoadBundleSeedFiles(bname, bund, seeddir):
-    say bname, type(bund), seeddir
+    #say bname, type(bund), seeddir
     t = FJ(seeddir, bname)
     def fn(path, info, err):
-      say path, info, err
+      #say path, info, err
       if not info or info.IsDir():
         return None  # No error.
 
@@ -99,10 +99,10 @@ class Aphid:
       assert path[len(t)] == '/'
       fpath = path[len(t)+1:]  # Remove prefix and one '/'
 
-      say bname, path, 'COPY ('
+      #say bname, path, 'COPY ('
       body = ioutil.ReadFile(path)
       bundle.WriteFile(bund, fpath, body, pw=None, mtime=0, raw=False)
-      say bname, path, 'COPY )'
+      #say bname, path, 'COPY )'
   
       #fd = os.Open(path)
       #with defer fd.Close():
@@ -113,7 +113,7 @@ class Aphid:
       #  cw.Close()
 
       return None  # No error.
-    say '@@@ walking', t, fn
+    #say '@@@ walking', t, fn
     F.Walk(t, fn)
 
   def StartZones():
@@ -161,9 +161,9 @@ class Aphid:
       .amux.HandleFunc('%s/@%s*/' % (.f_domain, wname), awedit.Master(self, bname, bund=bund).Handle2)
 
     # Add formic.
-    say .filename, .x_formics.items()
+    #say .filename, .x_formics.items()
     for wname, config in .x_formics.items():
-      say wname, config
+      #say wname, config
       bname = config['bundle']
       bund = .bundles[bname]
       obj = formic.FormicMaster(self, bname, bund=bund, config=config)
