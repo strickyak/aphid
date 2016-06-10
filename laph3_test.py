@@ -1,9 +1,5 @@
 from . import laph3 as L
 
-dd = L.DeepDict()
-say dd.guts
-say dd.get(('abc', 'def', 'ghi'))
-
 T1 = `
   negative = (lambda (_x) (if (< $_x 0) negative positive))
 
@@ -30,19 +26,19 @@ T1 = `
 def TestT1():
   t = L.Compile(T1)
 
-  must t.Eval('x') == '1001'
-  must t.Eval('x1') == '1002'
-  must t.Eval('x2') == '2002'
-  must t.Eval('xx') == '10011001'
-  must t.Eval('xl') == '20022002'
-  must t.Eval('one') == 'positive'
-  must t.Eval('two') == 'negative'
-  must t.Eval('ten') == '10'
+  must t.EvalPath('x') == '1001'
+  must t.EvalPath('x1') == '1002'
+  must t.EvalPath('x2') == '2002'
+  must t.EvalPath('xx') == '10011001'
+  must t.EvalPath('xl') == '20022002'
+  must t.EvalPath('one') == 'positive'
+  must t.EvalPath('two') == 'negative'
+  must t.EvalPath('ten') == '10'
 
-  must t.Eval('len5') == '5'
-  must t.Eval('map5') == ['1', '2', '3', '4', '5']
-  must t.Eval('f5') == ['abc.', 'abcd.', 'abcde.']
-  must t.Eval('g5') == ['3', '4', '5']
+  must t.EvalPath('len5') == '5'
+  must t.EvalPath('map5') == ['1', '2', '3', '4', '5']
+  must t.EvalPath('f5') == ['abc.', 'abcd.', 'abcde.']
+  must t.EvalPath('g5') == ['3', '4', '5']
 
 T2 = `
   _host = {
@@ -88,27 +84,27 @@ T2 = `
 `
 def TestT2():
   t = L.Compile(T2)
-  must t.Eval('h1/name') == 'h_1'
-  must t.Eval('h2/ip') == '1.2.3.2'
-  must t.Eval('h3/addy') == '1.2.3.3:13080'
-  must t.Eval('h3/type') == 'host'
-  must t.Eval('s1/name') == 'server1'
-  must t.Eval('s2/name') == 'server2'
-  must t.Eval('s3/name') == 'server3'
-  must t.Eval('hostnames') == ['h_1', 'h_2', 'h_3']
-  must t.Eval('hosts_keys') == 3 * [['addy', 'ip', 'name', 'num', 'type']]
-  say t.Eval('hosts_values')
-  say t.Eval('hosts_items')
+  must t.EvalPath('h1/name') == 'h_1'
+  must t.EvalPath('h2/ip') == '1.2.3.2'
+  must t.EvalPath('h3/addy') == '1.2.3.3:13080'
+  must t.EvalPath('h3/type') == 'host'
+  must t.EvalPath('s1/name') == 'server1'
+  must t.EvalPath('s2/name') == 'server2'
+  must t.EvalPath('s3/name') == 'server3'
+  must t.EvalPath('hostnames') == ['h_1', 'h_2', 'h_3']
+  must t.EvalPath('hosts_keys') == 3 * [['addy', 'ip', 'name', 'num', 'type']]
+  say t.EvalPath('hosts_values')
+  say t.EvalPath('hosts_items')
 
-  say t.Eval('servers')
-  must t.Eval('servernames') == ['server1', 'server2', 'server3']
-  must t.Eval('serverhostnames') == ['h_1', 'h_2', 'h_3']
+  say t.EvalPath('servers')
+  must t.EvalPath('servernames') == ['server1', 'server2', 'server3']
+  must t.EvalPath('serverhostnames') == ['h_1', 'h_2', 'h_3']
 
-  say t.Eval('Servers')
-  must t.Eval('Servernames') == ['Server1', 'Server2', 'Server3']
-  must t.Eval('Serverhostnames') == ['h_1', 'h_2', 'h_3']
+  say t.EvalPath('Servers')
+  must t.EvalPath('Servernames') == ['Server1', 'Server2', 'Server3']
+  must t.EvalPath('Serverhostnames') == ['h_1', 'h_2', 'h_3']
 
 def main(_):
   TestT1()
-  TestT2()
+  # TODO # TestT2()
   print "OKAY laph3_test.py"
