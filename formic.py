@@ -88,7 +88,7 @@ class FormicMaster:
         Content= html,
         Type= ptype,
         Permalink= pname,  # TODO -- host, extra
-        Params= util.NativeMap(meta),
+        Params= util.NativeDeeply(meta),
         Date= time.Parse(HUGO_TIME_FORMAT, ts),
         Section= section,
         Slug= slug,
@@ -151,13 +151,13 @@ class FormicMaster:
 
   def ReloadPageMeta():
     page_d = dict(.WalkMdTreeMakingPages('/'))
-    print page_d
+    #say page_d
     media_d = dict(.WalkMediaTree('/'))
-    print media_d
+    #say media_d
     page_list = page_d.values()
-    print page_list
+    #say page_list
     media_list = media_d.values()
-    print media_list
+    #say media_list
 
     # Sort pages.
     pages_by = setattrs(go_new(PagesBy),
@@ -236,10 +236,13 @@ class FormicMaster:
     # Construct the site.
     try:
       site_toml = bundle.ReadFile(.bund, '/formic/config.toml', pw=None)
+      say site_toml
       site_d = markdown.EvalToml(site_toml)
+      say site_d
     except as ex:
       # TODO -- log error
       site_d = dict()
+      say ex
 
     .page_d, .pages_by = page_d, pages_by
     .media_d, .media_by = media_d, media_by
@@ -280,15 +283,17 @@ class FormicMaster:
   def Handle2(w, r):
     try:
       host, extra, path, root = util.HostExtraPathRoot(r)
+      say host, extra, path, root
       return .Handle5(w, r, host, path, root)
     except as ex:
-      #say ex
+      say ex
       print >>w, '<br><br>\n\n*** ERROR *** <br><br>\n\n*** %s ***\n\n***' % ex
       raise ex
       return # raise ex
 
   def Handle5(w, r, host, path, root):
     query = util.ParseQuery(r)
+    say query
 
     # Special Curator Commands.
     m = MatchCurator(path)
@@ -596,17 +601,20 @@ class Curator:
           delfile = query['delfile']
           if query.get('DeleteFile'):
             bundle.WriteFile(.bund, delfile, '', pw=None)
-          #say P.Dir(delfile)
-          .aphid.amux.SmartRedirect(w, r, '%s**view?f=%s' % (root, P.Dir(delfile)))
+          if whither = query.get('redirect'):
+            .aphid.amux.SmartRedirect(w, r, whither)
+          else:
+            .aphid.amux.SmartRedirect(w, r, '%s**view?f=%s' % (root, P.Dir(delfile)))
 
         case '**delete_file':
           d = dict(
             Title='Upload Media Attachment',
             Action='%s**delete_file_submit' % root,
             fname=fname,
+            redirect=query.get('redirect', ''),
             Root=root,
             )
-          .t.ExecuteTemplate(w, 'DELETE', util.NativeMap(d))
+          .t.ExecuteTemplate(w, 'DELETE_FILE', util.NativeMap(d))
 
         case '*attach_media_submit':
           r.ParseMultipartForm(1024*1024)
@@ -680,7 +688,6 @@ class Curator:
             raise 'Error: No fname given'
 
           edit_md = query['EditMd']
-          #say query.get('DeletePage')
           if query.get('DeletePage'):
             # "Delete" the file, but writing empty file.
             text = ''
@@ -765,7 +772,6 @@ class Curator:
           dirname = J('/formic/content', fname)
 
           listing = list(.bund.List4(dirname, pw=None))
-          #say listing
           def gen():
             for name, isDir, mtime, size in listing:
               #say name, size, mtime, isDir
@@ -775,20 +781,16 @@ class Curator:
               if i < 1: continue  # No dotfiles or dotless files.
 
               ext = name[i+1:].lower() if i>0 else ''
-              if ext == '.md': continue  # No markdown subpages.
+              if ext == 'md': continue  # No markdown subpages.
 
-              vv = None
+              vvv = []
               if ext in PHOTO_EXTENSIONS:
                 vv = .bund.ListImageVarients(J(dirname, name))
-                #say vv
                 vvv = sorted(vv, cmp=lambda a, b: cmp(a[1], b[1]))
-                #say vvv
 
-              #say name, size, mtime, vvv
               yield name, size, time.Unix(0, 1000000*mtime), vvv
 
           attachments = sorted(gen())
-          #say attachments
 
           d = dict(Title='Attachments for Page %q' % fname,
                    Identifier=fname,
@@ -826,6 +828,20 @@ class Curator:
                    )
           .t.ExecuteTemplate(w, 'EDIT_TEXT', util.NativeMap(d))
 
+        case '**revs':
+          isDir, modTime, fSize = .bund.Stat3(fname, pw=None)
+          if isDir:
+            raise 'Cannot list revs on a directory.'
+
+          revlist = []
+          for r in .bund.ListRevs(fname):
+            revlist.append(str(r))
+
+          d = dict(Title=fname, Filename=fname,
+                   Root=root, revlist=revlist,
+                   )
+          .t.ExecuteTemplate(w, 'REVS', util.NativeDeeply(d))
+
         case '**view':
           isDir, modTime, fSize = .bund.Stat3(fname, pw=None)
           if isDir:
@@ -838,18 +854,18 @@ class Curator:
             d = dict(Title=fname, dir=fname, dd=dd, ff=ff, up=up,
                      Root=root,
                      )
-
-            #say d
-            #say util.NativeMap(d)
             .t.ExecuteTemplate(w, 'DIR', util.NativeMap(d))
+
           elif fSize:
             ct = query.get('ct')
             if ct:
               w.Header().Set('Content-Type', ct)
-            br, _ = .bund.MakeReaderAndRev(fname, pw=None, raw=False, rev=None)
+            br, _ = .bund.MakeReaderAndRev(fname, pw=None, raw=False, rev=query.get('rev'))
             http.ServeContent(w, r, fname, adapt.UnixToTime(modTime), br)
+
           else:
             raise 'Cannot view empty or deleted or nonexistant file: %q' % fname
+
         default:
           raise 'Unknown command: %q' % cmd
     return
@@ -899,6 +915,20 @@ CURATOR_TEMPLATES = `
 
         </tt></body></html>
 {{end}}
+{{define "REVS"}}
+        {{ template "HEAD" $ }}
+
+        <h3>Directories</h3>
+        <ul>
+          {{ range .revlist }}
+            <li>
+               <a href="{{$.Root}}**view?f={{$.Filename}}&rev={{.}}">{{.}}</a>
+               &nbsp; &nbsp;
+               [<a href="{{$.Root}}**view?f={{$.Filename}}&rev={{.}}&ct=text/plain">text/plain</a>]
+          {{ end }}
+        </ul>
+        {{ template "TAIL" $ }}
+{{end}}
 {{define "DIR"}}
         {{ template "HEAD" $ }}
 
@@ -923,6 +953,8 @@ CURATOR_TEMPLATES = `
                [<a href="{{$.Root}}**edit_text?f={{ JoinPaths $.dir . }}">edit</a>]
                &nbsp; &nbsp;
                [<a href="{{$.Root}}**delete_file?f={{ JoinPaths $.dir . }}">delete</a>]
+               &nbsp; &nbsp;
+               [<a href="{{$.Root}}**revs?f={{ JoinPaths $.dir . }}">revisions</a>]
         {{ end }}
         </ul>
 
@@ -1028,10 +1060,11 @@ CURATOR_TEMPLATES = `
         {{ template "TAIL" $ }}
 {{end}}
 
-{{define "DELETE"}}
+{{define "DELETE_FILE"}}
         {{ template "HEAD" $ }}
         <form method="POST" action="{{.Action}}">
           <input type=hidden name=delfile value={{.fname}}>
+          <input type=hidden name=redirect value={{.redirect}}>
           <p>
           Deleting file: <b>"{{.fname}}"</b>
           <p>
@@ -1061,12 +1094,14 @@ CURATOR_TEMPLATES = `
         <br>
         <table border=1 cellpadding=8>
           <tr>
+            <th> Action
             <th> Name
             <th> Size
             <th> Mod Time
         {{ range $.Attachments }}
           <tr>
-            <td> {{index . 0}}
+            <td> <a href="{{$.Root}}**delete_file?redirect={{$.Root}}*&f={{ JoinPaths (JoinPaths "formic/content" ($.Identifier)) (index . 0) }}">delete</a>
+            <td> <b>{{index . 0}}</b>
             <td> {{index . 1}}
             <td> {{(index . 2).Format "2006-02-01"}}
             {{ if (index . 3) }}
@@ -1077,6 +1112,8 @@ CURATOR_TEMPLATES = `
               {{ end }}
               <td> ![]({{index . 0}}?s)
             {{ else }}
+              <td> <a href="{{$.Root}}{{$.Identifier}}/{{index . 0}}">[view]</a>
+              <td> <a href="{{$.Root}}**view?f=/formic/content/{{$.Identifier}}/{{index . 0}}&ct=text/plain">[text/plain]</a>
               <td> []({{index . 0}})
             {{ end }}
         {{ end }}
@@ -1108,34 +1145,28 @@ CURATOR_TEMPLATES = `
 
 {{define "CURATE"}}
         {{ template "HEAD" $ }}
-        <h3>Site:</h3>
-        <table border=1 cellpadding=5>
-          <tr><th>Site Title<th>Base URL
-          <tr><td>"{{.Site.Title}}"<td>{{.Site.BaseURL}}
-        </table>
 
         <h3>Pages:</h3>
         [<a href="{{$.Root}}*new_page">Create New Page</a>]
+        <br>
         <table border=1 cellpadding=4>
-          <tr><th>(Attach)<th>section/slug &nbsp; (Edit)<th>Title &nbsp; (View)<th>Days Old<th>Date
+          <tr><th>Action
+              <th>URL (section/slug)
+              <th>Title
+              <th>Menu
+              <th>Weight
+              <th>Days Old
+              <th>Date
           {{ range .Site.Pages.ByDate }}
             <tr>
-              <td align=right><a href="{{$.Root}}*attachments_for_page?f={{.Identifier}}">{{.NumAttachments}}</a>
-              <td><a href="{{$.Root}}*edit_page?f={{.Identifier}}">{{.Identifier}}
-              <td><a href="{{$.Root}}{{.Identifier}}">{{.Title}}</a>
-              <td align=right>{{printf "%.0f" .Age}}
-              <td>{{.Date.Format "Mon, 02-Jan-2006 15:04 MST"}}
-          {{ end }}
-        </table>
-
-        <h3>Media:</h3>
-        <table border=1 cellpadding=4>
-          [<a href="{{$.Root}}*attach_media">Upload New Media</a>]
-          <tr><th>Path<th>Size<th>Days Old<th>Date
-          {{ range .Site.Media.ByDate }}
-            <tr>
-              <td><a href="{{$.Root}}media/{{.Identifier}}">{{.Identifier}}</a>
-              <td align=right>{{.Size}}
+              <td align=right>
+                  <a href="{{$.Root}}*attachments_for_page?f={{.Identifier}}">attach({{.NumAttachments}})</a> |
+                  <a href="{{$.Root}}*edit_page?f={{.Identifier}}">edit</a> |
+                  <a href="{{$.Root}}{{.Identifier}}">view</a>
+              <td>{{.Identifier}}
+              <td>{{.Title}}
+              <td>{{.Params.menu.main.name}}
+              <td align=right>{{.Params.menu.main.weight}}
               <td align=right>{{printf "%.0f" .Age}}
               <td>{{.Date.Format "Mon, 02-Jan-2006 15:04 MST"}}
           {{ end }}
