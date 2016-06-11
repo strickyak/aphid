@@ -185,7 +185,7 @@ def main(args):
 
   # Get the home page.
   A.Sleep(1)
-  z2 = HttpMethod('GET', 'http://localhost:%s/@termite1.formic/home?' % t1_http, body='', pw='password')
+  z2 = HttpMethod('GET', 'http://localhost:%s/@termite1.formic/home/?' % t1_http, body='', pw='password')
   must z2 == byt("<html><body>Default Single Template: (((Title: HomePage)))</body></html>\n")
 
   say "OKAY termite_test.py"
