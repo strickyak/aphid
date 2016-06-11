@@ -623,7 +623,7 @@ class Curator:
           if f = match[1] if match else '':
             fname = r.MultipartForm.File['file'][0].Filename
             if '.' not in fname:
-              print >>w, 'The filename did not contain a dot (".") which is required for media & attachments.  Go back and try again.'
+              print >>w, 'The filename did not contain a dot (".") which is required for media & attachments.  Go back and rename the file and try again.'
               return
             editdir = r.MultipartForm.Value['EditDir'][0]
             fpath = J(editdir, conv.EncodeCurlyStrong(fname))
