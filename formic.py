@@ -30,10 +30,8 @@ MatchHome = regexp.MustCompile('^/+$').FindStringSubmatch
 MatchCurator = regexp.MustCompile('^/+([*]+\\w*)').FindStringSubmatch
 
 MatchMdDirName = regexp.MustCompile('^[a-z][-a-z0-9_]*$').FindString
-MatchMdFileName = regexp.MustCompile('^[a-z][-a-z0-9_]*[.]md$').FindString
+MatchMdFileName = regexp.MustCompile('^([a-z][-a-z0-9_]*)[.]md$').FindStringSubmatch
 MatchMdEditName = regexp.MustCompile('^([a-z][-a-z0-9_]*/)?([a-z][-a-z0-9_]*)$').FindStringSubmatch
-MatchMediaDirName = regexp.MustCompile('^[-A-Za-z0-9_{}]+$').FindString
-MatchMediaFileName = regexp.MustCompile('^[-A-Za-z0-9_.{}]+$').FindString
 
 # For uploading attachments
 DOTFILE = regexp.MustCompile('(^[.]|[/][.])').FindString
@@ -96,68 +94,40 @@ class FormicMaster:
         NumAttachments= numAttachments,
         )
     p.Age = (time.Now().Unix() - p.Date.Unix()) / 86400.0
-    #say p.Age, time.Now().Unix(), p.Date.Unix(), p.Date
     return p
 
   def WalkMdTreeMakingPages(dirname):
-    #say dirname
-    for name, isDir, modTime, sz in sorted(.bund.List4(J('/formic/content', dirname), pw=None)):
-      if modTime > 9999999999:
-        modTime = modTime // 1000
+    for name, isDir, millis, sz in sorted(.bund.List4(J('/formic/content', dirname), pw=None)):
+      if millis < 9999999999:
+        millis = millis * 1000
       if isDir and MatchMdDirName(name):
         for pair in .WalkMdTreeMakingPages(J(dirname, name)):
-          #say pair
           yield pair
       else:
-        if not isDir and sz > 0 and MatchMdFileName(name):
+        say 1001, isDir, sz
+        if _, slug = not isDir and sz > 0 and MatchMdFileName(name):
+          say 1002, name, slug
           # Count attachments.
           attDir = J('/formic/content', dirname, name[:-3])
-          #say attDir
           attCount = 0
-          for att_name, att_isdir, att_mtime, att_size in .bund.List4(attDir, pw=None):
-            #say att_name, att_isdir, att_mtime, att_size, attDir
+          for att_name, att_isdir, _, att_size in .bund.List4(attDir, pw=None):
             if ('.' in att_name) and not att_isdir and not MatchMdFileName(att_name) and att_size > 0:
               attCount += 1
 
-          #say name, attDir, attCount
-          pname = J(dirname, name[:-3]).strip('/')
-          p = .MakePage(pname, time.Unix(0, modTime*1000000000), sz, numAttachments=attCount)
+          pname = J(dirname, slug).strip('/')
+          p = .MakePage(pname, time.Unix(0, millis*1000000), sz, numAttachments=attCount)
           yield pname, p
-
-  def WalkMediaTree(dirname):
-    #say dirname
-    for name, isDir, modTime, sz in sorted(.bund.List4(J('/formic/static/media', dirname), pw=None)):
-      if modTime > 9999999999:
-        modTime = modTime // 1000
-      #say name, isDir, modTime, sz
-      # Actually we don't upload into subdirs yet.
-      if isDir and MatchMediaDirName(name):
-        for pair in .WalkMediaTree(J(dirname, name)):
-          #say pair
-          yield pair
-      else:
-        if sz > 0 and MatchMediaFileName(name):
-          pname = J(dirname, name).strip('/')
-          p = setattrs(go_new(MediaFile),
-              Date= time.Unix(0, modTime*1000000000),
-              Size= sz,
-              Identifier= pname,
-              Slug= name,
-              Directory= dirname,
-              )
-          p.Age = (time.Now().Unix() - p.Date.Unix()) / 86400.0
-          #say pname, p.Age, time.Now().Unix(), p.Date.Unix(), p.Date, modTime
-          yield pname, p
+        say 1003
 
   def ReloadPageMeta():
-    page_d = dict(.WalkMdTreeMakingPages('/'))
-    #say page_d
-    media_d = dict(.WalkMediaTree('/'))
-    #say media_d
+    tmp = .WalkMdTreeMakingPages('/')
+    say tmp
+    tmp2 = list(tmp)
+    say tmp2
+    page_d = dict(tmp2)
+    say page_d
     page_list = page_d.values()
-    #say page_list
-    media_list = media_d.values()
-    #say media_list
+    say page_list
 
     # Sort pages.
     pages_by = setattrs(go_new(PagesBy),
@@ -165,13 +135,10 @@ class FormicMaster:
       ByDate= util.NativeSlice(sorted(page_list, reverse=True, key=lambda x: x.Date.Unix())),
       ByURL= util.NativeSlice(sorted(page_list, key=lambda x: x.Permalink)),
       )
-    # Sort media.
-    media_by = setattrs(go_new(MediaBy),
-      ByDate= util.NativeSlice(sorted(media_list, reverse=True, key=lambda x: x.Date.Unix())),
-      ByURL= util.NativeSlice(sorted(media_list, key=lambda x: x.Identifier)),
-      )
+    say pages_by
 
     # Visit pages, to build tags & menus.
+    say 137
     menud = {} ## which_menu -> pagename -> MenuEntry
     tags = {}  ## tagname -> pagename -> p
     for pname, p in page_d.items():
@@ -208,6 +175,7 @@ class FormicMaster:
           menu[pname] = entry
 
     # Sort the menus.
+    say 173
     for which_menu, menu in menud.items():
       menu2 = sorted(menu.values(), key=WeightedKey)
       #say 'sorted', menu2
@@ -222,43 +190,17 @@ class FormicMaster:
         #say util.NativeSlice(sub_menu_list)
         topE.Children = util.NativeSlice(sub_menu_list)
 
-    # Sort pages for tags.
-    tags_pages_by = {}
-    for t, pmap in tags.items():
-      ## pmap :: pname -> p
-      page_list = pmap.values()
-
-      tags_pages_by[t] = setattrs(go_new(PagesBy),
-        ByTitle= util.NativeSlice(sorted(page_list, key=lambda x: x.Title)),
-        ByDate= util.NativeSlice(sorted(page_list, reverse=True, key=lambda x: x.Date.Unix())),
-        ByURL= util.NativeSlice(sorted(page_list, key=lambda x: x.Permalink)),
-        )
-    # Construct the site.
-    try:
-      site_toml = bundle.ReadFile(.bund, '/formic/config.toml', pw=None)
-      say site_toml
-      site_d = markdown.EvalToml(site_toml)
-      say site_d
-    except as ex:
-      # TODO -- log error
-      site_d = dict()
-      say ex
-
     .page_d, .pages_by = page_d, pages_by
-    .media_d, .media_by = media_d, media_by
-    .tags, .tags_pages_by = tags, tags_pages_by
     .site = setattrs(go_new(Site),
-      Menus= util.NativeMap(menud),
-      Pages= pages_by,
-      Sections= util.NativeMap(menud),
-      Title= site_d.get('title', '(this site needs a title)'),
-      BaseURL= site_d.get('baseurl', 'http://127.0.0.1/...FixTheBaseURL.../'),
-      Media= media_by,
-      )
+        Menus= util.NativeMap(menud),
+        Pages= pages_by,
+        Sections= util.NativeMap(menud),
+        )
 
     # Pages link back up to Site
     for pname, p in page_d.items():
       p.Site = .site
+    say 199
 
   def ReloadTemplates():
     tpl = template.New('ROOT')
@@ -305,41 +247,16 @@ class FormicMaster:
     if DOTFILE(path):
       raise 'Dotfile in path not allowed: %q' % path
 
-    # We hardwire the taxonomy "tags".
-    if _, value = MatchTags(path):
-      if value:
-        raise 'TODO value %q' % value
-        if by = .tags_pages_by.get('value'):
-          d = util.NativeMap(dict(
-            Data=util.NativeMap(dict(
-              Pages=by,
-              )),
-            Title='Pages with tag %q' % value,
-            ))
-          .tpl.ExecuteTemplate(w, J('theme', '_default', 'list.html'), d)
-        else:
-          print >>w, 'There are no pages with tag %q.' % value
-      else:
-        # Generate list.
-        print >>w, '<ul>'
-        for tag in .tags:
-          print >>w, '<li><a href="%stags/%s">%s</a>' % (root, tag, tag)
-        print >>w, '</ul>'
-      return
-
     static_path = None
-
     if _, static_dir, static_file = MatchStatic(path):
       # Does it have varients?
       static_path = J('/formic/static', static_dir, static_file)
       varients = .bund.ListImageVarients(static_path, None)
-      #say 'VARIENTS', static_path, varients
 
     elif _, static_section, static_dir, static_file = MatchAttachment(path):
       # Does it have varients?
       static_path = J('/formic/content', static_section, static_dir, static_file)
       varients = .bund.ListImageVarients(static_path, None)
-      #say 'VARIENTS', static_path, varients
 
     if static_path:
       zvar = None
@@ -365,8 +282,6 @@ class FormicMaster:
             if (not maxh or vh <= maxh) and (not maxw or vw <= maxw):
               if big > zbig:
                 zvar, zbig, zw, zh = vname, big, vw, vh
-                #say zvar, zbig, zw, zh
-        #say 'VARIENT', zvar, zbig, zw, zh
 
         # If all are too big, use the smallest.
         if not zvar:
@@ -374,16 +289,14 @@ class FormicMaster:
             zvar = minvar
 
       # ServeContent on the static file.
-      #say static_path, zvar
       w.Header().Set('Cache-Control', 'max-age=%s, s-maxage=%s' % (STATIC_MAX_AGE, STATIC_MAX_AGE))
       rs, someModTime, _size = .bund.NewReadSeekerTimeSize(static_path, rev=zvar)
       correctModTime = time.Unix(0, util.ConvertToNanos(someModTime))
       http.ServeContent(w, r, r.URL.Path, correctModTime, rs)
       return
 
-    # If it is not a curator command and not a static file and not a Taxonomy, it must be a page.
+    # It must be a page.
     if MatchHome(path):
-      #say 'MatchHome', path
       return .aphid.amux.SmartRedirect(w, r, '/home/')
 
     if  _, section, base = MatchContent(path):
@@ -392,14 +305,13 @@ class FormicMaster:
 
       pname = J(section, base).strip('/')
       p = .page_d.get(pname)
-      #say 'MatchContent', path, section, base, pname, p
 
       w.Header().Set('Content-Type', 'text/html; charset=UTF-8')
       if not p:
         # Page does not exist.
         w.WriteHeader(404)
         print >>w, '404 PAGE NOT FOUND.\n\n'
-        print >>w, 'pname = %q' % pname
+        print >>w, 'Page name = %q' % pname
         return
 
       ptype = p.Type if p.Type else '_default'
@@ -425,16 +337,6 @@ type MenuEntry struct {
         Root      string
         Level      int
         Children   i_util.NativeSlice
-}
-
-type MediaFile struct {
-        Date            i_time.Time
-        Size            int64
-        Identifier      string
-        Slug            string
-        Directory       string
-        Age             float64
-        Root      string
 }
 
 type Page struct {
@@ -471,17 +373,10 @@ type PagesBy struct {
         ByURL           i_util.NativeSlice
 }
 
-type MediaBy struct {
-        ByTitle         i_util.NativeSlice
-        ByDate          i_util.NativeSlice
-        ByURL           i_util.NativeSlice
-}
-
 type Site struct {
         Title          string
         BaseURL        string
         Pages          *PagesBy
-        Media          *MediaBy
         // Files          []*source.File
         // Tmpl           tpl.Template
         // Taxonomies     TaxonomyList
@@ -568,40 +463,17 @@ class Curator:
               Site=.master.site,
               Root=root,
               )
-          #say d
           .t.ExecuteTemplate(w, 'CURATE', util.NativeMap(d))
-
-        case '**site':
-          d = dict(
-              Site=.master.site,
-              Root=root,
-              )
-          .t.ExecuteTemplate(w, 'SITE', util.NativeMap(d))
-
-        case '**edit_site_submit':
-          if query['submit'] == 'Save':
-            d = dict(
-              title= query['title'],
-              baseurl= query['baseurl'],
-              Root=root,
-              )
-            toml = markdown.EncodeToml(util.NativeMap(d))
-            bundle.WriteFile(.bund, '/formic/config.toml', toml, pw=None)
-            .master.Reload()
-          .aphid.amux.SmartRedirect(w, r, "%s**site" % root)
-
-        case '**edit_site':
-          d = dict(
-            Site=.master.site,
-            Root=root,
-            )
-          .t.ExecuteTemplate(w, 'EDIT_SITE', util.NativeMap(d))
 
         case '**delete_file_submit':
           delfile = query['delfile']
-          if query.get('DeleteFile'):
+
+          if query.get('ConfirmDeleteFile'):
             bundle.WriteFile(.bund, delfile, '', pw=None)
-          if whither = query.get('redirect'):
+          else:
+            raise 'Not confirmed so not deleted.   Go back and retry.'
+
+          if whither = query.get('Redirect'):
             .aphid.amux.SmartRedirect(w, r, whither)
           else:
             .aphid.amux.SmartRedirect(w, r, '%s**view?f=%s' % (root, P.Dir(delfile)))
@@ -611,12 +483,12 @@ class Curator:
             Title='Upload Media Attachment',
             Action='%s**delete_file_submit' % root,
             fname=fname,
-            redirect=query.get('redirect', ''),
+            Redirect=query.get('Redirect', ''),
             Root=root,
             )
           .t.ExecuteTemplate(w, 'DELETE_FILE', util.NativeMap(d))
 
-        case '*attach_media_submit':
+        case '*attach_submit':
           r.ParseMultipartForm(1024*1024)
           cd = r.MultipartForm.File['file'][0].Header.Get('Content-Disposition')
           match = MATCH_FILENAME(cd)
@@ -647,20 +519,10 @@ class Curator:
           else:
             print >>w, 'No file was uploaded.  Go back and try again.'
 
-        case '*attach_media':
+        case '**attach':
           d = dict(Title='Upload Media Attachment',
-                   Action='%s*attach_media_submit' % root,
-                   EditDir='formic/static/media',
-                   EditDirFixed='1',
-                   Root=root,
-                   )
-          .t.ExecuteTemplate(w, 'ATTACH', util.NativeMap(d))
-
-        case '**attach_file':
-          d = dict(Title='Upload Media Attachment',
-                   Action='%s*attach_media_submit' % root,
-                   EditDir='%s' % query.get('dir', '/formic/static/media'),
-                   EditDirFixed='',
+                   Action='%s*attach_submit' % root,
+                   EditDir=query['dir'],
                    Root=root,
                    )
           .t.ExecuteTemplate(w, 'ATTACH', util.NativeMap(d))
@@ -796,7 +658,7 @@ class Curator:
                    Identifier=fname,
                    Dirpath=dirname,
                    Attachments=attachments,
-                   Action='%s*attach_media_submit' % root,
+                   Action='%s*attach_submit' % root,
                    Redirect='%s*attachments_for_page?f=%s' % (root, fname),
                    DebugListing=listing,
                    Root=root,
@@ -943,7 +805,7 @@ CURATOR_TEMPLATES = `
         </ul>
 
         <h3>Files</h3>
-        [<a href="{{$.Root}}**attach_file?dir={{.dir}}">Upload File</a>]
+        [<a href="{{$.Root}}**attach?dir={{.dir}}">Upload File</a>]
         <ul>
         {{ range $.ff | Keys }}
           <li> <a href="{{$.Root}}**view?f={{ JoinPaths $.dir . }}">{{ . }}</a>
@@ -957,34 +819,6 @@ CURATOR_TEMPLATES = `
                [<a href="{{$.Root}}**revs?f={{ JoinPaths $.dir . }}">revisions</a>]
         {{ end }}
         </ul>
-
-        {{ template "TAIL" $ }}
-{{end}}
-{{define "SITE"}}
-        {{ template "HEAD" $ }}
-        <ttx><ul>
-          <li>Site Title = "{{.Site.Title}}"
-          <li>Base URL = "{{.Site.BaseURL}}"
-          <li>[<a href="{{$.Root}}**edit_site">Edit Site</a>]
-        </ul></ttx>
-
-        {{ template "TAIL" $ }}
-{{end}}
-{{define "EDIT_SITE"}}
-        {{ template "HEAD" $ }}
-
-        <table border=1><tr><td>
-        <form method="POST" action="/**edit_site_submit">
-          <br><br>
-          Site Title: <input type=text size=60 name=title value={{.Site.Title}}>
-          <br><br>
-          Base URL: <input type=text size=60 name=baseurl value={{.Site.BaseURL}}>
-          <br><br>
-          <input type=submit name=submit value=Save> &nbsp; &nbsp;
-          <input type=reset> &nbsp; &nbsp;
-          <input type=submit name=submit value=Cancel> &nbsp; &nbsp;
-        </form>
-        </table>
 
         {{ template "TAIL" $ }}
 {{end}}
@@ -1064,11 +898,11 @@ CURATOR_TEMPLATES = `
         {{ template "HEAD" $ }}
         <form method="POST" action="{{.Action}}">
           <input type=hidden name=delfile value={{.fname}}>
-          <input type=hidden name=redirect value={{.redirect}}>
+          <input type=hidden name=Redirect value={{.Redirect}}>
           <p>
           Deleting file: <b>"{{.fname}}"</b>
           <p>
-          <input type="checkbox" name=DeleteFile value="1"> &nbsp; Check to Confirm.
+          <input type="checkbox" name=ConfirmDeleteFile value="1"> &nbsp; Check to Confirm.
           <br> <br>
           <input type=submit value=Delete> &nbsp; &nbsp;
         </form>
@@ -1083,8 +917,7 @@ CURATOR_TEMPLATES = `
           <input type=hidden name=Redirect value="{{$.Redirect}}">
           <p>
           Upload a new attachment:
-          <input type="file" name="file">
-          <br> <br>
+          <input type="file" name="file"> &nbsp; &nbsp; ==&gt;
           <input type=submit value=Save> &nbsp; &nbsp;
           <input type=reset> &nbsp; &nbsp;
           <big>[<a href="{{$.Redirect}}">Cancel</a>]</big>
@@ -1100,7 +933,7 @@ CURATOR_TEMPLATES = `
             <th> Mod Time
         {{ range $.Attachments }}
           <tr>
-            <td> <a href="{{$.Root}}**delete_file?redirect={{$.Root}}*&f={{ JoinPaths (JoinPaths "formic/content" ($.Identifier)) (index . 0) }}">delete</a>
+            <td> <a href="{{$.Root}}**delete_file?Redirect={{$.Root}}*&f={{ JoinPaths (JoinPaths "formic/content" ($.Identifier)) (index . 0) }}">delete</a>
             <td> <b>{{index . 0}}</b>
             <td> {{index . 1}}
             <td> {{(index . 2).Format "2006-02-01"}}
@@ -1129,12 +962,7 @@ CURATOR_TEMPLATES = `
           Upload a new attachment:
           <input type="file" name="file">
           <br> <br>
-          {{ if .EditDirFixed }}
-          <input type=hidden name=EditDir value={{.EditDir}}>
-          {{ else }}
           Directory: <input type=text name=EditDir value={{.EditDir}} size=40> &nbsp; &nbsp;
-          <br> <br>
-          {{ end }}
           <br> <br>
           <input type=submit value=Save> &nbsp; &nbsp;
           <input type=reset> &nbsp; &nbsp;

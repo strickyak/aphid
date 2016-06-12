@@ -163,7 +163,7 @@ def main(args):
   # Install a template for /formic/layouts/_default/single.html
   buf = bytes.NewBuffer('<html><body>Default Single Template: (((Title: {{$.Title}})))</body></html>\n')
   z0 = HttpUpload(
-      url='http://localhost:%s/@termite1.formic/*attach_media_submit?' % t1_http,
+      url='http://localhost:%s/@termite1.formic/*attach_submit?' % t1_http,
       basename='single.html',
       params=dict(foo='bar', EditDir='/formic/layouts/_default'),
       r=buf,
