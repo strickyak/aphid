@@ -6,7 +6,7 @@ def HexDump(b, label):
   n = len(b)
   fmt.Fprintf(os.Stderr, "###### %q  len=%d\n", label, n)
 
-  for i in range((n+15)//16):
+  for i in range((n+15)/16):
     y = ''
     z = ''
     for j in range(16):

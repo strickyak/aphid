@@ -171,7 +171,6 @@ class FormicMaster:
               Level=len(pwords),
               Parent=pwords[0],
               )
-          entry.DebugName = entry.Name + "/" + WeightedKey(entry)
           menu[pname] = entry
 
     # Sort the menus.
@@ -327,7 +326,6 @@ native: `
 type MenuEntry struct {
         URL        string
         Name       string
-        DebugName  string
         Menu       string
         Identifier string
         Pre        i_template.HTML

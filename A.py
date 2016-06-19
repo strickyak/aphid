@@ -14,7 +14,7 @@ def NowSecs():
   return time.Now().Unix()
 
 def NowMillis():
-  return time.Now().UnixNano() // 1000000
+  return time.Now().UnixNano() / 1000000
 
 def NowNanos():
   return time.Now().UnixNano()

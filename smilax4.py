@@ -74,6 +74,7 @@ class Smilax4Master:
     for f in RYBA_FUNCTIONS:
       fname = SimpleFunctionName(f)
       say str(f), fname, f
+      #.fr.SetVar('Ryba_' + fname, chirp.MkT(go_cast(ICallV,f)))
       .fr.SetVar('Ryba_' + fname, chirp.MkT(f))
       .fr.EvalString('macro %s ARGS { rycall $Ryba_%s {*}$ARGS }' % (fname, fname))
     say .fr.EvalString("info globals").String()

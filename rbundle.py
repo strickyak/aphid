@@ -34,7 +34,7 @@ native:
   `
     func (self *C_idRemoteReader) Read(p []byte) (n int, err error) {
       plen := len(p)
-      var x B
+      var x M
 
       func() {
         defer func() {
@@ -47,15 +47,15 @@ native:
           return
         }()
         x = self.M_1_ReadChunk(Mkint(plen))
-        if x.Self.Len() == 0 {
+        if x.Len() == 0 {
           err = io.EOF
         }
       }()
 
       if err == nil {
-        xb := x.Self.Bytes()
+        xb := x.Bytes()
         copy(p, xb)
-        n = x.Self.Len()
+        n = x.Len()
       }
       return
     }
