@@ -1,4 +1,4 @@
-from . import laph as L
+from . import laph3 as L
 from rye_lib import data
 
 #####################################
@@ -19,27 +19,31 @@ p = L.Compile(`
     b = { x = 100 ; y = 200 ; c = 5 }
     bb = { x = 111 ; c = 555 }
   }
+  base-b = { x = 100 ; y = 200 ; c = 5 }
   qrs = ?Nando!
-  d = /a/b { c = 8 ; z = ( ++ abc $../qrs xyz $x ) }
+  # 'base-b' used to be '/a/b', but we don't support long bases any more.
+  d = base-b { c = 8 ; z = ( ++ abc $../qrs xyz $x ) }
   e = /a {
     p = { q = 9 } 
     b { x = 888 }
   }
 `)
-assert p.Eval('a/b/c') == '5'
-#TODO# assert p.Eval('a/b/c/xyzzy') is None, p.Eval('a/b/c/xyzzy')
-assert ["b", "bb", "p"] == p.Eval('/e').names
-assert ["c", "x"] == p.Eval('/e/bb').names
-say p.Eval('/')
-say p.Eval('/e')
-say p.Eval('/e/b')
-assert ["c", "x", "y"] == p.Keys('/e/b')
-assert "888" == p.Eval('/e/b/x')
-assert "100" == p.Eval('/a/b/x')
-assert "200" == p.Eval('/e/b/y')
-assert "200" == p.Eval('/d/y')
-assert "8" == p.Eval('/d/c')
-assert "abc?Nando!xyz100" == p.Eval('/d/z')
+assert p.EvalPath('a/b/c') == '5'
+#TODO# assert p.EvalPath('a/b/c/xyzzy') is None, p.Eval('a/b/c/xyzzy')
+
+
+assert ["b", "bb", "p"] == sorted(p.EvalPath('/e').keys())
+assert ["c", "x"] == sorted(p.EvalPath('/e/bb').keys())
+say p.EvalPath('/')
+say p.EvalPath('/e')
+say p.EvalPath('/e/b')
+assert set(["c", "x", "y"]) == p.Keys('/e/b')
+assert "888" == p.EvalPath('/e/b/x')
+assert "100" == p.EvalPath('/a/b/x')
+assert "200" == p.EvalPath('/e/b/y')
+assert "200" == p.EvalPath('/d/y')
+assert "8" == p.EvalPath('/d/c')
+assert "abc?Nando!xyz100" == p.EvalPath('/d/z')
 #---------------------------------
 p = L.Compile(`
   lib = {
@@ -53,10 +57,10 @@ p = L.Compile(`
   }
   result = $/t1/hyp
 `)
-assert p.Keys('/lib') == ["hyp", "xx", "yy"]
-assert p.Keys('/t1') == ["hyp", "x", "xx", "y", "yy"]
-assert "3" == p.Eval('/t1/x')
-assert '25' == p.Eval('/result')
+assert p.Keys('/lib') == set(["hyp", "xx", "yy"])
+assert p.Keys('/t1') == set(["hyp", "x", "xx", "y", "yy"])
+assert "3" == p.EvalPath('/t1/x')
+assert '25' == p.EvalPath('/result')
 #---------------------------------
 p = L.Compile(`
   one = { a = 11 }
@@ -64,10 +68,10 @@ p = L.Compile(`
   three = two { c = 33 }
   result = (+ $three/a $three/b $three/c )
 `)
-assert p.Keys('one') == ['a']
-assert p.Keys('two') == ['a', 'b']
-assert p.Keys('three') == ['a', 'b', 'c']
-assert '66' == p.Eval('result')
+assert p.Keys('one') == set(['a'])
+assert p.Keys('two') == set(['a', 'b'])
+assert p.Keys('three') == set(['a', 'b', 'c'])
+assert '66' == p.EvalPath('result')
 #---------------------------------
 p = L.Compile(`
   double = (fn (x) (++ $x $x))
@@ -83,14 +87,14 @@ p = L.Compile(`
   factorial = (fn (n) (if (< $n 2) 1 (* $n ($factorial (- $n 1)))))
   twenty = ($factorial 4)
 `)
-#TODO# assert 'foofoo' == p.Eval('doublefoo')
-#TODO# assert '2002' == p.Eval('twice1001')
-#TODO# assert p.Eval('doubles') == ["00", "11", "22", "33", "44", "55", "66", "77", "88", "99"]
-#TODO# assert p.Eval('twices') == ["0", "2", "4", "6", "8", "10", "12", "14", "16", "18"]
-#TODO# assert p.Eval('len2') == "10"
-#TODO# assert p.Eval('one') == "IsNot<10"
-#TODO# assert p.Eval('two') == "Is>=10"
-#NOT YET# assert p.Eval('twenty') == "20"
+#TODO# assert 'foofoo' == p.EvalPath('doublefoo')
+#TODO# assert '2002' == p.EvalPath('twice1001')
+#TODO# assert p.EvalPath('doubles') == ["00", "11", "22", "33", "44", "55", "66", "77", "88", "99"]
+#TODO# assert p.EvalPath('twices') == ["0", "2", "4", "6", "8", "10", "12", "14", "16", "18"]
+#TODO# assert p.EvalPath('len2') == "10"
+#TODO# assert p.EvalPath('one') == "IsNot<10"
+#TODO# assert p.EvalPath('two') == "Is>=10"
+#NOT YET# assert p.EvalPath('twenty') == "20"
 #---------------------------------
 print 'OKAY laph2_test'
 
@@ -136,17 +140,17 @@ PROGRAM1= `
 `
 p1 = L.Compile(PROGRAM1)
 
-must "100" == p1.Eval('/a')
-must "BART" == p1.Eval('/b')
-must "BART" == p1.Eval('/c')
-must "31400" == p1.Eval('/d')
+must "100" == p1.EvalPath('/a')
+must "BART" == p1.EvalPath('/b')
+must "BART" == p1.EvalPath('/c')
+must "31400" == p1.EvalPath('/d')
 
 ######################################
-#must 'Is<10' == p1.Eval('/one').leaf.a
-#must 'Is>=10' == p1.Eval('/two').leaf.a
-#: must "foofoo" == p1.Eval('/doublefoo').leaf.a
-#: must "2002" == p1.Eval('/twice1001').leaf.a
-#must "20" == p1.Eval('/twenty').leaf.a
+#must 'Is<10' == p1.EvalPath('/one').leaf.a
+#must 'Is>=10' == p1.EvalPath('/two').leaf.a
+#: must "foofoo" == p1.EvalPath('/doublefoo').leaf.a
+#: must "2002" == p1.EvalPath('/twice1001').leaf.a
+#must "20" == p1.EvalPath('/twenty').leaf.a
 ######################################
 
 PROGRAM2= `
@@ -162,20 +166,20 @@ PROGRAM2= `
     }
 `
 p2 = L.Compile(PROGRAM2)
-must "D{a,d,e,qrs}" == repr(p2.Eval('/'))
-must "?Nando!" == p2.Eval('/qrs')
-must "100" == p2.Eval('/a/b/x')
-must "9" == p2.Eval('/e/p/q')
-must "888" == p2.Eval('/e/b/x')
-must "200" == p2.Eval('/e/b/y')
+#must "D{a,d,e,qrs}" == repr(p2.EvalPath('/'))
+must "?Nando!" == p2.EvalPath('/qrs')
+must "100" == p2.EvalPath('/a/b/x')
+must "9" == p2.EvalPath('/e/p/q')
+must "888" == p2.EvalPath('/e/b/x')
+must "200" == p2.EvalPath('/e/b/y')
 
-must "10" == p2.Eval('/a/b/m/n')
-must None == p2.Eval('/a/b/m/nn')
-must "30" == p2.Eval('/a/b/m/nnn')
+must "10" == p2.EvalPath('/a/b/m/n')
+must except p2.EvalPath('/a/b/m/nn')
+must "30" == p2.EvalPath('/a/b/m/nnn')
 
-must "10" == p2.Eval('/e/b/m/n')
-must "20" == p2.Eval('/e/b/m/nn')
-must "40" == p2.Eval('/e/b/m/nnn')
+must "10" == p2.EvalPath('/e/b/m/n')
+must "20" == p2.EvalPath('/e/b/m/nn')
+must "40" == p2.EvalPath('/e/b/m/nnn')
 ######################################
 
 PROGRAM3 = `
@@ -185,7 +189,7 @@ PROGRAM3 = `
   result = (+ $three/a $three/b $three/c )
 `
 p3 = L.Compile(PROGRAM3)
-assert '66' == p3.Eval('/result')
+assert '66' == p3.EvalPath('/result')
 ######################################
 
 PROGRAM4 = `
@@ -195,12 +199,12 @@ PROGRAM4 = `
   three = two { a = 33 }
 `
 p4 = L.Compile(PROGRAM4)
-assert '10' == p4.Eval('/one/a')
-assert '22' == p4.Eval('/two/a')
-assert '33' == p4.Eval('/three/a')
-assert '20' == p4.Eval('/one/aa')
-assert '44' == p4.Eval('/two/aa')
-assert '66' == p4.Eval('/three/aa')
+assert '10' == p4.EvalPath('/one/a')
+assert '22' == p4.EvalPath('/two/a')
+assert '33' == p4.EvalPath('/three/a')
+assert '20' == p4.EvalPath('/one/aa')
+assert '44' == p4.EvalPath('/two/aa')
+assert '66' == p4.EvalPath('/three/aa')
 ######################################
 
 PROGRAM5 = `
@@ -223,13 +227,13 @@ PROGRAM5 = `
   }
 `
 p5 = L.Compile(PROGRAM5)
-assert 'D{d1}' == repr(p5.Eval('/def/b/d'))
-assert 'D{d1,d2}' == repr(p5.Eval('/ghi/b/d'))
-assert '1111' == p5.Eval('/abc/b/d/d1')
-assert '1111' == p5.Eval('/def/b/d/d1')
-assert '1111' == p5.Eval('/ghi/b/d/d1')
-assert '2222' == p5.Eval('/ghi/b/d/d2')
-assert repr(p5.Eval('/def/c')) == 'D{c1,c2,c3,c4}'
+assert set(['d1']) == p5.Keys('/def/b/d')
+assert set(['d1', 'd2']) == p5.Keys('/ghi/b/d')
+assert '1111' == p5.EvalPath('/abc/b/d/d1')
+assert '1111' == p5.EvalPath('/def/b/d/d1')
+assert '1111' == p5.EvalPath('/ghi/b/d/d1')
+assert '2222' == p5.EvalPath('/ghi/b/d/d2')
+assert p5.Keys('/def/c') == {'c1', 'c2', 'c3', 'c4'}
 
 assert data.Eval(p5.ToJson('/abc')) == {"a1":"110", "a2":"120", "a3":"130", "b":{"b1":"210", "b2":"220", "d":{"d1":"1111"}}, "c":{"c1":"310", "c2":"320", "c3":"330"}}
 
@@ -400,4 +404,4 @@ assert data.Eval(sheep.ToJson('job:local:lid1')) == {"bundles":{"sheep-boxturtle
   "webs":{}, "wikis":{}, "zones":{"aphid.cc":{"bundle":"sheep-dns", "zonefile":"dns/aphid.cc"}}}
 #############################################
 
-print "OKAY: laph7_test.py"
+print "OKAY: laph_test.py"
