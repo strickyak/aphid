@@ -100,7 +100,7 @@ class Aphid:
       fpath = path[len(t)+1:]  # Remove prefix and one '/'
 
       #say bname, path, 'COPY ('
-      body = ioutil.ReadFile(path)
+      body = str(ioutil.ReadFile(path))
       bundle.WriteFile(bund, fpath, body, pw=None, mtime=0, raw=False)
       #say bname, path, 'COPY )'
   

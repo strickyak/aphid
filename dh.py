@@ -2,7 +2,7 @@ from go import math/big
 from go import crypto/rand as crand
 from . import conv
 
-def Big(s :str|byt):
+def Big(s :str):
   must s
   return big.NewInt(0).SetBytes(conv.Decode64(s))
 

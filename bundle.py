@@ -13,7 +13,7 @@ FILE_PERM = 0644
 
 TheSerial = sema.Serial()
 
-def ReadFile(bund :Base, path :str, pw:str|byt?=None, raw:bool?=None, rev:str?=None, varient:str='r'):
+def ReadFile(bund :Base, path :str, pw=None, raw:bool=False, rev=None, varient:str='r'):
   r, rev_out = bund.MakeReaderAndRev(path, pw=pw, raw=raw, rev=rev, varient=varient)
   #say bund, path, rev, rev_out
   w = go_new(bytes.Buffer)
@@ -21,7 +21,7 @@ def ReadFile(bund :Base, path :str, pw:str|byt?=None, raw:bool?=None, rev:str?=N
   r.Close()
   return w.String()
 
-def WriteFile(bund :Base, path :str, body :str|byt, pw=None, mtime:int=0, raw:bool?=None, varient:str='r', suffix:str=''):
+def WriteFile(bund :Base, path :str, body :str, pw=None, mtime:int=0, raw:bool=False, varient:str='r', suffix:str=''):
   if not mtime:
     mtime = NowMillis()
   #say 'FRODO WriteFile', bund, path, len(body), pw, raw, mtime, varient, suffix
@@ -205,7 +205,7 @@ class WebkeyBundle(Base):
     return b.WriteRawFile(rawpath, data)
 
 class PosixBundle(Base):
-  def __init__(aphid :object?, bname :str, bundir :str, suffix, keyid=None, key=None):
+  def __init__(aphid :object, bname :str, bundir :str, suffix, keyid=None, key=None):
     #say bname, bundir, suffix, keyid, key
     .aphid = aphid
     .bus = aphid.bus if .aphid else None
@@ -224,7 +224,7 @@ class PosixBundle(Base):
       raise 'Bad Path: %q' % path
     return P.Clean(path)
 
-  def List4(path:str, pw:str? =None, varient:str ='r'):
+  def List4(path:str, pw=None, varient:str ='r'):
     """Yield tuples of (name, isDir, mtime, size)."""
     must not pw
     path = .CheckPath(path)
@@ -306,7 +306,7 @@ class PlainBundle(Base):
     .table = table.Table(F.Join(.bundir, 'd.table'))
     os.MkdirAll(bundir, 0777)
 
-  def List4(path:str, pw:str? =None, varient:str ='r'):
+  def List4(path:str, pw=None, varient:str ='r'):
     #say 'List4', path
     dp = .dpath(path)
     vec = .TryOsReadDir(dp)
