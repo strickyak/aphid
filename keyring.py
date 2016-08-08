@@ -29,10 +29,12 @@ def OpenWithSecret(encrypted):
 
 class DhKey:
   def __init__(d):
-    #say d
     .id = d['id']
     .pub = d['pub']
+    must .pub
+    .pub = str(.pub)
     .sec = d.get('sec') if d.get('sec') else OpenWithSecret(d['Xsec']) if d.get('Xsec') else None
+    .sec = None if .sec is None else str(.sec)
     must RE_BASE64(.pub)
     .o_pub = dh.Big(.pub)  # big.Int
     if .sec:
@@ -44,6 +46,8 @@ class SymKey:
     .id = d['id']
     .num = d['num']
     .sym = d['sym'] if d.get('sym') else conv.EncodeHex(OpenWithSecret(d['Xsym']))
+    must .sym
+    .sym = str(.sym)
     must RE_HEX(.sym)
     must len(.sym)== sym.KEY_HEX_LEN
     .b_sym = sym.DecodeHex(.sym)
@@ -54,7 +58,6 @@ class WebKey:
     .num = d['num']
     .xor = d['xor'] if d.get('xor') else OpenWithSecret(d['Xxor'])
     .base = d['base']
-    #say .id, .xor, .base, d
     must RE_HEX(.xor)
     must len(.xor)== sym.KEY_HEX_LEN
     .b_xor = sym.DecodeHex(.xor)
@@ -68,9 +71,7 @@ class HashedPw:
 def CompileDicts(d):
   """CompileDicts the dict of dicts into the dict of objects."""
   ring = {}
-  #say d
   for k, v in d.items():
-    #say k, v
     switch v['TYPE']:
       case 'pw/doubleHash':
         ring[k] = HashedPw(v)
@@ -88,7 +89,6 @@ def Load(filename=None):
   """Load the ring dict from the file."""
   global RingDict, Ring
   filename = filename if filename else RingFilename.X
-  #say 'Loading Keyring', filename
   s = str(ioutil.ReadFile(filename)).strip()
   if s:
     RingDict = data.Eval(s)
