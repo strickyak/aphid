@@ -7,20 +7,20 @@ KEY_HEX_LEN = 64
 
 RE_HEX = regexp.MustCompile('^[0-9a-f]+$').FindString
 
-def RandomKey():
+def RandomKey() ::byt:
   bb = mkbyt(KEY_BYT_LEN)
   c = rand.Read(bb)
   must c == KEY_BYT_LEN
   return bb
 
-def DecodeHex(s):
+def DecodeHex(s :str) ::byt:
   must RE_HEX(s)
   must len(s) == KEY_HEX_LEN
   z = mkbyt(KEY_BYT_LEN)
   hex.Decode(z, s)
   return z
 
-def EncodeHex(b):
+def EncodeHex(b :byt) ::str:
   must type(b) == byt
   must len(b) == KEY_BYT_LEN
   z = mkbyt(KEY_HEX_LEN)
@@ -28,30 +28,29 @@ def EncodeHex(b):
   return str(z)
 
 class Cipher:
-  def __init__(key):
+  def __init__(key ::byt):
     """Construct a Cipher with a byt key with len KEY_BYT_LEN."""
     must type(key) is byt
     must len(key) == KEY_BYT_LEN
 
     .block = aes.NewCipher(key)
-    #say .block
     .gcm = cipher.NewGCM(.block)
-    #say .gcm
     .nonceSize = int(.gcm.NonceSize())
     .overhead = int(.gcm.Overhead())
 
-  def Nonce():
+  def Nonce() ::byt:
     buf = mkbyt(.nonceSize)
     rand.Read(buf)  # Uses ReadFull.
     return buf
 
-  def Seal(plain, serial):
+  def Seal(plain, serial) ::byt:
     extra = rye_pickle(serial)
     nonce = .Nonce()
     dark = .gcm.Seal(None, nonce, plain, extra)
-    return rye_pickle( (nonce, dark, extra) )
+    z = rye_pickle( (nonce, dark, extra) )
+    return z
 
-  def Open(sealed):
+  def Open(sealed ::byt) ::tuple:
     nonce, dark, extra = rye_unpickle(sealed)
     plain = .gcm.Open(None, nonce, dark, extra)
     serial = rye_unpickle(extra)
