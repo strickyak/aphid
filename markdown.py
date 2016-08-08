@@ -11,27 +11,15 @@ TOML_FRONT_MATTER = regexp.MustCompile(`(?s)^[+][+][+]\s*\n(.*?\n)[+][+][+]\s*\n
 
 CR = regexp.MustCompile("\r")
 
-HACK_JS = regexp.MustCompile(`([a-z][-a-z0-9_]+)[:]`)
-def EvalJS(s):
-  # HACK to quote keys that were written in jsonnet.
-  t = str(HACK_JS.ReplaceAll(s, `"$1":`))
-  #say s
-  #say t
-  f = data.Eval(t)
-  return f
-
 def EvalToml(s):
-  f = util.NativeMap(dict())
+  f = util.NativeMapAddr(dict())
   toml.Decode(s, f)
-  return f
+  return go_elem(f)
 
 def EncodeToml(x):
-  #say x
   b = go_new(bytes.Buffer)
   toml.NewEncoder(b).Encode(x)
-  z = str(b)
-  #say z
-  return z
+  return str(b)
 
 def TranslateMarkdown(s):
   if s and s.strip():
@@ -41,14 +29,13 @@ def TranslateMarkdown(s):
   return go_cast(template.HTML, html)
 
 def ProcessWithFrontMatter(text):
-  #say text
   text = CR.ReplaceAllString(text, "")
   m1 = JS_FRONT_MATTER.FindStringSubmatch(text)
   m2 = TOML_FRONT_MATTER.FindStringSubmatch(text)
   f = None
   if m1:
     _, front, md = m1
-    f = EvalJS(front)
+    f = data.Eval(front)
   elif m2:
     _, front, md = m2
     f = EvalToml(front)
