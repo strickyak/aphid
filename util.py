@@ -139,6 +139,15 @@ def NativeMap(d):
       }
       return MkGo(z)
     `
+def NativeMapAddr(d):
+  native:
+    `
+      z := make(NativeMap)
+      for k, v := range a_d.Dict() {
+         z[k] = v.Contents()
+      }
+      return MkGo(&z)
+    `
 
 def NativeDeeply(a):
   switch type(a):
