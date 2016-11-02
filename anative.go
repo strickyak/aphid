@@ -3,7 +3,7 @@ package aphid
 import (
 	// External requirements.
 	_ "github.com/BurntSushi/toml"
-	_ "github.com/gdamore/mangos"
+	_ "github.com/go-mangos/mangos"
 	_ "github.com/huandu/skiplist"
 	_ "github.com/microcosm-cc/bluemonday"
 	_ "github.com/nfnt/resize"

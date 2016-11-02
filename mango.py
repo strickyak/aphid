@@ -5,8 +5,8 @@
 # mango/mango -buskey=YAK DOS tcp://127.0.0.1:12002 tcp://127.0.0.1:12001
 # mango/mango -buskey=YAK TRES tcp://127.0.0.1:12003 tcp://127.0.0.1:12001 tcp://127.0.0.1:12002
 
-from go import github.com/gdamore/mangos/protocol/bus
-from go import github.com/gdamore/mangos/transport/tcp
+from go import github.com/go-mangos/mangos/protocol/bus
+from go import github.com/go-mangos/mangos/transport/tcp
 from go import time
 from . import flag, keyring, sym
 
