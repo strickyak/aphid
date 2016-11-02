@@ -1,5 +1,5 @@
 #!/bin/bash
-set -x
+set -ex
 
 rm -rf /tmp/APHID
 mkdir -p /tmp/APHID/src
