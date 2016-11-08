@@ -174,17 +174,18 @@ class Aphid:
         .amux.HandleFunc(v, obj.Handle2)
         say 'formic .amux.HandleFunc %q' % k
 
+    say 'Skipping smilax until later'
     # Add smilax4.
-    for wname, config in .x_smilax4.items():
-      bname = config['bundle']
-      bund = .bundles[bname]
-      obj = smilax4.Smilax4Master(self, bname, bund=bund, config=config)
-      .amux.HandleFunc(wname, obj.Handle2)
-      say 'smilax4 .amux.HandleFunc %q' % wname
-      for k in config.get('paths'):
-        v = config['paths'][k]
-        .amux.HandleFunc(v, obj.Handle2)
-        say 'smilax4 .amux.HandleFunc %q' % k
+    #for wname, config in .x_smilax4.items():
+    #  bname = config['bundle']
+    #  bund = .bundles[bname]
+    #  obj = smilax4.Smilax4Master(self, bname, bund=bund, config=config)
+    #  .amux.HandleFunc(wname, obj.Handle2)
+    #  say 'smilax4 .amux.HandleFunc %q' % wname
+    #  for k in config.get('paths'):
+    #    v = config['paths'][k]
+    #    .amux.HandleFunc(v, obj.Handle2)
+    #    say 'smilax4 .amux.HandleFunc %q' % k
 
     # Add stash.
     for wname, config in .x_stash.items():
