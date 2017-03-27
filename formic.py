@@ -1,3 +1,10 @@
+# FORMIC -- Hugo-like content server (but editable via web).
+#
+# Bugs:
+#   Save image with {32}; reupload it; the {%d} gets expanded again.
+#   Delete image; it still shows up in Attachments.
+#   Root causes double-/ sometimes.
+
 from go import bufio, bytes, fmt, log, reflect, regexp, sort, sync, time
 from go import html/template, net/http, io, io/ioutil, strings
 from go import path as P
