@@ -1,6 +1,6 @@
 all: clean _build test
 
-RYEC=python ../rye/rye.py
+RYEC=python ../rye/rye.py --opts=$(OPTS)
 
 _build:
 	$(RYEC) build aphid.py

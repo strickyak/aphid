@@ -205,7 +205,7 @@ class WebkeyBundle(Base):
     return b.WriteRawFile(rawpath, data)
 
 class PosixBundle(Base):
-  def __init__(aphid :object, bname :str, bundir :str, suffix, keyid=None, key=None):
+  def __init__(aphid :object?, bname :str, bundir :str, suffix, keyid=None, key=None):
     #say bname, bundir, suffix, keyid, key
     .aphid = aphid
     .bus = aphid.bus if .aphid else None
