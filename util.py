@@ -124,9 +124,9 @@ native:
 def NativeSlice(vec):
   native:
     `
-      z := make(NativeSlice, a_vec.Len())
-      for i, e := range a_vec.List() {
-         z[i] = e.Contents()
+      z := make(NativeSlice, JLen(a_vec))
+      for i, e := range JList(a_vec) {
+         z[i] = JContents(e)
       }
       return MkGo(z)
     `
@@ -134,8 +134,8 @@ def NativeMap(d):
   native:
     `
       z := make(NativeMap)
-      for k, v := range a_d.Dict() {
-         z[k] = v.Contents()
+      for k, v := range JDict(a_d) {
+         z[k] = JContents(v)
       }
       return MkGo(z)
     `
@@ -143,8 +143,8 @@ def NativeMapAddr(d):
   native:
     `
       z := make(NativeMap)
-      for k, v := range a_d.Dict() {
-         z[k] = v.Contents()
+      for k, v := range JDict(a_d) {
+         z[k] = JContents(v)
       }
       return MkGo(&z)
     `
@@ -160,6 +160,6 @@ def NativeDeeply(a):
     case tuple:
       return NativeSlice([NativeDeeply(e) for e in a])
   native:
-    ` return MkGo(a_a.Contents()) `
+    ` return MkGo(JContents(a_a)) `
 
 pass

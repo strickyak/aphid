@@ -6,10 +6,10 @@ def AddContentsFunction(t):
   "Install a template function 'unrye' that gets the contents from a PGo."
   "Usage: {{range .Debug | unrye}} <li> {{.}}"
   native:
-    't := a_t.Contents().(*i_template.Template)'
+    't := JContents(a_t).(*i_template.Template)'
     'fmap := make(i_template.FuncMap)'
     'fmap["unrye"] = func (p M) interface{} {'
-    '  return p.Contents()'
+    '  return JContents(p)'
     '}'
     't.Funcs(fmap)'
 # Add the above FuncMap to the PlainBase.

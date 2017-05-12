@@ -73,7 +73,7 @@ def EncodeHex(b):
 def FirstRuneOrd(s):
   """FirstRuneOrd() is Like ord() but works on the first utf8 rune."""
   native: `
-    for _, ru := range a_s.String() {
+    for _, ru := range JString(a_s) {
       return Mkint(int(ru))
     }
   `

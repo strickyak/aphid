@@ -744,7 +744,7 @@ class ChunkWriterAdapter:
 
 native: `
     func (self *C_ChunkWriterAdapter) Write(p []byte) (n int, err error) {
-      return self.M_w.Contents().(io.Writer).Write(p)
+      return JContents(self.M_w).(io.Writer).Write(p)
     }
   `
 
@@ -778,8 +778,8 @@ class ChunkReaderAdapter:
   def SafeReadChunk(n):
     native:
       `
-         r := self.M_r.Contents().(i_io.Reader)
-         n := a_n.Int()
+         r := JContents(self.M_r).(i_io.Reader)
+         n := JInt(a_n)
          bb := make([]byte, int(n))
          cc, err := r.Read(bb)
          if err == nil {
@@ -856,7 +856,7 @@ class RawChunkWriter:
 native:
   `
     func (self *C_RawChunkWriter) Write(p []byte) (n int, err error) {
-      return self.M_w.Contents().(io.Writer).Write(p)
+      return JContents(self.M_w).(io.Writer).Write(p)
     }
   `
 
@@ -955,7 +955,7 @@ class ChunkWriter:
 native:
   `
     func (self *C_ChunkWriter) Write(p []byte) (n int, err error) {
-      return self.M_w.Contents().(io.Writer).Write(p)
+      return JContents(self.M_w).(io.Writer).Write(p)
     }
   `
 

@@ -47,15 +47,15 @@ native:
           return
         }()
         x = self.M_1_ReadChunk(Mkint(plen))
-        if x.Len() == 0 {
+        if JLen(x) == 0 {
           err = io.EOF
         }
       }()
 
       if err == nil {
-        xb := x.Bytes()
+        xb := JBytes(x)
         copy(p, xb)
-        n = x.Len()
+        n = JLen(x)
       }
       return
     }
