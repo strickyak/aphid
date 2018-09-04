@@ -1,4 +1,4 @@
-from go import math/big
+from go import math/big, reflect
 from go import crypto/rand as crand
 from . import conv
 
@@ -8,7 +8,8 @@ def Big(s :str):
 
 def String(x):
   must x
-  must go_typeof(x).String() == '*big.Int'
+  must reflect.ValueOf(x).Type().String() == '*big.Int'
+  #must go_typeof(x).String() == '*big.Int'
   return conv.Encode64(x.Bytes())
 
 def DefineGroup(sz, g, m):

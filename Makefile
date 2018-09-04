@@ -1,6 +1,6 @@
 all: clean _build test
 
-RYEC=python ../rye/rye.py --opts=$(OPTS)
+RYEC=python ../rye/compiler/rye.py --opts=$(OPTS)
 
 _build:
 	$(RYEC) build aphid.py
@@ -11,6 +11,4 @@ test:
 	echo All tests OKAY.
 
 clean:
-	rm -rf rye__* *.bin
-	#T=`find . -name ryemain.go` ; set -x ; for x in $$T ; do rm -f $$x ; rmdir `dirname $$x` ; done
-	#T=`find . -name ryemodule.go` ; set -x ; for x in $$T ; do rm -f $$x ; D=`dirname $$x` ; B=`basename $$D` ; rm -f $$D/$$B ; rmdir $$D ; done
+	rm -rf rye_/ *.bin

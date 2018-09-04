@@ -95,7 +95,7 @@ class ServerConn:
   def WriteActor():
     while True:
       #say 'get'
-      tup = .resultQ.Recv()
+      tup, ok = .resultQ.Recv()
       #say 'got', tup
       if tup is None:
         break
@@ -180,12 +180,12 @@ class Client:
 
   def WriteActor():
     while True:
-      req = .inQ.Recv()
+      req, ok = .inQ.Recv()
       if req is None:
         break
 
       # Allocate a serial, and remember the request.
-      req.serial = (ProcessNonce, TheSerial.Recv())
+      req.serial = (ProcessNonce, TheSerial.Recv()[0])
       .requests[req.serial] = req
 
       pay = rye_pickle( (req.serial, req.proc, req.args, req.kw) )
@@ -223,9 +223,13 @@ class Promise:
     .chan = chan
 
   def Wait():
-    result, err = .chan.Recv()
+    (result, err), ok = .chan.Recv()
+    if not ok:
+      raise 'PromiseWaitError: channel was closed'
     if err:
       if str(err) == 'EOF':
         raise io.EOF
       raise 'PromiseWaitError', err
     return result
+
+pass

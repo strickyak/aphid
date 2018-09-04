@@ -9,22 +9,27 @@ class A:
   def __init__(a):
     .a = a
 
-ch = rye_chan(L)
+ch = rye_chan(L)  # rye_chan Starts it and warms it, with size L.
 say ch
 def Count(n):
   for i in range(n):
     say i
+    say 'sending', n-i
     ch.Send(A(n-i))
+    say 'sent', n-i
   say 'close'
   ch.Close()  # After close, reads will be None.
 
 go Count(N)
 z = []
 while True:
-  x = ch.Recv()
-  say x
-  if x is None:   # On None.
+  say 'Recv...'
+  x, ok = ch.Recv()
+  say x, ok
+  if not ok:
     break
+  #if x is None:   # On None.
+  #  break
   z.append(x.a)
 
 assert z == [N-i for i in range(N)]
