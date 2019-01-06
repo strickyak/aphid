@@ -1,4 +1,4 @@
-from . import queue
+import queue
 
 #############  Test raw rye_chan.
 

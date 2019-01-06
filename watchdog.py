@@ -1,4 +1,4 @@
-from . import flag
+import flag
 
 WatchdogFile = flag.String('watchdog_file', '', 'File to watch for updates.')
 WatchdogSeconds = flag.String('watchdog_seconds', 300, 'How often to check for updates.')

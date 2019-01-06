@@ -1,7 +1,7 @@
 from go import bufio, bytes, io, os, regexp, time
-from go import io/ioutil, path as P, path/filepath as FP
+from go import io.ioutil, path as P, path.filepath as FP
 
-from . import A, bundle, flag, keyring, rbundle, sym
+import A, bundle, flag, keyring, rbundle, sym
 
 FPERM = 0644
 DPERM = 0755

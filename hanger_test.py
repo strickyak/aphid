@@ -1,5 +1,5 @@
-from . import hanger
-from . import A
+import hanger
+import A
 
 hanger.TIMEOUT = 2
 

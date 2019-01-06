@@ -8,7 +8,7 @@
 #   list: A chucl expression to be evaluated.
 
 from go import path as P
-from rye_lib import data
+from "github.com/strickyak/rye/contrib" import data
 
 NONE = ()
 

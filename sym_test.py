@@ -1,7 +1,7 @@
-from go import encoding/hex, regexp
-from go/crypto import aes, cipher, rand
+from go import encoding.hex, regexp
+from go.crypto import aes, cipher, rand
 
-from . import sym
+import sym
 
 def main(_):
   key = byt(4 * 'ABCDEFGH')

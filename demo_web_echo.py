@@ -1,9 +1,9 @@
 # rye run demo_web_echo.py
 
-from go import net/http
-from go import net/http/httputil
+from go import net.http
+from go import net.http.httputil
 from go import fmt
-from . import flag
+import flag
 
 def WebEcho(w, r):
   w.Header().Set('Content-Type', 'text/plain')

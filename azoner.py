@@ -1,12 +1,12 @@
-from go import path/filepath
+from go import path.filepath
 from go import strings
 from go import regexp
-from go import io/ioutil
+from go import io.ioutil
 from go import net
-from . import bundle
-from . import dns
-from . import flag
-from . import hexdump
+import bundle
+import dns
+import flag
+import hexdump
 
 UDPMAX = 512  # Should be enough bytes for normal DNS packets.
 

@@ -1,7 +1,7 @@
 from go import bytes, io, os, time
-from go import path/filepath as F
+from go import "path/filepath" as F
 
-from . import A, bundle, flag, hanger, keyring, pubsub, rpc2
+import A, bundle, flag, hanger, keyring, pubsub, rpc2
 
 KEYNAME = byt('default')
 KEY = byt('ABCDEFGHabcdefgh')

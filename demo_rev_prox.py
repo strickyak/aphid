@@ -3,11 +3,11 @@
 #   http://localhost:8080/foo/bar?color=red
 #   http://localhost:8088/foo/bar?color=red
 
-from go import net/http
-from go import net/http/httputil
-from go import net/url
-from . import A
-from . import flag
+from go import net.http
+from go import net.http.httputil
+from go import net.url
+import A
+import flag
 
 TARGET = flag.String('target', '', 'Target URL')
 PORT = flag.String('port', ':8080', 'Listen on this ":port"')

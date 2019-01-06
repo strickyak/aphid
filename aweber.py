@@ -1,9 +1,9 @@
 from go import bytes, html, os, regexp
-from go import net/http
-from go import path/filepath
+from go import net.http
+from go import path.filepath
 
-from . import adapt, basic, bundle, flag
-from . import awiki, util
+import adapt, basic, bundle, flag
+import awiki, util
 
 BIND = flag.String('bind_addr', ':8080', 'Bind to this address to server web.')
 

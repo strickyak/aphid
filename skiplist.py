@@ -1,7 +1,7 @@
 """
 skiplist.SkipList() is a sorted dictionary mapping strings to any value.
 """
-from go import github.com/huandu/skiplist as base
+from go import "github.com/huandu/skiplist" as base
 from go import sync
 
 class SkipList:

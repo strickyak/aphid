@@ -1,7 +1,7 @@
 from go import bufio, bytes, io, os, time
-from go import io/ioutil, path/filepath
+from go import io.ioutil, path.filepath
 
-from . import A, bundle, flag, keyring, rbundle, sym
+import A, bundle, flag, keyring, rbundle, sym
 
 J = filepath.Join
 FPERM = 0644

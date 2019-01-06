@@ -2,8 +2,8 @@
 # Demo Usage:
 #    resize H W in.jpg out.jpg
 
-from go import github.com/nfnt/resize
-from go import image, image/gif, image/jpeg, image/png
+from go import "github.com/nfnt/resize"
+from go import image, image.gif, image.jpeg, image.png
 from go import bytes, os
 
 MAX_IMG_SIZE = 10 * 1024 * 1024  # 10MB

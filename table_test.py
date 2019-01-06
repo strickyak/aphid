@@ -1,6 +1,6 @@
 from go import os
-from go import path/filepath as F
-from . import table
+from go import path.filepath as F
+import table
 
 D ='/tmp/_aphid_test_skiplist_'
 
@@ -14,17 +14,17 @@ os.Mkdir(D, 0777)
 fd = os.Create(F.Join(D, 't.001'))
 print >>fd, '''
 # comment
-+0012345.0\tcolor\tred
-+0012345.0\tflavor\tlime
-+0012345.0\tsize\tXL
++0012345.0{tab}color{tab}red
++0012345.0{tab}flavor{tab}lime
++0012345.0{tab}size{tab}XL
 ;
 # overrides
-+0024680.X\tcolor\tpurple
++0024680.X{tab}color{tab}purple
 ;
 # does not override, too old.
-+0012345.!\tflavor\tdurian
++0012345.!{tab}flavor{tab}durian
 ;
-'''
+'''.format(tab='\t')
 fd.Close()
 
 t = table.Table(D)

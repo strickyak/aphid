@@ -1,4 +1,4 @@
-from . import dh
+import dh
 
 a = dh.Forge(dh.G1536)
 b = dh.Forge(dh.G2048)

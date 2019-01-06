@@ -1,4 +1,4 @@
-from . import laph3 as L
+import laph3 as L
 
 T1 = `
   negative = (lambda (_x) (if (< $_x 0) negative positive))

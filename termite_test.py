@@ -1,8 +1,8 @@
-from go import bytes, os, io, io/ioutil
-from go import mime/multipart, net/http
-from go import encoding/base64
-from go import path/filepath as FP
-from . import A, au, bundle, flag, keyring, launch, sym, util
+from go import bytes, os, io, io.ioutil
+from go import mime.multipart, net.http
+from go import encoding.base64
+from go import path.filepath as FP
+import A, au, bundle, flag, keyring, launch, sym, util
 
 Ring = None
 

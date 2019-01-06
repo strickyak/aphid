@@ -1,7 +1,5 @@
-from . import bundle
-#from go import github.com/strickyak/redhed
+import bundle
 from go import os
-
 
 pb = bundle.PosixBundle(None, 'posix', '__posix', suffix='0')
 s1 = 'Hello Posix Wiki\n'

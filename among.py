@@ -1,5 +1,5 @@
-from go import io, log, math/rand, regexp, time
-from . import A, bundle, keyring, pubsub, rbundle
+from go import io, log, math.rand, regexp, time
+import A, bundle, keyring, pubsub, rbundle
 
 WATCHDOG_PERIOD = 300.0
 MAX_BACKOFF = 120

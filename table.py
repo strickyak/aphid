@@ -1,7 +1,7 @@
 from go import bufio, fmt, os, time
-from go import path/filepath as F
-from . import A, skiplist
-from rye_lib import data
+from go import path.filepath as F
+import A, skiplist
+from "github.com/strickyak/rye/contrib" import data
 
 class Table:
   # Construct with dpath where the t.* files are, and they will be loaded.
@@ -61,6 +61,7 @@ class Table:
       elif line.startswith('+'):
         # Make an Insert record.
         vec = line.split('\t')
+        say vec
         must len(vec) == 3
         pending.append(vec)
       elif line.startswith('-'):

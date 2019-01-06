@@ -1,4 +1,4 @@
-from . import markdown
+import markdown
 
 def main(args):
   for a in args:

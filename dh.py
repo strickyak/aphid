@@ -1,6 +1,6 @@
-from go import math/big, reflect
-from go import crypto/rand as crand
-from . import conv
+from go import math.big, reflect
+from go import crypto.rand as crand
+import conv
 
 def Big(s :str):
   must s

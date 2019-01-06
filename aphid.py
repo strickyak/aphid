@@ -1,4 +1,4 @@
-from . import flag, launch
+import flag, launch
 
 def main(args):
   args = flag.Munch(args)

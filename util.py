@@ -1,4 +1,4 @@
-from go import os, regexp, reflect, sort, html/template
+from go import os, regexp, reflect, sort, html.template
 from go import path as PATH
 
 def PrettyPrint(x, w=os.Stdout, pre=''):

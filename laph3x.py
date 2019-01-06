@@ -1,5 +1,3 @@
-#from . import util
-
 def Resolve(root, path):
   words = [e for e in path.split('/') if e]
   context = [ 1 ]

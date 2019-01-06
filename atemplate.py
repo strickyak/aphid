@@ -1,4 +1,4 @@
-from go import html/template
+from go import html.template
 
 PlainBase = template.New("atemplate.py")
 

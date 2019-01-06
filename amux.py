@@ -1,8 +1,5 @@
-#from . import among, aweber, awiki, awedit, azoner, formic, smilax4, stash
-#from . import bundle, keyring, laph3, pubsub, rbundle, util
-from go import bufio, fmt, html, io/ioutil, net/http, os, regexp, time
-from go import path as P, path/filepath as F
-#from rye_lib import data
+from go import bufio, fmt, html, io.ioutil, net.http, os, regexp, time
+from go import path as P, path.filepath as F
 
 Esc = html.EscapeString
 

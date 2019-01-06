@@ -1,5 +1,5 @@
-from go import unicode/utf8
-from . import conv
+from go import unicode.utf8
+import conv
 
 big = ''
 for i in range(256):

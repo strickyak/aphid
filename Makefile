@@ -11,4 +11,4 @@ test:
 	echo All tests OKAY.
 
 clean:
-	rm -rf rye_/ *.bin
+	rm -rf rye_/ ./*.bin ./*_test

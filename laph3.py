@@ -1,6 +1,6 @@
-from go import bytes, path as P, io/ioutil, os, regexp, strconv
-from rye_lib import data
-from . import chucl3x, util
+from go import bytes, path as P, io.ioutil, os, regexp, strconv
+from "github.com/strickyak/rye/contrib" import data
+import chucl3x, util
 
 NONE = ()
 

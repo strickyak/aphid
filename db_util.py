@@ -1,4 +1,4 @@
-from . import db
+import db
 
 def main(args):
   cmd = args[1]

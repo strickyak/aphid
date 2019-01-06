@@ -1,5 +1,4 @@
-from . import laph3 as L
-
+import laph3 as L
 
 t1 = L.Compile(`
   a = bilbo

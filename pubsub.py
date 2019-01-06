@@ -1,5 +1,5 @@
 from go import regexp, sync
-from . import A
+import A
 
 class Bus:
   def __init__(aphid):

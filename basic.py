@@ -1,4 +1,4 @@
-from go import encoding/base64
+from go import encoding.base64
 
 def CheckBasicAuth(w, r, realm, usersToPws):
   """

@@ -1,9 +1,9 @@
 from go import bufio, bytes, io
 from go import net, sync, time
-from go import crypto/rand
+from go import crypto.rand
 
-from . import dh, sym, keyring
-from rye_lib import sema, data
+import dh, sym, keyring
+from "github.com/strickyak/rye/contrib" import sema, data
 
 ProcessNonce = mkbyt(12)  # Per Process nonce.
 rand.Read(ProcessNonce)
@@ -53,7 +53,7 @@ class Server:
   def __init__(hostport, ring):
     .hostport = hostport
     .ring = ring
-    .procs = {}
+    .procs = sync_dict()
 
   def __str__():
     return 'Server{%v}' % .hostport
@@ -161,7 +161,7 @@ class Client:
     .clientId = clientId
     .serverId = serverId
     .sealer = sym.Cipher(MutualKey(ring, clientId, serverId))
-    .requests = {}
+    .requests = sync_dict()
     .inQ = rye_chan(5)
     .conn = net.Dial('tcp', hostport)
     .Handshake()

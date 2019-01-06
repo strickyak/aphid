@@ -1,7 +1,7 @@
-from go import bufio, io/ioutil, os
-from go import path/filepath as F
-from go import github.com/strickyak/redhed
-from . import bundle, keyring
+from go import bufio, io.ioutil, os
+from go import path.filepath as F
+from go import "github.com/strickyak/redhed"
+import bundle, keyring
 
 keyring.Load(filename='test.ring')
 say keyring.Ring.keys()

@@ -1,6 +1,6 @@
 from go import bytes
-from go import github.com/BurntSushi/toml
-from . import util
+from go import "github.com/BurntSushi/toml"
+import util
 
 T = `
 baseurl = "http://127.0.0.1:3333/"

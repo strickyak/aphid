@@ -1,8 +1,8 @@
 from go import bufio, bytes, fmt, regexp, time
-from go import html/template, net/http, io/ioutil
-from . import A, atemplate, bundle, conv, flag, util
-from . import basic, markdown
-from rye_lib import data
+from go import html.template, net.http, io.ioutil
+import A, atemplate, bundle, conv, flag, util
+import basic, markdown
+from "github.com/strickyak/rye/contrib" import data
 
 BASIC = flag.String('basic', '', 'Test Basic Auth users')
 

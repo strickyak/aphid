@@ -1,7 +1,7 @@
-from go import bytes, encoding/hex, fmt, io/ioutil, regexp
-from go/crypto import rand, sha256
-from . import conv, dh, flag, sym
-from rye_lib import data
+from go import bytes, encoding.hex, fmt, io.ioutil, regexp
+from go.crypto import rand, sha256
+import conv, dh, flag, sym
+from "github.com/strickyak/rye/contrib" import data
 
 "The global RingDict."
 RingDict = {}

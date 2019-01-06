@@ -1,11 +1,11 @@
-from go import github.com/yak-labs/chirp-lang as chirp
+from go import "github.com/yak-labs/chirp-lang" as chirp
 from go import bufio, os
 
-from go import github.com/yak-labs/chirp-lang/goapi/default as _
-from go import github.com/yak-labs/chirp-lang/http as _
-from go import github.com/yak-labs/chirp-lang/img as _
-from go import github.com/yak-labs/chirp-lang/posix as _
-from go import github.com/yak-labs/chirp-lang/rpc as _
+from go import "github.com/yak-labs/chirp-lang/goapi/default" as _
+from go import "github.com/yak-labs/chirp-lang/http" as _
+from go import "github.com/yak-labs/chirp-lang/img" as _
+from go import "github.com/yak-labs/chirp-lang/posix" as _
+from go import "github.com/yak-labs/chirp-lang/rpc" as _
 
 
 def main(_):

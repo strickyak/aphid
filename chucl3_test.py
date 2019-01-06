@@ -1,5 +1,5 @@
-from . import chucl3x as C
-from . import laph3 as L
+import chucl3x as C
+import laph3 as L
 
 tree1 = dict(
   negative= ('lambda', ('_x',), ('if', ('<', '$_x', '0'), 'negative', 'positive'), ),

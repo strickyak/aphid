@@ -1,9 +1,9 @@
 from go import bufio, bytes, fmt, reflect, regexp, sort, time
-from go import html/template, net/http, io/ioutil
+from go import html.template, net.http, io.ioutil
 from go import path as P
-from . import A, atemplate, bundle
-from . import adapt, basic, flag, util
-from rye_lib import data
+import A, atemplate, bundle
+import adapt, basic, flag, util
+from "github.com/strickyak/rye/contrib" import data
 
 F = fmt.Sprintf
 

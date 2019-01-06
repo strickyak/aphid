@@ -1,5 +1,5 @@
-from go import github.com/syndtr/goleveldb/leveldb
-from go/github.com/syndtr/goleveldb/leveldb import util
+from go import "github.com/syndtr/goleveldb/leveldb"
+from "go/github.com/syndtr/goleveldb/leveldb" import util
 
 class Db:
   def __init__(path, recover=False):

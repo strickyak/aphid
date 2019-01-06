@@ -1,12 +1,12 @@
 from go import bufio, bytes, io, log, os, regexp, strings, sync, time
-from go import io/ioutil, encoding/hex
+from go import io.ioutil, encoding.hex
 from go import path as P
-from go import path/filepath as F
-from go import crypto/sha256, crypto/rand
-from go import github.com/strickyak/redhed
-from . import  A, pubsub, sym, table
-from . import  resize
-from rye_lib import sema
+from go import path.filepath as F
+from go import crypto.sha256, crypto.rand
+from go import "github.com/strickyak/redhed"
+import A, pubsub, sym, table
+import resize
+from "github.com/strickyak/rye/contrib" import sema
 
 DIR_PERM = 0755
 FILE_PERM = 0644

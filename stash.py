@@ -1,13 +1,12 @@
 from go import bufio, bytes, fmt, html, log, reflect, regexp, sort, sync, time
-from go import html/template, net/http, io/ioutil
-from go import crypto/sha256, crypto/aes, crypto/rand, crypto/cipher
+from go import html.template, net.http, io.ioutil
+from go import crypto.sha256, crypto.aes, crypto.rand, crypto.cipher
 
-#from go import github.com/golang/crypto/scrypt
-from go import golang.org/x/crypto/scrypt
+from go import "golang.org/x/crypto/scrypt"
 
-from . import A, atemplate, bundle, dh, markdown, pubsub, util
-from . import adapt, basic, conv, flag
-from rye_lib import data
+import A, atemplate, bundle, dh, markdown, pubsub, util
+import adapt, basic, conv, flag
+from "github.com/strickyak/rye/contrib" import data
 
 ADMIN_INIT_PW = flag.String('admin_init_pw', '', 'initial admin password')
 

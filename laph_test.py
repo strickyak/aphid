@@ -1,5 +1,5 @@
-from . import laph3 as L
-from rye_lib import data
+import laph3 as L
+from "github.com/strickyak/rye/contrib" import data
 
 #####################################
 #p1 = `{ a = { #comment

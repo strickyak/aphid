@@ -1,5 +1,5 @@
-from . import flag
-from . import skiplist
+import flag
+import skiplist
 
 class Number:
   def __init__(x):

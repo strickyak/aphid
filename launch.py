@@ -1,9 +1,9 @@
-from . import A, flag
-from . import among, amux, aweber, awiki, awedit, azoner, formic, smilax4, stash
-from . import bundle, keyring, laph3, pubsub, rbundle, util
-from go import bufio, fmt, html, io/ioutil, net/http, os, regexp, time
-from go import path as P, path/filepath as F
-from rye_lib import data
+import A, flag
+import among, amux, aweber, awiki, awedit, azoner, formic, smilax4, stash
+import bundle, keyring, laph3, pubsub, rbundle, util
+from go import bufio, fmt, html, io.ioutil, net.http, os, regexp, time
+from go import path as P, path.filepath as F
+from "github.com/strickyak/rye/contrib" import data
 
 SEEDDIR = flag.String('seeddir', '', 'Directory containing bundle seed files')
 

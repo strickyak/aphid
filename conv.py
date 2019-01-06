@@ -1,7 +1,7 @@
-from go import fmt, regexp, unicode/utf8
-from go import crypto/sha256
-from go import encoding/base64, encoding/ascii85
-from go import encoding/hex as H 
+from go import fmt, regexp, unicode.utf8
+from go import crypto.sha256
+from go import encoding.base64, encoding.ascii85
+from go import encoding.hex as H 
 
 ##
 ##  Double Hash

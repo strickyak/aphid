@@ -6,11 +6,11 @@
 #   Root causes double-/ sometimes.
 
 from go import bufio, bytes, fmt, log, reflect, regexp, sort, sync, time
-from go import html/template, net/http, io, io/ioutil, strings
+from go import html.template, net.http, io, io.ioutil, strings
 from go import path as P
-from . import A, atemplate, bundle, keyring, markdown, pubsub, util
-from . import adapt, basic, conv, flag, resize
-from rye_lib import data
+import A, atemplate, bundle, keyring, markdown, pubsub, util
+import adapt, basic, conv, flag, resize
+from "github.com/strickyak/rye/contrib" import data
 
 STATIC_MAX_AGE = 300
 

@@ -1,10 +1,10 @@
-from go import bytes, io/ioutil, os, regexp
-from go import html/template
-from go import github.com/BurntSushi/toml
-from go import github.com/microcosm-cc/bluemonday
-from go import github.com/russross/blackfriday
-from rye_lib import data
-from . import util
+from go import bytes, io.ioutil, os, regexp
+from go import html.template
+from go import "github.com/BurntSushi/toml"
+from go import "github.com/microcosm-cc/bluemonday"
+from go import "github.com/russross/blackfriday"
+from "github.com/strickyak/rye/contrib" import data
+import util
 
 JS_FRONT_MATTER = regexp.MustCompile(`(?s)^({\s*\n.*?\n}\s*\n)(.*)$`)
 TOML_FRONT_MATTER = regexp.MustCompile(`(?s)^[+][+][+]\s*\n(.*?\n)[+][+][+]\s*\n(.*)$`)

@@ -1,5 +1,5 @@
-from . import markdown
-from rye_lib import data
+import markdown
+from "github.com/strickyak/rye/contrib" import data
 
 File1 = `{
   "foo": "bar",

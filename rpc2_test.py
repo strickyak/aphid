@@ -1,9 +1,9 @@
 from go import bufio, bytes, io
 from go import net, sync, time
-from go import crypto/rand
+from go import crypto.rand
 
-from . import dh, keyring
-from . import rpc2 as RPC2
+import dh, keyring
+import rpc2 as RPC2
 
 def DemoSum(*args):
   z = 0.0

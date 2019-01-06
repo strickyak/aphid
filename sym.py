@@ -1,5 +1,5 @@
-from go import encoding/hex, regexp
-from go/crypto import aes, cipher, rand
+from go import encoding.hex, regexp
+from go.crypto import aes, cipher, rand
 
 # Standardize key size.
 KEY_BYT_LEN = 32
